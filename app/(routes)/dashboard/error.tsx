@@ -1,4 +1,4 @@
-"use client"; // Error components must be Client Components
+"use client";
 
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -9,13 +9,13 @@ export default function Error({ error, reset }: {
   reset: () => void
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-8">
       <Alert color="destructive" variant="soft">
         <Info className="h-5 w-5" />
-        <AlertDescription>Something went wrong!</AlertDescription>
+        <AlertDescription>Algo salió mal</AlertDescription>
       </Alert>
       <Button onClick={() => reset()} color="destructive" size="sm">
-        Try again
+        Volver
       </Button>
     </div>
   );

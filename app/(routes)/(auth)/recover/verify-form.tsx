@@ -83,7 +83,6 @@ const VerfiyForm = ({ setView, recoveryEmail, setRecoveryId }: any) => {
             });
             if (auth.status === 200) {
                 let response = await auth.json();
-                console.log(response);
                 setRecoveryId(response.id);
                 setView(3);
             } else {

@@ -38,7 +38,7 @@ const LoginPage = () => {
     return (
         <div className="loginwrapper bg-background flex items-center min-h-screen overflow-hidden  w-full">
             <div className="lg-inner-column  grid  lg:grid-cols-2 w-full flex-wrap justify-center  p-4 overflow-y-auto">
-                <div className={`h-full w-full bg-[url('../../../public/images/auth/login-bg.jpg')] bg-center hidden lg:block rounded-xl`}>
+                <div className={`h-full w-full bg-[url('../../../public/images/auth/login-bg.jpg')] bg-center hidden lg:block rounded-xl bg-cover`}>
                     <div className="flex flex-row items-center justify-center h-full">
                         <div className="flex-none">
                             <div className="flex flex-row items-center justify-center">

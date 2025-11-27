@@ -1,6 +1,5 @@
 "use client";
 import React from "react";
-import toast from "react-hot-toast";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +19,8 @@ import Image from "next/image";
 import Link from "next/link";
 import caderhLogoSmall from "@/public/images/logo/short-icon.png";
 import { useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { User } from "@/components/svg";
 
 const ProfileInfo = () => {
   const [isPending, startTransition] = React.useTransition();
@@ -36,15 +37,15 @@ const ProfileInfo = () => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild className=" cursor-pointer">
-        <div className=" flex items-center  ">
-          <Image
-            src={caderhLogoSmall}
-            alt=""
-            width={36}
-            height={36}
-            className="rounded-full"
-          />
-        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative md:h-9 md:w-9 h-8 w-8 hover:bg-default-100 dark:hover:bg-default-200 
+          data-[state=open]:bg-default-100  dark:data-[state=open]:bg-default-200 
+           hover:text-primary text-default-500 dark:text-default-800  rounded-full  "
+        >
+          <User className="h-5 w-5 " />
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56 p-0" align="end">
         <DropdownMenuLabel className="flex gap-2 items-center mb-1 p-3">

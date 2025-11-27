@@ -22,11 +22,11 @@ const NotificationMessage = () => {
 
   const getNotis = async () => {
     setLoading(true);
-    const params = new URLSearchParams('');
+    /*const params = new URLSearchParams('');
     const response = await (await fetch(`/api/nix-pro/notifications?${params.toString()}`, {
       method: 'GET',
     })).json();
-    setNotifications(response.data ?? []);
+    setNotifications(response.data ?? []);*/
     setLoading(false);
   }
 

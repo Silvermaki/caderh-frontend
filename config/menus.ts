@@ -4,7 +4,8 @@ import {
   DashBoard,
   Flag,
   Sun,
-  Pages
+  Pages,
+  User
 } from "@/components/svg";
 
 
@@ -29,7 +30,7 @@ let navs = [
   },
   {
     title: "Administración",
-    icon: DashBoard,
+    icon: User,
     child: [
       {
         title: 'Usuarios',

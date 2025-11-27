@@ -1,6 +1,5 @@
-"use client"; // Error components must be Client Components
+"use client";
 
-import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Info } from "lucide-react";
@@ -10,7 +9,7 @@ export default function Error({ error, reset }: {
   reset: () => void
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-8">
       <Alert color="destructive" variant="soft">
         <Info className="h-5 w-5" />
         <AlertDescription>Algo salió mal</AlertDescription>

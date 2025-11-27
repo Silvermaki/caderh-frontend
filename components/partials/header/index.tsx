@@ -15,13 +15,10 @@ import FullScreen from "./full-screen";
 
 const NavTools = ({ isDesktop, isMobile, sidebarType }: { isDesktop: boolean; isMobile: boolean; sidebarType: string }) => {
   return (
-    <div className="nav-tools flex items-center  gap-2">
+    <div className="nav-tools flex items-center gap-2">
       {isDesktop && <FullScreen />}
       <NotificationMessage />
-
-      <div className="ltr:pl-2 rtl:pr-2">
-        <ProfileInfo />
-      </div>
+      <ProfileInfo />
       {!isDesktop && sidebarType !== "module" && <MobileMenuHandler />}
     </div>
   );
@@ -108,7 +105,7 @@ const Header = ({ handleOpenSearch }: { handleOpenSearch: () => void; }) => {
           "sticky top-0": navbarType === "sticky",
         })}
       >
-        <div className="w-full bg-card/90 backdrop-blur-lg md:px-6 px-[15px] py-3 border-b">
+        <div className="w-full bg-card/90 backdrop-blur-lg md:px-6 px-[15px] py-2 border-b">
           <div className="flex justify-between items-center h-full">
             <VerticalHeader
 

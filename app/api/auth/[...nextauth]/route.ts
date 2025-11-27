@@ -65,7 +65,6 @@ const authOptions: AuthOptions = {
                     if (auth.status === 400) {
                         throw new Error(response.message);
                     } else {
-                        console.log(response);
                         const user = {
                             id: response.email,
                             session: response.session,

@@ -99,7 +99,6 @@ const LogInForm = ({ setIsLoggingIn }: { setIsLoggingIn: any }) => {
         setPasswordType("password");
         setView(1);
         startTransition(async () => {
-            console.log(data);
             const response = await signIn('credentials', {
                 username: data.email,
                 password: data.password,
@@ -133,7 +132,6 @@ const LogInForm = ({ setIsLoggingIn }: { setIsLoggingIn: any }) => {
     const onNewPass = async (data: any) => {
         setPasswordType("password");
         startTransition(async () => {
-            console.log(process.env.NEXT_PUBLIC_API_URL);
             const auth = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/new-pass`, {
                 method: 'POST',
                 headers: {

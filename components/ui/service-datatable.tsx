@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ColumnFiltersState, SortingState, VisibilityState, flexRender, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, useReactTable } from "@tanstack/react-table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { RefreshCcw } from "lucide-react";
+import { RefreshCcw, PlusCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Icon } from "@iconify/react";
 import { InputGroup, InputGroupButton } from "@/components/ui/input-group";
@@ -12,7 +12,6 @@ import { prettifyNumber } from '@/app/libs/utils';
 
 interface BlankProps {
     className?: string;
-    env: string;
     data: any[];
     columns: any[];
     offset: number;
@@ -20,16 +19,17 @@ interface BlankProps {
     limit: number;
     searchPlaceholder?: string;
     search: string;
+    insertString?: string;
     refresh: (input?: any) => any;
     onSort: (input?: any) => any;
     onSearch: (input?: any) => any;
-    setEnv: (value: any) => any;
     setSearch: (value: any) => any;
     onPagination: (input?: any) => any;
     setLimit?: (value: any) => any;
+    onInsert?: () => any;
     showLimit?: boolean;
 }
-const DataTable = ({ className, data, columns, refresh, onSort, onSearch, searchPlaceholder = 'Search...', env, setEnv, offset, count, limit, onPagination, search, setSearch, showLimit = false, setLimit = (value: any) => { } }: BlankProps) => {
+const DataTable = ({ className, data, columns, insertString = '', onInsert = () => { }, refresh, onSort, onSearch, searchPlaceholder = 'Search...', offset, count, limit, onPagination, search, setSearch, showLimit = false, setLimit = (value: any) => { } }: BlankProps) => {
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -100,7 +100,7 @@ const DataTable = ({ className, data, columns, refresh, onSort, onSearch, search
 
     return (
         <div className={cn('overflow-x-hidden overflow-y-hidden ', className)}>
-            <div className="flex flex-row justify-between gap-2 flex-wrap">
+            <div className="flex flex-row justify-between gap-2 flex-wrap mb-2">
                 <div className='flex flex-row gap-4 flex-wrap'>
                     <div className='flex-none'>
                         <InputGroup>
@@ -117,26 +117,17 @@ const DataTable = ({ className, data, columns, refresh, onSort, onSearch, search
                                 }}
                                 className="max-w-sm min-w-[200px] h-10"
                             />
-                            <InputGroupButton>
-                                <Button color="primary" size="sm" className='h-10' onClick={() => { onSearch(searchInput); }}>
-                                    Search
+                            <InputGroupButton className='rounded-l-none'>
+                                <Button color="primary" size="sm" className='h-10 rounded-l-none' onClick={() => { onSearch(searchInput); }}>
+                                    Buscar
                                 </Button>
                             </InputGroupButton>
+                            {insertString &&
+                                <Button color='success' onClick={onInsert} className='ml-4'>
+                                    {insertString}<PlusCircle className="h-4 w-4 ml-2" />
+                                </Button>
+                            }
                         </InputGroup>
-                    </div>
-                    <div className='flex-none'>
-                        <Select value={env} onValueChange={(event) => {
-                            setSearch('');
-                            setEnv(event);
-                        }}>
-                            <SelectTrigger className='w-[150px]'>
-                                <SelectValue placeholder="Environment" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="prod">Production</SelectItem>
-                                <SelectItem value="dev">Development</SelectItem>
-                            </SelectContent>
-                        </Select>
                     </div>
                 </div>
                 <div className='flex flex-row justify-right items-center'>
