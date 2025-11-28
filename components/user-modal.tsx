@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import dynamic from "next/dynamic";
-import { Dialog, DialogContent, DialogFooter, DialogTitle, } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogFooter, DialogTitle, DialogClose } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -26,13 +26,7 @@ const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 const UserModal = ({ user, users, setUsers, loading, isOpen, setIsOpen, reload }: { user: any, users: any[], setUsers: (input: any) => void, loading: boolean, isOpen: boolean, setIsOpen: (input: any) => void, reload: (input: any) => void }) => {
     const [selectedView, setSelectedView] = useState<string>('profile');
     const [userView, setUserView] = useState<number>(1);
-    const [subjectView, setSubjectView] = useState<number>(1);
-    const [authView, setAuthView] = useState<number>(1);
-    const [sortAsc, setSortAsc] = useState<boolean>(true);
-    const [selectedSubject, setSelectedSubject] = useState<any>(null);
     const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-    const [passwordType, setPasswordType] = useState<string>("password");
-    const router = useRouter();
     const { data: session } = useSession() as any;
 
     const editSchema = z.object({
@@ -85,12 +79,12 @@ const UserModal = ({ user, users, setUsers, loading, isOpen, setIsOpen, reload }
                     }
                 })
                 setUsers(users);
-                setIsSubmitting(false);
                 await reload(user.id);
             } else {
                 let response = await request.json();
                 toast.error(response.message);
             }
+            setIsSubmitting(false);
         } catch (error) {
             toast.error('¡Algo salió mal!');
             setIsSubmitting(false);
@@ -98,17 +92,38 @@ const UserModal = ({ user, users, setUsers, loading, isOpen, setIsOpen, reload }
     }
 
     const changePass = async () => {
-
+        try {
+            setIsSubmitting(true);
+            const request = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/user/reset-password`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.user?.session}`
+                },
+                body: JSON.stringify({
+                    id: user.id,
+                    name: user.name,
+                    role: user.role,
+                    email: user.email
+                })
+            });
+            if (request.ok) {
+                setUserView(3);
+            } else {
+                let response = await request.json();
+                toast.error(response.message);
+            }
+            setIsSubmitting(false);
+        } catch (error) {
+            toast.error('¡Algo salió mal!');
+            setIsSubmitting(false);
+        }
     }
 
     return (
         <Dialog open={isOpen} onOpenChange={(value: boolean) => {
             setIsOpen(value);
             setUserView(1);
-            setSubjectView(1);
-            setAuthView(1);
-            setSortAsc(true);
-            setSelectedSubject(null);
             setSelectedView('profile');
             setIsSubmitting(false);
             editReset();
@@ -138,10 +153,6 @@ const UserModal = ({ user, users, setUsers, loading, isOpen, setIsOpen, reload }
                             <div>
                                 <Tabs value={selectedView} onValueChange={(value: string) => {
                                     setUserView(1);
-                                    setSubjectView(1);
-                                    setAuthView(1);
-                                    setSortAsc(true);
-                                    setSelectedSubject(null);
                                     setSelectedView(value);
                                     setIsSubmitting(false);
                                 }}>
@@ -340,13 +351,13 @@ const UserModal = ({ user, users, setUsers, loading, isOpen, setIsOpen, reload }
                                                 </div>
                                             </ScrollArea>
                                         )}
-                                        {authView === 3 && (
+                                        {userView === 3 && (
                                             <ScrollArea className="h-full">
                                                 <Alert color="success" variant="soft" className="mb-4 mt-4">
                                                     <AlertDescription className="text-center">
                                                         <CheckCircle2 className="h-20 w-20 color-primary mx-auto mb-4" />
-                                                        <div>Password resetted successfully</div>
-                                                        <div>Don't forget to notify and provide the user with their new credentials</div>
+                                                        <div>Nueva Contraseña Generada</div>
+                                                        <div>Notificar al usuario final que revise su bandeja de correo electrónico para continuar el proceso de autenticación</div>
                                                     </AlertDescription>
                                                 </Alert>
                                             </ScrollArea>
@@ -374,9 +385,12 @@ const UserModal = ({ user, users, setUsers, loading, isOpen, setIsOpen, reload }
                                     </div>
                                 </div>
                             )}
-                            {selectedView === 'profile' && userView === 1 && (
-                                <>
-                                </>
+                            {selectedView === 'profile' && userView === 3 && (
+                                <DialogClose asChild>
+                                    <Button color="dark">
+                                        Cerrar
+                                    </Button>
+                                </DialogClose>
                             )}
                         </>
                     </DialogFooter>

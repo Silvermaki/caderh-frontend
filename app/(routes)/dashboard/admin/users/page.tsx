@@ -24,7 +24,7 @@ const Page = () => {
     const [limit, setLimit] = useState<number>(10);
     const [count, setCount] = useState<number>(0);
     const [desc, setDesc] = useState<boolean>(true);
-    const [sort, setSort] = useState<string>('last_workout_date');
+    const [sort, setSort] = useState<string>('name');
     let searchInit = (new URLSearchParams(searchParams)).get('search') ?? '';
     const [search, setSearch] = useState<string>(searchInit ?? '');
     const [loading, setLoading] = useState<boolean>(true);
@@ -289,7 +289,7 @@ const Page = () => {
 
     const getDataInit = async (searchValue: string) => {
         setSearch(searchValue);
-        const params = new URLSearchParams({ offset: '0', limit: limit + '', sort: 'last_workout_date', desc: 'desc', search: searchValue });
+        const params = new URLSearchParams({ offset: '0', limit: limit + '', sort: 'name', desc: 'desc', search: searchValue });
         setDesc(false);
         await getUsers(params.toString());
         setOffset(0);
