@@ -38,3 +38,6 @@ tsconfig.tsbuildinfo
 
 .env.local
 .env
+
+# package-lock
+package-lock.json

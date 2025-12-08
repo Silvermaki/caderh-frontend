@@ -175,6 +175,7 @@ const NewUserModal = ({ isOpen, setIsOpen, reloadList }: { isOpen: boolean, setI
                                                         <SelectContent className='z-[99990]'>
                                                             <SelectItem value="USER">Agente</SelectItem>
                                                             <SelectItem value="ADMIN">Administrador</SelectItem>
+                                                            <SelectItem value="MANAGER">Supervisor</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
