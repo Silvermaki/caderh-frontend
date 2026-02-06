@@ -113,7 +113,7 @@ const Page = () => {
                 return (
                     <div className="font-medium">
                         <div className="flex space-x-3 rtl:space-x-reverse items-center">
-                            <Badge color={`${value === 'ADMIN' ? "dark" : "default"}`}>{value === 'ADMIN' ? "Administrador" : "Agente"}</Badge>
+                            <Badge color={`${value === 'ADMIN' ? "dark" : value === 'MANAGER' ? "warning" : "default"}`}>{value === 'ADMIN' ? "Administrador" : value === 'MANAGER' ? "Supervisor" : "Agente"}</Badge>
                         </div>
                     </div>
                 )

@@ -53,6 +53,7 @@ const NewUserModal = ({ isOpen, setIsOpen, reloadList }: { isOpen: boolean, setI
     const onNewUser = async (data: any) => {
         try {
             setIsSubmitting(true);
+            console.log(data);
             const request = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/user`, {
                 method: 'POST',
                 headers: {
@@ -173,9 +174,9 @@ const NewUserModal = ({ isOpen, setIsOpen, reloadList }: { isOpen: boolean, setI
                                                             <SelectValue placeholder="Select" />
                                                         </SelectTrigger>
                                                         <SelectContent className='z-[99990]'>
-                                                            <SelectItem value="USER">Agente</SelectItem>
                                                             <SelectItem value="ADMIN">Administrador</SelectItem>
                                                             <SelectItem value="MANAGER">Supervisor</SelectItem>
+                                                            <SelectItem value="USER">Agente</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
