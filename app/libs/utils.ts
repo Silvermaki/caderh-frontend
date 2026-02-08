@@ -6,6 +6,10 @@ export const dateToString = (date: Date) => {
     return date.toLocaleString('en-us', { year: 'numeric', month: '2-digit', day: '2-digit' });
 }
 
+export const timeToString = (date: Date) => {
+    return date.toLocaleTimeString('es-HN', { hour: '2-digit', minute: '2-digit' });
+}
+
 export const prettifyNumber = (value: number, decimals: number = 0): string => {
     const curr = new Intl.NumberFormat('en-US', {
         style: 'decimal',

@@ -168,7 +168,7 @@ const Page = () => {
                                     Detalle de Usuario
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                    onClick={() => { router.push(`/dashboard/admin/logs/${row.original.id}`) }}
+                                    onClick={() => { router.push(`/dashboard/admin/logs?user_id=${row.original.id}`) }}
                                 >Ver Bitácoras</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
@@ -256,7 +256,7 @@ const Page = () => {
                                     Detalle de Usuario
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                    onClick={() => { router.push(`/dashboard/admin/logs/${row.original.id}`) }}
+                                    onClick={() => { router.push(`/dashboard/admin/logs?user_id=${row.original.id}`) }}
                                 >Ver Bitácoras</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
