@@ -1071,7 +1071,7 @@ const Page = () => {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={onDeleteProject} className="bg-destructive text-destructive-foreground">
+                        <AlertDialogAction onClick={onDeleteProject} color="destructive">
                             {deleting ? "Eliminando..." : "Eliminar"}
                         </AlertDialogAction>
                     </AlertDialogFooter>

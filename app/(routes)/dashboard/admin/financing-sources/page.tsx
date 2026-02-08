@@ -444,7 +444,7 @@ const Page = () => {
                         <AlertDialogAction
                             onClick={onDeleteConfirm}
                             disabled={deleting}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            color="destructive"
                         >
                             {deleting ? "Eliminando..." : "Eliminar"}
                         </AlertDialogAction>

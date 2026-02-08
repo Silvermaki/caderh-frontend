@@ -136,7 +136,7 @@ const AlertDialogCancel = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Cancel>,
   AlertDialogCancelProps
 >(
-  ({ className, variant, color = "destructive", ...props }, ref) => (
+  ({ className, variant = "outline", color = "secondary", ...props }, ref) => (
     <AlertDialogPrimitive.Cancel
       ref={ref}
       className={cn(
