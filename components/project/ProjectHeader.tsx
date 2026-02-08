@@ -51,11 +51,14 @@ const ProjectHeader = ({
     return (
         <Card className={cn(
             "mb-6 overflow-hidden",
-            interactive && "cursor-pointer hover:shadow-lg hover:border-primary/30 transition-all duration-200"
+            interactive && "cursor-pointer group"
         )}>
             {/* Title + description + dates */}
             <div className="p-6 pb-4">
-                <h1 className="text-2xl lg:text-3xl font-bold tracking-tight break-words">
+                <h1 className={cn(
+                    "text-2xl lg:text-3xl font-bold tracking-tight break-words relative inline-block text-primary",
+                    interactive && "after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:bg-primary after:w-0 after:transition-all after:duration-[5000ms] after:ease-in-out group-hover:after:w-full"
+                )}>
                     {name}
                 </h1>
                 <p className="text-sm text-muted-foreground mt-2 break-words max-w-3xl leading-relaxed">
