@@ -66,7 +66,7 @@ const BitacoraDetailModal = ({
                     </div>
                     <div>
                         <Label className="text-muted-foreground">Bitácora</Label>
-                        <p className="mt-1 whitespace-pre-line text-sm bg-muted/50 p-4 rounded-md max-h-[300px] overflow-y-auto">
+                        <p className="mt-1 whitespace-pre-line text-sm p-4 rounded-md max-h-[300px] overflow-y-auto">
                             {log.log ?? "-"}
                         </p>
                     </div>
