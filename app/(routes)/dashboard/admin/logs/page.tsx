@@ -231,9 +231,6 @@ const Page = () => {
                                 </Select>
                             </div>
                         </div>
-                        <Button size="icon" color="info" className="h-8 w-8" onClick={onRefresh}>
-                            <RefreshCcw className="h-3 w-3" />
-                        </Button>
                     </div>
                     {loading && <SkeletonTable />}
                     {!loading && (
@@ -295,7 +292,7 @@ const Page = () => {
                             No hay bitácoras registradas.
                         </div>
                     )}
-                    {!loading && count > 0 && (
+                    {!loading && (
                         <div className="flex flex-row flex-wrap items-center justify-between gap-4 mt-6 pt-4 border-t">
                             <div className="flex flex-row items-center gap-4">
                                 <Select
@@ -366,6 +363,14 @@ const Page = () => {
                                         icon="heroicons:chevron-right"
                                         className="w-5 h-5 rtl:rotate-180"
                                     />
+                                </Button>
+                                <Button
+                                    size="icon"
+                                    color="info"
+                                    className="h-8 w-8"
+                                    onClick={onRefresh}
+                                >
+                                    <RefreshCcw className="h-3 w-3" />
                                 </Button>
                             </div>
                         </div>

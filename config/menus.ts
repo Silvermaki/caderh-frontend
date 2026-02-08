@@ -41,6 +41,10 @@ let navs = [
         href: "/dashboard/admin/logs",
       },
       {
+        title: 'Fuentes',
+        href: "/dashboard/admin/financing-sources",
+      },
+      {
         title: 'Proyectos',
         href: "/dashboard/admin/projects",
       },

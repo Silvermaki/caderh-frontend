@@ -100,111 +100,33 @@ const DataTable = ({ className, data, columns, insertString = '', onInsert = () 
 
     return (
         <div className={cn('overflow-x-hidden overflow-y-hidden ', className)}>
-            <div className="flex flex-row justify-between gap-2 flex-wrap mb-2">
-                <div className='flex flex-row gap-4 flex-wrap'>
-                    <div className='flex-none'>
-                        <InputGroup>
-                            <Input
-                                placeholder={searchPlaceholder}
-                                value={searchInput}
-                                onChange={(event) => {
-                                    setSearchInput(event.target.value);
-                                }}
-                                onKeyDown={(event) => {
-                                    if (event.key === 'Enter') {
-                                        onSearch(searchInput);
-                                    }
-                                }}
-                                className="max-w-sm min-w-[200px] h-10"
-                            />
-                            <InputGroupButton className='rounded-l-none'>
-                                <Button color="primary" size="sm" className='h-10 rounded-l-none' onClick={() => { onSearch(searchInput); }}>
-                                    Buscar
-                                </Button>
-                            </InputGroupButton>
-                            {insertString &&
-                                <Button color='success' onClick={onInsert} className='ml-4'>
-                                    {insertString}<PlusCircle className="h-4 w-4 ml-2" />
-                                </Button>
+            <div className="flex flex-row justify-between items-center gap-4 mb-4">
+                <InputGroup className="max-w-sm shrink-0">
+                    <Input
+                        placeholder={searchPlaceholder}
+                        value={searchInput}
+                        onChange={(event) => {
+                            setSearchInput(event.target.value);
+                        }}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                                onSearch(searchInput);
                             }
-                        </InputGroup>
-                    </div>
-                </div>
-                <div className='flex flex-row justify-right items-center'>
-                    {showLimit &&
-                        <div className='flex-none mr-8'>
-                            <Select value={limit + ""} onValueChange={(event) => {
-                                setLimit(+event);
-                            }}>
-                                <SelectTrigger size="sm" className='w-[100px]'>
-                                    <SelectValue placeholder="Environment" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="10">10</SelectItem>
-                                    <SelectItem value="25">25</SelectItem>
-                                    <SelectItem value="50">50</SelectItem>
-                                    <SelectItem value="100">100</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    }
-                    <div className='mr-8 text-xs'>
-                        Total: <b>{prettifyNumber(count)}</b>
-                    </div>
-                    <div className="flex items-center flex-wrap gap-4">
-                        <div className="flex gap-2 items-center">
-                            <Button
-                                variant="outline"
-                                size="icon"
-                                onClick={() => {
-                                    if (offset > 0) {
-                                        onPagination(offset - 1);
-                                    }
-                                }}
-                                disabled={offset === 0}
-                                className="h-8 w-8"
-                            >
-                                <Icon icon="heroicons:chevron-left" className="w-5 h-5 rtl:rotate-180" />
-                            </Button>
-                            {pages.map((page, index) => (
-                                <Fragment key={`basic-data-table-${index}`}>
-                                    {shouldShowPagination(page) && (
-                                        <Button
-                                            variant={offset === page ? undefined : "outline"}
-                                            onClick={() => {
-                                                onPagination(page);
-                                            }}
-                                            className={cn("w-8 h-8")}
-                                        >
-                                            {page + 1}
-                                        </Button>
-                                    )}
-                                </Fragment>
-                            ))}
-                            <Button
-                                onClick={() => {
-                                    if (offset < pages.length) {
-                                        onPagination(offset + 1);
-                                    }
-                                }}
-                                disabled={offset + 1 >= pages.length}
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                            >
-                                <Icon icon="heroicons:chevron-right" className="w-5 h-5 rtl:rotate-180" />
-                            </Button>
-                        </div>
-                    </div>
-                    <Button className='flex-none h-6 w-6 ml-8' size="icon" color='info' onClick={() => {
-                        refresh();
-                        setSearch("");
-                        setSorting([]);
-                    }}>
-                        <RefreshCcw className="h-3 w-3" />
+                        }}
+                        className="h-10 rounded-r-none"
+                    />
+                    <InputGroupButton className="rounded-l-none border-l-0">
+                        <Button color="primary" size="sm" className="h-10 rounded-l-none" onClick={() => onSearch(searchInput)}>
+                            Buscar
+                        </Button>
+                    </InputGroupButton>
+                </InputGroup>
+                {insertString && (
+                    <Button color="success" onClick={onInsert}>
+                        {insertString}
+                        <PlusCircle className="h-4 w-4 ml-2" />
                     </Button>
-                </div>
-
+                )}
             </div>
             <div>
                 <Table>
@@ -258,6 +180,87 @@ const DataTable = ({ className, data, columns, insertString = '', onInsert = () 
                     </TableBody>
                 </Table>
             </div>
+            {(showLimit || count > 0) && (
+                <div className="flex flex-row flex-wrap items-center justify-between gap-4 mt-6 pt-4 border-t">
+                    <div className="flex flex-row items-center gap-4">
+                        {showLimit && (
+                            <Select value={limit + ""} onValueChange={(event) => {
+                                setLimit(+event);
+                            }}>
+                                <SelectTrigger size="sm" className="w-[100px]">
+                                    <SelectValue placeholder="Environment" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="25">25</SelectItem>
+                                    <SelectItem value="50">50</SelectItem>
+                                    <SelectItem value="100">100</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        )}
+                        <div className="text-xs">
+                            Total: <b>{prettifyNumber(count)}</b>
+                        </div>
+                    </div>
+                    <div className="flex items-center flex-wrap gap-4">
+                        <div className="flex gap-2 items-center">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => {
+                                    if (offset > 0) {
+                                        onPagination(offset - 1);
+                                    }
+                                }}
+                                disabled={offset === 0}
+                                className="h-8 w-8"
+                            >
+                                <Icon icon="heroicons:chevron-left" className="w-5 h-5 rtl:rotate-180" />
+                            </Button>
+                            {pages.map((page, index) => (
+                                <Fragment key={`basic-data-table-${index}`}>
+                                    {shouldShowPagination(page) && (
+                                        <Button
+                                            variant={offset === page ? undefined : "outline"}
+                                            onClick={() => {
+                                                onPagination(page);
+                                            }}
+                                            className={cn("w-8 h-8")}
+                                        >
+                                            {page + 1}
+                                        </Button>
+                                    )}
+                                </Fragment>
+                            ))}
+                                <Button
+                                    onClick={() => {
+                                        if (offset < pages.length) {
+                                            onPagination(offset + 1);
+                                        }
+                                    }}
+                                    disabled={offset + 1 >= pages.length}
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                >
+                                    <Icon icon="heroicons:chevron-right" className="w-5 h-5 rtl:rotate-180" />
+                                </Button>
+                                <Button
+                                    size="icon"
+                                    color="info"
+                                    className="h-8 w-8"
+                                    onClick={() => {
+                                        refresh();
+                                        setSearch("");
+                                        setSorting([]);
+                                    }}
+                                >
+                                    <RefreshCcw className="h-3 w-3" />
+                                </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
