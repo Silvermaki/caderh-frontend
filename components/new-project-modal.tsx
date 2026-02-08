@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     Dialog,
     DialogContent,
@@ -28,6 +28,7 @@ import { Stepper, Step, StepLabel } from "@/components/ui/steps";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { Loader2, PlusCircle, Trash2, Upload, FileText } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
 import { prettifyNumber } from "@/app/libs/utils";
@@ -146,6 +147,15 @@ const NewProjectModal = ({
     const [fileDescription, setFileDescription] = useState("");
     const [fileFilename, setFileFilename] = useState("");
 
+    // Step 1 - Logros (un logro por defecto para que el usuario pueda iniciar)
+    const [accomplishmentItems, setAccomplishmentItems] = useState<
+        { text: string; completed: boolean }[]
+    >([{ text: "", completed: false }]);
+    const logrosEndRef = useRef<HTMLDivElement>(null);
+    const fuentesEndRef = useRef<HTMLDivElement>(null);
+    const donacionesEndRef = useRef<HTMLDivElement>(null);
+    const gastosEndRef = useRef<HTMLDivElement>(null);
+
     const {
         register,
         handleSubmit,
@@ -198,6 +208,7 @@ const NewProjectModal = ({
         setUploadedFiles([]);
         setFileDescription("");
         setFileFilename("");
+        setAccomplishmentItems([{ text: "", completed: false }]);
         reset();
         reloadList();
     };
@@ -220,6 +231,12 @@ const NewProjectModal = ({
                         objectives: data.objectives,
                         start_date: data.start_date,
                         end_date: data.end_date,
+                        accomplishments: accomplishmentItems
+                            .filter((a) => a.text.trim())
+                            .map((a) => ({
+                                text: a.text.trim(),
+                                completed: a.completed,
+                            })),
                     }),
                 }
             );
@@ -446,11 +463,20 @@ const NewProjectModal = ({
         },
     });
 
-    const addFinancingItem = () =>
+    const addFinancingItem = () => {
         setFinancingItems((prev) => [
             ...prev,
             { financing_source_id: "", amount: "", description: "" },
         ]);
+        setTimeout(
+            () =>
+                fuentesEndRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "end",
+                }),
+            50
+        );
+    };
     const removeFinancingItem = (i: number) =>
         setFinancingItems((prev) => prev.filter((_, idx) => idx !== i));
     const updateFinancingItem = (
@@ -465,11 +491,20 @@ const NewProjectModal = ({
         );
     };
 
-    const addDonationItem = () =>
+    const addDonationItem = () => {
         setDonationItems((prev) => [
             ...prev,
             { amount: "", description: "", donation_type: "CASH" },
         ]);
+        setTimeout(
+            () =>
+                donacionesEndRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "end",
+                }),
+            50
+        );
+    };
     const removeDonationItem = (i: number) =>
         setDonationItems((prev) => prev.filter((_, idx) => idx !== i));
     const updateDonationItem = (i: number, field: string, value: string) => {
@@ -480,8 +515,17 @@ const NewProjectModal = ({
         );
     };
 
-    const addExpenseItem = () =>
+    const addExpenseItem = () => {
         setExpenseItems((prev) => [...prev, { amount: "", description: "" }]);
+        setTimeout(
+            () =>
+                gastosEndRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "end",
+                }),
+            50
+        );
+    };
     const removeExpenseItem = (i: number) =>
         setExpenseItems((prev) => prev.filter((_, idx) => idx !== i));
     const updateExpenseItem = (i: number, field: string, value: string) => {
@@ -537,10 +581,10 @@ const NewProjectModal = ({
                         {step === 1 && (
                             <form
                                 onSubmit={handleSubmit(onStep1)}
-                                className="px-2"
+                                className="px-5"
                             >
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
+                                    <div className="md:col-span-2">
                                         <Label className="mb-2 font-medium text-default-600">
                                             Nombre
                                         </Label>
@@ -552,38 +596,6 @@ const NewProjectModal = ({
                                         {errors.name && (
                                             <div className="text-destructive mt-1 text-sm">
                                                 {errors.name.message}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <Label className="mb-2 font-medium text-default-600">
-                                            Descripción
-                                        </Label>
-                                        <Textarea
-                                            disabled={isSubmitting}
-                                            {...register("description")}
-                                            placeholder=" "
-                                            rows={2}
-                                        />
-                                        {errors.description && (
-                                            <div className="text-destructive mt-1 text-sm">
-                                                {errors.description.message}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <Label className="mb-2 font-medium text-default-600">
-                                            Objetivos
-                                        </Label>
-                                        <Textarea
-                                            disabled={isSubmitting}
-                                            {...register("objectives")}
-                                            placeholder=" "
-                                            rows={2}
-                                        />
-                                        {errors.objectives && (
-                                            <div className="text-destructive mt-1 text-sm">
-                                                {errors.objectives.message}
                                             </div>
                                         )}
                                     </div>
@@ -616,6 +628,116 @@ const NewProjectModal = ({
                                                 {errors.end_date.message}
                                             </div>
                                         )}
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <Label className="mb-2 font-medium text-default-600">
+                                            Descripción
+                                        </Label>
+                                        <Textarea
+                                            disabled={isSubmitting}
+                                            {...register("description")}
+                                            placeholder=" "
+                                            rows={2}
+                                            className="min-h-[60px]"
+                                        />
+                                        {errors.description && (
+                                            <div className="text-destructive mt-1 text-sm">
+                                                {errors.description.message}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <Label className="mb-2 font-medium text-default-600">
+                                            Objetivos
+                                        </Label>
+                                        <Textarea
+                                            disabled={isSubmitting}
+                                            {...register("objectives")}
+                                            placeholder=" "
+                                            rows={2}
+                                            className="min-h-[60px]"
+                                        />
+                                        {errors.objectives && (
+                                            <div className="text-destructive mt-1 text-sm">
+                                                {errors.objectives.message}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <Label className="mb-2 font-medium text-default-600">
+                                            Logros del Proyecto
+                                        </Label>
+                                        <div className="space-y-2">
+                                            {accomplishmentItems.map((item, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="flex gap-2 items-center"
+                                                >
+                                                    <Checkbox
+                                                        checked={item.completed}
+                                                        onCheckedChange={(checked) => {
+                                                            setAccomplishmentItems((prev) =>
+                                                                prev.map((a, j) =>
+                                                                    j === i ? { ...a, completed: !!checked } : a
+                                                                )
+                                                            );
+                                                        }}
+                                                        disabled={isSubmitting}
+                                                    />
+                                                    <Input
+                                                        disabled={isSubmitting}
+                                                        value={item.text}
+                                                        onChange={(e) =>
+                                                            setAccomplishmentItems((prev) =>
+                                                                prev.map((a, j) =>
+                                                                    j === i ? { ...a, text: e.target.value } : a
+                                                                )
+                                                            )
+                                                        }
+                                                        placeholder="Logro"
+                                                        className="flex-1"
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-destructive shrink-0"
+                                                        onClick={() =>
+                                                            setAccomplishmentItems((prev) =>
+                                                                prev.filter((_, j) => j !== i)
+                                                            )
+                                                        }
+                                                        disabled={isSubmitting}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setAccomplishmentItems((prev) => [
+                                                        ...prev,
+                                                        { text: "", completed: false },
+                                                    ]);
+                                                    setTimeout(
+                                                        () =>
+                                                            logrosEndRef.current?.scrollIntoView({
+                                                                behavior: "smooth",
+                                                                block: "end",
+                                                            }),
+                                                        50
+                                                    );
+                                                }}
+                                                disabled={isSubmitting}
+                                            >
+                                                <PlusCircle className="h-4 w-4 mr-2" />
+                                                Agregar logro
+                                            </Button>
+                                            <div ref={logrosEndRef} />
+                                        </div>
                                     </div>
                                 </div>
                             </form>
@@ -709,6 +831,7 @@ const NewProjectModal = ({
                                     <PlusCircle className="h-4 w-4 mr-2" />
                                     Agrega más
                                 </Button>
+                                <div ref={fuentesEndRef} />
                             </div>
                         )}
                         {step === 3 && (
@@ -798,6 +921,7 @@ const NewProjectModal = ({
                                     <PlusCircle className="h-4 w-4 mr-2" />
                                     Agrega más
                                 </Button>
+                                <div ref={donacionesEndRef} />
                             </div>
                         )}
                         {step === 4 && (
@@ -860,6 +984,7 @@ const NewProjectModal = ({
                                     <PlusCircle className="h-4 w-4 mr-2" />
                                     Agrega más
                                 </Button>
+                                <div ref={gastosEndRef} />
                             </div>
                         )}
                         {step === 5 && (

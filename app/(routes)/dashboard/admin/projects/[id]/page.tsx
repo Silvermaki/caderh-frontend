@@ -49,11 +49,13 @@ import {
     CalendarRange,
     DollarSign,
     TrendingUp,
+    Target,
     Pencil,
     Trash2,
     PlusCircle,
     Download,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { dateToString, formatCurrency, prettifyNumber } from "@/app/libs/utils";
 import { Progress } from "@/components/ui/progress";
 import { useDropzone } from "react-dropzone";
@@ -138,8 +140,16 @@ const Page = () => {
     const [allFinancingSources, setAllFinancingSources] = useState<any[]>([]);
 
     const [infoEditing, setInfoEditing] = useState(false);
-    const [infoForm, setInfoForm] = useState({ name: "", description: "", objectives: "", start_date: "", end_date: "" });
+    const [infoForm, setInfoForm] = useState({
+        name: "",
+        description: "",
+        objectives: "",
+        start_date: "",
+        end_date: "",
+        accomplishments: [] as { text: string; completed: boolean }[],
+    });
     const [infoSaving, setInfoSaving] = useState(false);
+    const [accomplishmentsPatching, setAccomplishmentsPatching] = useState(false);
 
     const [addSourceOpen, setAddSourceOpen] = useState(false);
     const [addSourceForm, setAddSourceForm] = useState({ financing_source_id: "", amount: "", description: "" });
@@ -167,12 +177,22 @@ const Page = () => {
             if (res.ok) {
                 const json = await res.json();
                 setProject(json.data);
+                const acc = json.data.accomplishments;
+                const accArr = Array.isArray(acc)
+                    ? acc
+                          .filter((a: any) => a && typeof a.text === "string")
+                          .map((a: any) => ({
+                              text: String(a.text),
+                              completed: Boolean(a?.completed),
+                          }))
+                    : [];
                 setInfoForm({
                     name: json.data.name ?? "",
                     description: json.data.description ?? "",
                     objectives: json.data.objectives ?? "",
                     start_date: json.data.start_date ? json.data.start_date.slice(0, 10) : "",
                     end_date: json.data.end_date ? json.data.end_date.slice(0, 10) : "",
+                    accomplishments: accArr,
                 });
             } else {
                 const json = await res.json();
@@ -313,6 +333,10 @@ const Page = () => {
                         objectives: infoForm.objectives,
                         start_date: infoForm.start_date,
                         end_date: infoForm.end_date,
+                        accomplishments: infoForm.accomplishments.map((a) => ({
+                            text: a.text,
+                            completed: a.completed,
+                        })),
                     }),
                 }
             );
@@ -328,6 +352,33 @@ const Page = () => {
             toast.error("Error al guardar");
         }
         setInfoSaving(false);
+    };
+
+    const onPatchAccomplishments = async (accomplishments: { text: string; completed: boolean }[]) => {
+        setAccomplishmentsPatching(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/accomplishments`,
+                {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session?.user?.session}`,
+                    },
+                    body: JSON.stringify({ accomplishments }),
+                }
+            );
+            const json = await res.json();
+            if (res.ok) {
+                fetchProject();
+                setInfoForm((p) => ({ ...p, accomplishments }));
+            } else {
+                toast.error(json.message ?? "Error al actualizar logros");
+            }
+        } catch {
+            toast.error("Error al actualizar logros");
+        }
+        setAccomplishmentsPatching(false);
     };
 
     const onAddSource = async () => {
@@ -663,9 +714,25 @@ const Page = () => {
                         </div>
                     </div>
                     <div className="hidden lg:flex flex-col justify-end bg-transparent">
-                        <div className="w-px bg-border h-[100px] mt-[25px] mb-[25px]" />
+                        <div className="w-px bg-border h-[100px] my-auto" />
                     </div>
                     <div className="p-6 pl-6 lg:pl-8 space-y-4">
+                    {(() => {
+                            const acc = Array.isArray(project.accomplishments)
+                                ? project.accomplishments.filter((a: any) => a && typeof a.text === "string")
+                                : [];
+                            if (acc.length === 0) return null;
+                            const completed = acc.filter((a: any) => a && a.completed).length;
+                            return (
+                                <div className="flex justify-between items-center">
+                                    <div className="flex items-center gap-2">
+                                        <Target className="h-4 w-4 shrink-0 text-[#04bb36]" />
+                                        <span className="text-muted-foreground">Logros</span>
+                                    </div>
+                                    <span className="font-medium">{completed}/{acc.length}</span>
+                                </div>
+                            );
+                        })()}
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
                                 <DollarSign className="h-4 w-4 text-success" />
@@ -736,7 +803,29 @@ const Page = () => {
                                 </Button>
                             ) : (
                                 <div className="flex gap-2">
-                                    <Button variant="outline" onClick={() => setInfoEditing(false)}>
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            const acc = project?.accomplishments;
+                                            const accArr = Array.isArray(acc)
+                                                ? acc
+                                                      .filter((a: any) => a && typeof a.text === "string")
+                                                      .map((a: any) => ({
+                                                          text: String(a.text),
+                                                          completed: Boolean(a?.completed),
+                                                      }))
+                                                : [];
+                                            setInfoForm({
+                                                name: project?.name ?? "",
+                                                description: project?.description ?? "",
+                                                objectives: project?.objectives ?? "",
+                                                start_date: project?.start_date ? String(project.start_date).slice(0, 10) : "",
+                                                end_date: project?.end_date ? String(project.end_date).slice(0, 10) : "",
+                                                accomplishments: accArr,
+                                            });
+                                            setInfoEditing(false);
+                                        }}
+                                    >
                                         Cancelar
                                     </Button>
                                     <Button onClick={onSaveInfo} disabled={infoSaving}>
@@ -771,6 +860,59 @@ const Page = () => {
                                         <p className="mt-1">
                                             {project.end_date ? dateToString(new Date(project.end_date)) : "-"}
                                         </p>
+                                    </div>
+                                    <div>
+                                        <Label className="text-muted-foreground">Logros del Proyecto</Label>
+                                        <div className="mt-2 space-y-2">
+                                            {(Array.isArray(project.accomplishments)
+                                                ? project.accomplishments.filter(
+                                                      (a: any) => a && typeof a.text === "string"
+                                                  )
+                                                : []
+                                            ).map((a: any, i: number) => (
+                                                <div
+                                                    key={i}
+                                                    className={cn(
+                                                        "flex items-center gap-2 p-2 rounded-md",
+                                                        a.completed && "bg-success/10"
+                                                    )}
+                                                >
+                                                    <Checkbox
+                                                        checked={!!a.completed}
+                                                        onCheckedChange={(checked) => {
+                                                            const acc = Array.isArray(project.accomplishments)
+                                                                ? project.accomplishments
+                                                                : [];
+                                                            const updated = acc.map((x: any, j: number) =>
+                                                                j === i ? { ...x, completed: !!checked } : x
+                                                            );
+                                                            onPatchAccomplishments(
+                                                                updated.map((x: any) => ({
+                                                                    text: x.text,
+                                                                    completed: x.completed,
+                                                                }))
+                                                            );
+                                                        }}
+                                                        disabled={accomplishmentsPatching}
+                                                    />
+                                                    <span className="flex-1 text-sm flex items-center justify-between gap-2 min-w-0">
+                                                        <span
+                                                            className={cn(
+                                                                "min-w-0",
+                                                                a.completed && "line-through text-muted-foreground"
+                                                            )}
+                                                        >
+                                                            {a.text}
+                                                        </span>
+                                                        {a.completed && (
+                                                            <span className="text-success text-xs font-medium shrink-0">
+                                                                Completado
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             ) : (
@@ -817,6 +959,79 @@ const Page = () => {
                                                 onChange={(e) => setInfoForm((p) => ({ ...p, end_date: e.target.value }))}
                                                 className="mt-1"
                                             />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <Label>Logros del Proyecto</Label>
+                                        <div className="mt-2 space-y-2">
+                                            {infoForm.accomplishments.map((item, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="flex gap-2 items-center"
+                                                >
+                                                    <Checkbox
+                                                        checked={item.completed}
+                                                        onCheckedChange={(checked) =>
+                                                            setInfoForm((p) => ({
+                                                                ...p,
+                                                                accomplishments: p.accomplishments.map((a, j) =>
+                                                                    j === i ? { ...a, completed: !!checked } : a
+                                                                ),
+                                                            }))
+                                                        }
+                                                        disabled={infoSaving}
+                                                    />
+                                                    <Input
+                                                        value={item.text}
+                                                        onChange={(e) =>
+                                                            setInfoForm((p) => ({
+                                                                ...p,
+                                                                accomplishments: p.accomplishments.map((a, j) =>
+                                                                    j === i ? { ...a, text: e.target.value } : a
+                                                                ),
+                                                            }))
+                                                        }
+                                                        placeholder="Texto del logro"
+                                                        className="flex-1"
+                                                        disabled={infoSaving}
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="text-destructive shrink-0"
+                                                        onClick={() =>
+                                                            setInfoForm((p) => ({
+                                                                ...p,
+                                                                accomplishments: p.accomplishments.filter(
+                                                                    (_, j) => j !== i
+                                                                ),
+                                                            }))
+                                                        }
+                                                        disabled={infoSaving}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() =>
+                                                    setInfoForm((p) => ({
+                                                        ...p,
+                                                        accomplishments: [
+                                                            ...p.accomplishments,
+                                                            { text: "", completed: false },
+                                                        ],
+                                                    }))
+                                                }
+                                                disabled={infoSaving}
+                                            >
+                                                <PlusCircle className="h-4 w-4 mr-2" />
+                                                Agregar logro
+                                            </Button>
                                         </div>
                                     </div>
                                 </div>

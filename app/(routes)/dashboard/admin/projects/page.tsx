@@ -19,7 +19,7 @@ import SkeletonTable from "@/components/skeleton-table";
 import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
-import { PlusCircle, RefreshCcw, Calendar, DollarSign, TrendingUp } from "lucide-react";
+import { PlusCircle, RefreshCcw, Calendar, DollarSign, TrendingUp, Target } from "lucide-react";
 import { Icon } from "@iconify/react";
 import { dateToString, formatCurrency, prettifyNumber } from "@/app/libs/utils";
 import { Progress } from "@/components/ui/progress";
@@ -210,11 +210,11 @@ const Page = () => {
                                         className="block h-full"
                                     >
                                     <Card className="h-full flex flex-col overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
-                                        <CardHeader className="pb-2 mb-0 border-b-0">
+                                        <CardHeader className="pb-2 mb-2 border-b-0">
                                             <CardTitle className="text-base font-bold line-clamp-2">
                                                 {p.name ?? "-"}
                                             </CardTitle>
-                                            <CardDescription className="line-clamp-2 text-xs text-muted-foreground">
+                                            <CardDescription className="mt-1.5 line-clamp-2 text-xs text-muted-foreground mb-2.5">
                                                 {p.description ?? "-"}
                                             </CardDescription>
                                         </CardHeader>
@@ -238,6 +238,24 @@ const Page = () => {
                                             </div>
                                             <div className="flex justify-between items-center">
                                                 <div className="flex items-center gap-1.5">
+                                                    <Target className="h-4 w-4 shrink-0 text-[#04bb36]" />
+                                                    <span className="text-muted-foreground">Logros</span>
+                                                </div>
+                                                <span className="font-medium">
+                                                    {(() => {
+                                                        const acc = Array.isArray(p.accomplishments)
+                                                            ? p.accomplishments
+                                                            : [];
+                                                        if (acc.length === 0) return "-";
+                                                        const completed = acc.filter(
+                                                            (a: any) => a && a.completed
+                                                        ).length;
+                                                        return `${completed}/${acc.length}`;
+                                                    })()}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <div className="flex items-center gap-1.5">
                                                     <DollarSign className="h-4 w-4 text-success shrink-0" />
                                                     <span className="text-muted-foreground">
                                                         Monto Financiado
@@ -258,7 +276,7 @@ const Page = () => {
                                                     {formatCurrency(expenses)}
                                                 </span>
                                             </div>
-                                            <div className="space-y-1.5">
+                                            <div className="space-y-1.5 mt-[15px]">
                                                 <div className="flex justify-between text-muted-foreground">
                                                     <span>Ejecutado: {executedPct}%</span>
                                                     <span>Restante: {formatCurrency(remaining)}</span>
