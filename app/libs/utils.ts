@@ -22,3 +22,7 @@ export const prettifyNumberNoPad = (value: number, decimals: number = 0): string
     });
     return curr.format(+value);
 };
+
+export const formatCurrency = (value: number): string => {
+    return "L " + prettifyNumber(value ?? 0, 2);
+};

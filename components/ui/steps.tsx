@@ -82,7 +82,7 @@ const Stepper = React.forwardRef<HTMLOListElement, StepperProps>(
     return (
       <ol
         ref={ref}
-        className={cn(stepperVariants({ direction }), className, {
+        className={cn(stepperVariants({ direction }), "overflow-visible", className, {
           "gap-2": gap,
           " text-center": alternativeLabel,
           "gap-3": content === "right",
@@ -194,31 +194,26 @@ const Step = React.forwardRef<HTMLLIElement, StepProps>(
     return (
       <li
         ref={ref}
-        className={cn(stepVariants({ variant, size, content }), className, {
+        className={cn(stepVariants({ variant, size, content }), "overflow-visible", className, {
           "flex-row gap-x-4 min-h-[80px]": direction === "vertical",
-          "flex-1": !isLast,
-          "last:flex-1": alternativeLabel && isLast,
-          "last:flex-none": alternativeLabel && isLast && gap,
+          "flex-1 min-w-0": true, // Todos los pasos con igual ancho para separación uniforme
         })}
         {...props}
       >
         <div
           step-bar-bg={stepBarBg}
-          className={cn("flex items-center flex-row relative z-[1] ", {
-            "flex-col  ": direction === "vertical",
-
-            " before:absolute  before:z-[-1]   before:top-1/2 before:-translate-y-1/2 before:w-full ":
-              !isLast && direction !== "vertical",
-            "ltr:before:left-[44px] before:w-[calc(100%-44px)] rtl:before:right-[44px]":
-              gap && !alternativeLabel,
-            "ltr:before:left-1/2 rtl:before:right-1/2 ": alternativeLabel && !gap,
-            "ltr:before:left-[calc(50%+33px)] rtl:before:right-[calc(50%+33px)] before:w-[calc(100%-60px)]":
-              alternativeLabel && gap,
-            "before:w-[calc(100%-85px)]":
-              alternativeLabel && gap && isBeforeLast,
-            "flex-1 before:h-0.5  ": isContentRight,
-            "before:h-1": !isContentRight,
-          })}
+          className={cn(
+            "flex items-center flex-row relative z-[1] overflow-visible",
+            {
+              "flex-col": direction === "vertical",
+              "flex-1 before:h-0.5": isContentRight,
+              // Horizontal connector: from right edge of circle to next circle (extends through gap)
+              "before:content-[''] before:block before:absolute before:z-[-1] before:top-1/2 before:-translate-y-1/2 before:h-1 before:left-[calc(50%+1.125rem)] before:right-[-50%]":
+                !isLast && direction !== "vertical",
+              "before:bg-default-200": !isLast && direction !== "vertical" && stepBarBg !== "completed",
+              "before:bg-primary": !isLast && direction !== "vertical" && stepBarBg === "completed",
+            }
+          )}
         >
           <span
             className={cn(

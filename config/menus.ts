@@ -40,6 +40,10 @@ let navs = [
         title: 'Bitácoras',
         href: "/dashboard/admin/logs",
       },
+      {
+        title: 'Proyectos',
+        href: "/dashboard/admin/projects",
+      },
     ]
   }
 ];
