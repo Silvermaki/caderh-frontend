@@ -8,9 +8,6 @@ import { useSearchParams } from "next/navigation";
 import {
     Card,
     CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupButton } from "@/components/ui/input-group";
@@ -19,11 +16,11 @@ import SkeletonTable from "@/components/skeleton-table";
 import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
-import { PlusCircle, RefreshCcw, Calendar, DollarSign, TrendingUp, Target } from "lucide-react";
+import { PlusCircle, RefreshCcw } from "lucide-react";
 import { Icon } from "@iconify/react";
-import { dateToString, formatCurrency, prettifyNumber } from "@/app/libs/utils";
-import { Progress } from "@/components/ui/progress";
+import { prettifyNumber } from "@/app/libs/utils";
 import NewProjectModal from "@/components/new-project-modal";
+import ProjectHeader from "@/components/project/ProjectHeader";
 
 const Page = () => {
     const pathname = usePathname();
@@ -194,101 +191,34 @@ const Page = () => {
                     </div>
                     {loading && <SkeletonTable />}
                     {!loading && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-1 gap-4">
                             {projects.map((p) => {
                                 const financed = Number(p.financed_amount ?? 0);
                                 const expenses = Number(p.total_expenses ?? 0);
                                 const executedPct =
                                     financed > 0 ? Math.min(100, Math.round((expenses / financed) * 100)) : 0;
                                 const remaining = Math.max(0, financed - expenses);
-                                const progressColor =
+                                const progressColor: "destructive" | "warning" | "success" =
                                     executedPct >= 90 ? "destructive" : executedPct >= 70 ? "warning" : "success";
                                 return (
                                     <Link
                                         key={p.id}
                                         href={`/dashboard/admin/projects/${p.id}`}
-                                        className="block h-full"
+                                        className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
                                     >
-                                    <Card className="h-full flex flex-col overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
-                                        <CardHeader className="pb-2 mb-2 border-b-0">
-                                            <CardTitle className="text-base font-bold line-clamp-2">
-                                                {p.name ?? "-"}
-                                            </CardTitle>
-                                            <CardDescription className="mt-1.5 line-clamp-2 text-xs text-muted-foreground mb-2.5">
-                                                {p.description ?? "-"}
-                                            </CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="flex-1 pt-0 text-xs space-y-3">
-                                            <div className="flex items-center gap-2 text-muted-foreground">
-                                                <Calendar className="h-4 w-4 shrink-0" />
-                                                <div className="flex flex-wrap gap-x-4 gap-y-0">
-                                                    <span>
-                                                        Inicio:{" "}
-                                                        {p.start_date
-                                                            ? dateToString(new Date(p.start_date))
-                                                            : "-"}
-                                                    </span>
-                                                    <span>
-                                                        Fin:{" "}
-                                                        {p.end_date
-                                                            ? dateToString(new Date(p.end_date))
-                                                            : "-"}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-1.5">
-                                                    <Target className="h-4 w-4 shrink-0 text-[#04bb36]" />
-                                                    <span className="text-muted-foreground">Logros</span>
-                                                </div>
-                                                <span className="font-medium">
-                                                    {(() => {
-                                                        const acc = Array.isArray(p.accomplishments)
-                                                            ? p.accomplishments
-                                                            : [];
-                                                        if (acc.length === 0) return "-";
-                                                        const completed = acc.filter(
-                                                            (a: any) => a && a.completed
-                                                        ).length;
-                                                        return `${completed}/${acc.length}`;
-                                                    })()}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-1.5">
-                                                    <DollarSign className="h-4 w-4 text-success shrink-0" />
-                                                    <span className="text-muted-foreground">
-                                                        Monto Financiado
-                                                    </span>
-                                                </div>
-                                                <span className="font-medium">
-                                                    {formatCurrency(financed)}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between items-center">
-                                                <div className="flex items-center gap-1.5">
-                                                    <TrendingUp className="h-4 w-4 text-warning shrink-0" />
-                                                    <span className="text-muted-foreground">
-                                                        Total de Gasto
-                                                    </span>
-                                                </div>
-                                                <span className="font-medium">
-                                                    {formatCurrency(expenses)}
-                                                </span>
-                                            </div>
-                                            <div className="space-y-1.5 mt-[15px]">
-                                                <div className="flex justify-between text-muted-foreground">
-                                                    <span>Ejecutado: {executedPct}%</span>
-                                                    <span>Restante: {formatCurrency(remaining)}</span>
-                                                </div>
-                                                <Progress
-                                                    value={executedPct}
-                                                    color={progressColor}
-                                                    size="sm"
-                                                />
-                                            </div>
-                                        </CardContent>
-                                    </Card>
+                                        <ProjectHeader
+                                            name={p.name ?? "-"}
+                                            description={p.description ?? "-"}
+                                            startDate={p.start_date}
+                                            endDate={p.end_date}
+                                            accomplishments={p.accomplishments}
+                                            financed={financed}
+                                            totalExpenses={expenses}
+                                            remaining={remaining}
+                                            executedPct={executedPct}
+                                            progressColor={progressColor}
+                                            interactive
+                                        />
                                     </Link>
                                 );
                             })}

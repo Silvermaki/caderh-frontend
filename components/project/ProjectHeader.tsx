@@ -13,6 +13,7 @@ import {
     Wallet,
 } from "lucide-react";
 import { dateToString, formatCurrency } from "@/app/libs/utils";
+import { cn } from "@/lib/utils";
 import KPIBlock from "./KPIBlock";
 
 interface ProjectHeaderProps {
@@ -26,6 +27,7 @@ interface ProjectHeaderProps {
     remaining: number;
     executedPct: number;
     progressColor: "destructive" | "warning" | "success";
+    interactive?: boolean;
 }
 
 const ProjectHeader = ({
@@ -39,6 +41,7 @@ const ProjectHeader = ({
     remaining,
     executedPct,
     progressColor,
+    interactive,
 }: ProjectHeaderProps) => {
     const acc = Array.isArray(accomplishments)
         ? accomplishments.filter((a: any) => a && typeof a.text === "string")
@@ -46,7 +49,10 @@ const ProjectHeader = ({
     const completedCount = acc.filter((a: any) => a && a.completed).length;
 
     return (
-        <Card className="mb-6 overflow-hidden">
+        <Card className={cn(
+            "mb-6 overflow-hidden",
+            interactive && "cursor-pointer hover:shadow-lg hover:border-primary/30 transition-all duration-200"
+        )}>
             {/* Title + description + dates */}
             <div className="p-6 pb-4">
                 <h1 className="text-2xl lg:text-3xl font-bold tracking-tight break-words">
