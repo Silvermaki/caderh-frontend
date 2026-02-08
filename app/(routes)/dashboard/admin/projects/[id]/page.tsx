@@ -60,6 +60,11 @@ import { dateToString, formatCurrency, prettifyNumber } from "@/app/libs/utils";
 import { Progress } from "@/components/ui/progress";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
+import ProjectHeader from "@/components/project/ProjectHeader";
+import InfoSection from "@/components/project/InfoSection";
+import ObjectivesList from "@/components/project/ObjectivesList";
+import DatesCard from "@/components/project/DatesCard";
+import AchievementsList from "@/components/project/AchievementsList";
 
 const CurrencyInput = ({
     value,
@@ -695,68 +700,18 @@ const Page = () => {
                 </Button>
             </div>
 
-            <Card className="mb-6">
-                <div className="grid grid-cols-1 lg:grid-cols-[1fr_1px_1fr]">
-                    <div className="flex flex-col p-6 pr-6 lg:pr-8">
-                        <h3 className="text-xl font-medium leading-none break-words">{project.name}</h3>
-                        <p className="text-sm text-muted-foreground mt-2 break-words flex-1">
-                            {project.description}
-                        </p>
-                        <div className="flex justify-between items-center mt-4 pt-3 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4 shrink-0" />
-                                Inicio: {project.start_date ? dateToString(new Date(project.start_date)) : "-"}
-                            </span>
-                            <span className="flex items-center gap-2">
-                                <CalendarRange className="h-4 w-4 shrink-0" />
-                                Fin: {project.end_date ? dateToString(new Date(project.end_date)) : "-"}
-                            </span>
-                        </div>
-                    </div>
-                    <div className="hidden lg:flex flex-col justify-end bg-transparent">
-                        <div className="w-px bg-border h-[100px] my-auto" />
-                    </div>
-                    <div className="p-6 pl-6 lg:pl-8 space-y-4">
-                    {(() => {
-                            const acc = Array.isArray(project.accomplishments)
-                                ? project.accomplishments.filter((a: any) => a && typeof a.text === "string")
-                                : [];
-                            if (acc.length === 0) return null;
-                            const completed = acc.filter((a: any) => a && a.completed).length;
-                            return (
-                                <div className="flex justify-between items-center">
-                                    <div className="flex items-center gap-2">
-                                        <Target className="h-4 w-4 shrink-0 text-[#04bb36]" />
-                                        <span className="text-muted-foreground">Logros</span>
-                                    </div>
-                                    <span className="font-medium">{completed}/{acc.length}</span>
-                                </div>
-                            );
-                        })()}
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-success" />
-                                <span className="text-muted-foreground">Monto Financiado</span>
-                            </div>
-                            <span className="font-medium">{formatCurrency(financed)}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                                <TrendingUp className="h-4 w-4 text-warning" />
-                                <span className="text-muted-foreground">Total de Gasto</span>
-                            </div>
-                            <span className="font-medium">{formatCurrency(totalExpenses)}</span>
-                        </div>
-                        <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                                <span>Ejecutado: {executedPct}%</span>
-                                <span>Restante: {formatCurrency(remaining)}</span>
-                            </div>
-                            <Progress value={executedPct} color={progressColor} size="sm" />
-                        </div>
-                    </div>
-                </div>
-            </Card>
+            <ProjectHeader
+                name={project.name}
+                description={project.description}
+                startDate={project.start_date}
+                endDate={project.end_date}
+                accomplishments={project.accomplishments}
+                financed={financed}
+                totalExpenses={totalExpenses}
+                remaining={remaining}
+                executedPct={executedPct}
+                progressColor={progressColor}
+            />
 
             <Card>
                 <Tabs defaultValue="fuentes" className="w-full">
@@ -836,84 +791,57 @@ const Page = () => {
                         </div>
                         <div className="space-y-4">
                             {!infoEditing ? (
-                                <div className="space-y-4">
-                                    <div>
-                                        <Label className="text-muted-foreground">Nombre del Proyecto *</Label>
-                                        <p className="mt-1">{project.name}</p>
-                                    </div>
-                                    <div>
-                                        <Label className="text-muted-foreground">Descripción *</Label>
-                                        <p className="mt-1 whitespace-pre-line">{project.description}</p>
-                                    </div>
-                                    <div>
-                                        <Label className="text-muted-foreground">Objetivos *</Label>
-                                        <p className="mt-1 whitespace-pre-line">{project.objectives}</p>
-                                    </div>
-                                    <div>
-                                        <Label className="text-muted-foreground">Fecha de Inicio *</Label>
-                                        <p className="mt-1">
-                                            {project.start_date ? dateToString(new Date(project.start_date)) : "-"}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <Label className="text-muted-foreground">Fecha de Finalización *</Label>
-                                        <p className="mt-1">
-                                            {project.end_date ? dateToString(new Date(project.end_date)) : "-"}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <Label className="text-muted-foreground">Logros del Proyecto</Label>
-                                        <div className="mt-2 space-y-2">
-                                            {(Array.isArray(project.accomplishments)
-                                                ? project.accomplishments.filter(
-                                                      (a: any) => a && typeof a.text === "string"
-                                                  )
-                                                : []
-                                            ).map((a: any, i: number) => (
-                                                <div
-                                                    key={i}
-                                                    className={cn(
-                                                        "flex items-center gap-2 p-2 rounded-md",
-                                                        a.completed && "bg-success/10"
-                                                    )}
-                                                >
-                                                    <Checkbox
-                                                        checked={!!a.completed}
-                                                        onCheckedChange={(checked) => {
-                                                            const acc = Array.isArray(project.accomplishments)
-                                                                ? project.accomplishments
-                                                                : [];
-                                                            const updated = acc.map((x: any, j: number) =>
-                                                                j === i ? { ...x, completed: !!checked } : x
-                                                            );
-                                                            onPatchAccomplishments(
-                                                                updated.map((x: any) => ({
-                                                                    text: x.text,
-                                                                    completed: x.completed,
-                                                                }))
-                                                            );
-                                                        }}
-                                                        disabled={accomplishmentsPatching}
-                                                    />
-                                                    <span className="flex-1 text-sm flex items-center justify-between gap-2 min-w-0">
-                                                        <span
-                                                            className={cn(
-                                                                "min-w-0",
-                                                                a.completed && "line-through text-muted-foreground"
-                                                            )}
-                                                        >
-                                                            {a.text}
-                                                        </span>
-                                                        {a.completed && (
-                                                            <span className="text-success text-xs font-medium shrink-0">
-                                                                Completado
-                                                            </span>
-                                                        )}
-                                                    </span>
-                                                </div>
-                                            ))}
+                                <div className="space-y-8">
+                                    {/* Identity */}
+                                    <InfoSection title="Identidad del Proyecto">
+                                        <div className="space-y-4">
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-1">Nombre del Proyecto</p>
+                                                <h2 className="text-xl font-semibold">{project.name}</h2>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs text-muted-foreground mb-2">Descripción</p>
+                                                <p className="text-base leading-relaxed max-w-3xl whitespace-pre-line">
+                                                    {project.description}
+                                                </p>
+                                            </div>
                                         </div>
-                                    </div>
+                                    </InfoSection>
+
+                                    {/* Objectives */}
+                                    <InfoSection title="Objetivos">
+                                        <ObjectivesList objectives={project.objectives} />
+                                    </InfoSection>
+
+                                    {/* Dates */}
+                                    <InfoSection title="Fechas del Proyecto">
+                                        <DatesCard
+                                            startDate={project.start_date}
+                                            endDate={project.end_date}
+                                        />
+                                    </InfoSection>
+
+                                    {/* Achievements */}
+                                    <InfoSection title="Logros del Proyecto">
+                                        <AchievementsList
+                                            accomplishments={project.accomplishments}
+                                            onToggle={(index, checked) => {
+                                                const acc = Array.isArray(project.accomplishments)
+                                                    ? project.accomplishments
+                                                    : [];
+                                                const updated = acc.map((x: any, j: number) =>
+                                                    j === index ? { ...x, completed: checked } : x
+                                                );
+                                                onPatchAccomplishments(
+                                                    updated.map((x: any) => ({
+                                                        text: x.text,
+                                                        completed: x.completed,
+                                                    }))
+                                                );
+                                            }}
+                                            disabled={accomplishmentsPatching}
+                                        />
+                                    </InfoSection>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
