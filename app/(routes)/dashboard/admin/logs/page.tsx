@@ -29,8 +29,9 @@ import { Icon } from "@iconify/react";
 import { dateToString, timeToString, prettifyNumber } from "@/app/libs/utils";
 import { Badge } from "@/components/ui/badge";
 import BitacoraDetailModal from "@/components/bitacora-detail-modal";
+import { Suspense } from "react";
 
-const Page = () => {
+function PageContent() {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -384,6 +385,12 @@ const Page = () => {
             />
         </div>
     );
-};
+}
 
-export default Page;
+export default function Page() {
+    return (
+        <Suspense fallback={<SkeletonTable />}>
+            <PageContent />
+        </Suspense>
+    );
+}

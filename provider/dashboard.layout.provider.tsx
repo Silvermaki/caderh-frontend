@@ -9,12 +9,21 @@ import { usePathname } from "next/navigation";
 import Footer from "@/components/partials/footer";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import MobileSidebar from "@/components/partials/sidebar/mobile-sidebar";
+import { useLayoutReady } from "@/hooks/use-layout-ready";
+import LayoutSkeleton from "@/components/layout-skeleton";
+
 const DashBoardLayoutProvider = ({ children }: { children: React.ReactNode }) => {
   const { collapsed, sidebarType, setCollapsed, subMenu } = useSidebar();
   const [open, setOpen] = React.useState(false);
   const { layout } = useThemeStore();
   const location = usePathname();
   const isMobile = useMediaQuery("(min-width: 768px)");
+  const ready = useLayoutReady();
+
+  if (!ready) {
+    return <LayoutSkeleton />;
+  }
+
   if (layout === "semibox") {
     return (
       <>

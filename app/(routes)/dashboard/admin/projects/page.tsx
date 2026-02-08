@@ -21,8 +21,9 @@ import { Icon } from "@iconify/react";
 import { prettifyNumber } from "@/app/libs/utils";
 import NewProjectModal from "@/components/new-project-modal";
 import ProjectHeader from "@/components/project/ProjectHeader";
+import { Suspense } from "react";
 
-const Page = () => {
+function PageContent() {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -321,6 +322,12 @@ const Page = () => {
             />
         </div>
     );
-};
+}
 
-export default Page;
+export default function Page() {
+    return (
+        <Suspense fallback={<SkeletonTable />}>
+            <PageContent />
+        </Suspense>
+    );
+}

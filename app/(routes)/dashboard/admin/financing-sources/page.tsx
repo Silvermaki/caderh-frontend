@@ -30,8 +30,9 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Suspense } from "react";
 
-const Page = () => {
+function PageContent() {
     const searchParams: any = useSearchParams();
     const isMobile = useMediaQuery("(max-width: 1000px)");
     const [sources, setSources] = useState<any[]>([]);
@@ -453,6 +454,12 @@ const Page = () => {
             </AlertDialog>
         </div>
     );
-};
+}
 
-export default Page;
+export default function Page() {
+    return (
+        <Suspense fallback={<SkeletonTable />}>
+            <PageContent />
+        </Suspense>
+    );
+}

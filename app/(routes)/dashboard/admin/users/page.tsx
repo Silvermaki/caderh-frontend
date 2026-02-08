@@ -15,8 +15,9 @@ import NewUserModal from "@/components/new-user-modal";
 import { usePathname, useSearchParams } from 'next/navigation';
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
+import { Suspense } from "react";
 
-const Page = () => {
+function PageContent() {
     const searchParams: any = useSearchParams();
     const isMobile = useMediaQuery("(max-width: 1000px)");
     const [users, setUsers] = useState<any>([]);
@@ -389,6 +390,12 @@ const Page = () => {
             <NewUserModal isOpen={isNewUserModalOpen} setIsOpen={setIsNewUserModalOpen} reloadList={() => { getDataInit(''); }}></NewUserModal>
         </div>
     );
-};
+}
 
-export default Page;
+export default function Page() {
+    return (
+        <Suspense fallback={<SkeletonTable />}>
+            <PageContent />
+        </Suspense>
+    );
+}

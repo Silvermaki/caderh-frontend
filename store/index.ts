@@ -15,7 +15,6 @@ interface ThemeStoreState {
   setFooterType: (value: string) => void;
   isRtl: boolean;
   setRtl: (value: boolean) => void;
-
 }
 
 export const useThemeStore = create<ThemeStoreState>()(
@@ -71,7 +70,6 @@ interface SidebarState {
   setSidebarBg: (value: string) => void;
   mobileMenu: boolean;
   setMobileMenu: (value: boolean) => void;
-
 }
 
 
