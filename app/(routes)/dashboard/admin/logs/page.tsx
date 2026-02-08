@@ -345,7 +345,7 @@ const Page = () => {
                                     shouldShowPagination(pageIdx) ? (
                                         <Button
                                             key={pageIdx}
-                                            variant={offset === pageIdx ? "default" : "outline"}
+                                            variant={offset === pageIdx ? undefined : "outline"}
                                             onClick={() => getDataPagination(pageIdx)}
                                             className="w-8 h-8"
                                         >

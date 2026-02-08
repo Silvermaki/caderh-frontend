@@ -635,7 +635,7 @@ const Page = () => {
                     <BreadcrumbItem className="text-primary">Detalle del Proyecto</BreadcrumbItem>
                 </Breadcrumbs>
                 <Button
-                    variant="destructive"
+                    color="destructive"
                     onClick={() => setDeleteDialogOpen(true)}
                     disabled={deleting}
                 >
