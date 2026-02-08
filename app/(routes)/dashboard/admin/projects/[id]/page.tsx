@@ -792,22 +792,6 @@ const Page = () => {
                         <div className="space-y-4">
                             {!infoEditing ? (
                                 <div className="space-y-8">
-                                    {/* Identity */}
-                                    <InfoSection title="Identidad del Proyecto">
-                                        <div className="space-y-4">
-                                            <div>
-                                                <p className="text-xs text-muted-foreground mb-1">Nombre del Proyecto</p>
-                                                <h2 className="text-xl font-semibold">{project.name}</h2>
-                                            </div>
-                                            <div>
-                                                <p className="text-xs text-muted-foreground mb-2">Descripción</p>
-                                                <p className="text-base leading-relaxed max-w-3xl whitespace-pre-line">
-                                                    {project.description}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </InfoSection>
-
                                     {/* Objectives */}
                                     <InfoSection title="Objetivos">
                                         <ObjectivesList objectives={project.objectives} />
