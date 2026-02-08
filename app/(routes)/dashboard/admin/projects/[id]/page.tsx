@@ -714,7 +714,7 @@ const Page = () => {
             />
 
             <Card>
-                <Tabs defaultValue="fuentes" className="w-full">
+                <Tabs defaultValue="info" className="w-full">
                     <TabsList className="w-full justify-start gap-8 border-b border-default-200 rounded-none bg-transparent p-0 h-auto min-h-0 px-6 pt-4 pb-0">
                         <TabsTrigger
                             value="info"

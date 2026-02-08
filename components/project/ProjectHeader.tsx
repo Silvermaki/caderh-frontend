@@ -105,10 +105,9 @@ const ProjectHeader = ({
 
             {/* Animated progress bar */}
             <div className="px-6 pt-3 pb-6">
-                <div className="flex justify-between text-xs text-muted-foreground mb-2">
-                    <span>Ejecutado: {executedPct}%</span>
-                    <span>Restante: {formatCurrency(remaining)}</span>
-                </div>
+                <p className="text-xs text-muted-foreground mb-2">
+                    Total Fondo Ejecutado: {executedPct}%
+                </p>
                 <motion.div
                     initial={{ opacity: 0, scaleX: 0 }}
                     animate={{ opacity: 1, scaleX: 1 }}
