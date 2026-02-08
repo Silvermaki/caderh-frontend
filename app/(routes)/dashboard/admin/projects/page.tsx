@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Breadcrumbs, BreadcrumbItem } from "@/components/ui/breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { useSearchParams } from "next/navigation";
@@ -203,7 +204,12 @@ const Page = () => {
                                 const progressColor =
                                     executedPct >= 90 ? "destructive" : executedPct >= 70 ? "warning" : "success";
                                 return (
-                                    <Card key={p.id} className="overflow-hidden">
+                                    <Link
+                                        key={p.id}
+                                        href={`/dashboard/admin/projects/${p.id}`}
+                                        className="block h-full"
+                                    >
+                                    <Card className="h-full flex flex-col overflow-hidden cursor-pointer hover:shadow-md transition-shadow">
                                         <CardHeader className="pb-2 mb-0 border-b-0">
                                             <CardTitle className="text-base font-bold line-clamp-2">
                                                 {p.name ?? "-"}
@@ -212,7 +218,7 @@ const Page = () => {
                                                 {p.description ?? "-"}
                                             </CardDescription>
                                         </CardHeader>
-                                        <CardContent className="pt-0 text-xs space-y-3">
+                                        <CardContent className="flex-1 pt-0 text-xs space-y-3">
                                             <div className="flex items-center gap-2 text-muted-foreground">
                                                 <Calendar className="h-4 w-4 shrink-0" />
                                                 <div className="flex flex-wrap gap-x-4 gap-y-0">
@@ -265,6 +271,7 @@ const Page = () => {
                                             </div>
                                         </CardContent>
                                     </Card>
+                                    </Link>
                                 );
                             })}
                         </div>
