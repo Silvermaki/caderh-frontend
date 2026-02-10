@@ -34,6 +34,55 @@ import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
 import { prettifyNumber } from "@/app/libs/utils";
 
+// ─── Standalone ExcelDropzone (must live outside the parent to preserve drag listeners) ───
+const ExcelDropzone = ({
+    type,
+    disabled,
+    onFile,
+    importing,
+}: {
+    type: string;
+    disabled: boolean;
+    onFile: (file: File, type: "financing-sources" | "donations" | "expenses") => void;
+    importing: boolean;
+}) => {
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        accept: {
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+        },
+        maxFiles: 1,
+        maxSize: 10 * 1024 * 1024,
+        disabled,
+        onDrop: (accepted) => {
+            if (accepted[0]) onFile(accepted[0], type as "financing-sources" | "donations" | "expenses");
+        },
+        onDropRejected: () => toast.error("Solo archivos .xlsx de hasta 10MB"),
+    });
+    return (
+        <div
+            {...getRootProps()}
+            className={cn(
+                "border-2 border-dashed rounded-lg py-8 px-4 text-center cursor-pointer transition-colors text-sm",
+                isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-primary/50"
+            )}
+        >
+            <input {...getInputProps()} />
+            {importing ? (
+                <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                    <span>Importando...</span>
+                </div>
+            ) : (
+                <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <Upload className="h-6 w-6" />
+                    <span>{isDragActive ? "Suelta el archivo aquí" : "Arrastra un Excel o haz clic para importar"}</span>
+                    <span className="text-xs">Solo archivos .xlsx</span>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const CurrencyInput = ({
     value,
     onChange,
@@ -623,40 +672,6 @@ const NewProjectModal = ({
         setExcelImporting(false);
     };
 
-    const ExcelDropzone = ({ type }: { type: "financing-sources" | "donations" | "expenses" }) => {
-        const { getRootProps, getInputProps, isDragActive } = useDropzone({
-            accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"] },
-            maxFiles: 1,
-            maxSize: 10 * 1024 * 1024,
-            disabled: excelImporting || !projectId,
-            onDrop: (accepted) => { if (accepted[0]) importExcelLocal(accepted[0], type); },
-            onDropRejected: () => toast.error("Solo archivos .xlsx de hasta 10MB"),
-        });
-        return (
-            <div
-                {...getRootProps()}
-                className={cn(
-                    "border-2 border-dashed rounded-lg py-8 px-4 text-center cursor-pointer transition-colors text-sm",
-                    isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-primary/50"
-                )}
-            >
-                <input {...getInputProps()} />
-                {excelImporting ? (
-                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                        <Loader2 className="h-6 w-6 animate-spin" />
-                        <span>Importando...</span>
-                    </div>
-                ) : (
-                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                        <Upload className="h-6 w-6" />
-                        <span>{isDragActive ? "Suelta el archivo aquí" : "Arrastra un Excel o haz clic para importar"}</span>
-                        <span className="text-xs">Solo archivos .xlsx</span>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
     return (
         <Dialog
             open={isOpen}
@@ -965,7 +980,7 @@ const NewProjectModal = ({
                                     </Button>
                                 </div>
                                 <div className="mt-3">
-                                    <ExcelDropzone type="financing-sources" />
+                                    <ExcelDropzone type="financing-sources" disabled={excelImporting || !projectId} onFile={importExcelLocal} importing={excelImporting} />
                                 </div>
                                 <div ref={fuentesEndRef} />
                             </div>
@@ -1070,7 +1085,7 @@ const NewProjectModal = ({
                                     </Button>
                                 </div>
                                 <div className="mt-3">
-                                    <ExcelDropzone type="donations" />
+                                    <ExcelDropzone type="donations" disabled={excelImporting || !projectId} onFile={importExcelLocal} importing={excelImporting} />
                                 </div>
                                 <div ref={donacionesEndRef} />
                             </div>
@@ -1148,7 +1163,7 @@ const NewProjectModal = ({
                                     </Button>
                                 </div>
                                 <div className="mt-3">
-                                    <ExcelDropzone type="expenses" />
+                                    <ExcelDropzone type="expenses" disabled={excelImporting || !projectId} onFile={importExcelLocal} importing={excelImporting} />
                                 </div>
                                 <div ref={gastosEndRef} />
                             </div>
