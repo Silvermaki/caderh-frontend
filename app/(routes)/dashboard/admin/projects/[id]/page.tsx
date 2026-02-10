@@ -54,6 +54,8 @@ import {
     Trash2,
     PlusCircle,
     Download,
+    Upload,
+    Loader2,
     Archive,
     ArchiveRestore,
 } from "lucide-react";
@@ -325,6 +327,61 @@ const Page = () => {
     };
 
     const isArchived = project?.project_status === "ARCHIVED";
+
+    // --- Excel import/export ---
+    const [excelImporting, setExcelImporting] = useState(false);
+
+    const downloadExcelTemplate = async (type: "financing-sources" | "donations" | "expenses") => {
+        if (!id || !session) return;
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${id}/excel/${type}`,
+                { headers: { Authorization: `Bearer ${(session as any)?.user?.session}` } }
+            );
+            if (!res.ok) { toast.error("Error al descargar plantilla"); return; }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `plantilla-${type}.xlsx`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            toast.error("Error al descargar plantilla");
+        }
+    };
+
+    const importExcelFile = async (file: File, type: "financing-sources" | "donations" | "expenses") => {
+        if (!id || !session) return;
+        setExcelImporting(true);
+        try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${id}/excel/${type}`,
+                {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${(session as any)?.user?.session}` },
+                    body: fd,
+                }
+            );
+            const json = await res.json();
+            if (res.ok) {
+                const msg = `${json.processed} procesados${json.errors > 0 ? `, ${json.errors} con errores` : ""}`;
+                if (json.errors > 0) toast.error(msg); else toast.success(msg);
+                // Refresh data
+                if (type === "financing-sources") fetchStep2();
+                else if (type === "donations") fetchStep3();
+                else if (type === "expenses") fetchStep4();
+                fetchProject();
+            } else {
+                toast.error(json.message ?? "Error al importar");
+            }
+        } catch {
+            toast.error("Error al importar archivo");
+        }
+        setExcelImporting(false);
+    };
 
     const onArchiveProject = async () => {
         setArchiving(true);
@@ -1007,10 +1064,38 @@ const Page = () => {
                                     Total: {formatCurrency(totalFuentes)}
                                 </span>
                             </div>
-                            <Button onClick={() => setAddSourceOpen(true)} color="success">
-                                <PlusCircle className="h-4 w-4 mr-2" />
-                                Agregar Fuente
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => downloadExcelTemplate("financing-sources")}
+                                >
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Plantilla Excel
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={excelImporting}
+                                    onClick={() => {
+                                        const input = document.createElement("input");
+                                        input.type = "file";
+                                        input.accept = ".xlsx";
+                                        input.onchange = (e: any) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) importExcelFile(file, "financing-sources");
+                                        };
+                                        input.click();
+                                    }}
+                                >
+                                    {excelImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                                    Importar Excel
+                                </Button>
+                                <Button onClick={() => setAddSourceOpen(true)} color="success">
+                                    <PlusCircle className="h-4 w-4 mr-2" />
+                                    Agregar Fuente
+                                </Button>
+                            </div>
                         </div>
                         {financingSources.length === 0 ? (
                                 <p className="text-muted-foreground py-8 text-center">
@@ -1055,10 +1140,38 @@ const Page = () => {
                                     Total: {formatCurrency(totalDonaciones)}
                                 </span>
                             </div>
-                            <Button onClick={() => setAddDonationOpen(true)} color="success">
-                                <PlusCircle className="h-4 w-4 mr-2" />
-                                Agregar Donación
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => downloadExcelTemplate("donations")}
+                                >
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Plantilla Excel
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={excelImporting}
+                                    onClick={() => {
+                                        const input = document.createElement("input");
+                                        input.type = "file";
+                                        input.accept = ".xlsx";
+                                        input.onchange = (e: any) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) importExcelFile(file, "donations");
+                                        };
+                                        input.click();
+                                    }}
+                                >
+                                    {excelImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                                    Importar Excel
+                                </Button>
+                                <Button onClick={() => setAddDonationOpen(true)} color="success">
+                                    <PlusCircle className="h-4 w-4 mr-2" />
+                                    Agregar Donación
+                                </Button>
+                            </div>
                         </div>
                         {donations.length === 0 ? (
                                 <p className="text-muted-foreground py-8 text-center">
@@ -1109,10 +1222,38 @@ const Page = () => {
                                     Total: {formatCurrency(totalGastos)}
                                 </span>
                             </div>
-                            <Button onClick={() => setAddExpenseOpen(true)} color="success">
-                                <PlusCircle className="h-4 w-4 mr-2" />
-                                Agregar Gasto
-                            </Button>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => downloadExcelTemplate("expenses")}
+                                >
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Plantilla Excel
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={excelImporting}
+                                    onClick={() => {
+                                        const input = document.createElement("input");
+                                        input.type = "file";
+                                        input.accept = ".xlsx";
+                                        input.onchange = (e: any) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) importExcelFile(file, "expenses");
+                                        };
+                                        input.click();
+                                    }}
+                                >
+                                    {excelImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                                    Importar Excel
+                                </Button>
+                                <Button onClick={() => setAddExpenseOpen(true)} color="success">
+                                    <PlusCircle className="h-4 w-4 mr-2" />
+                                    Agregar Gasto
+                                </Button>
+                            </div>
                         </div>
                         {expenses.length === 0 ? (
                                 <p className="text-muted-foreground py-8 text-center">

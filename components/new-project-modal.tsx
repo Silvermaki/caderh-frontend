@@ -27,7 +27,7 @@ import {
 import { Stepper, Step, StepLabel } from "@/components/ui/steps";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
-import { Loader2, PlusCircle, Trash2, Upload, FileText } from "lucide-react";
+import { Loader2, PlusCircle, Trash2, Upload, FileText, Download } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
@@ -536,6 +536,88 @@ const NewProjectModal = ({
         );
     };
 
+    // --- Excel import/export helpers ---
+    const [excelImporting, setExcelImporting] = useState(false);
+
+    const downloadExcelTemplate = async (type: "financing-sources" | "donations" | "expenses") => {
+        if (!projectId || !session) return;
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${projectId}/excel/${type}`,
+                { headers: { Authorization: `Bearer ${session?.user?.session}` } }
+            );
+            if (!res.ok) { toast.error("Error al descargar plantilla"); return; }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `plantilla-${type}.xlsx`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            toast.error("Error al descargar plantilla");
+        }
+    };
+
+    const importExcelFile = async (file: File, type: "financing-sources" | "donations" | "expenses") => {
+        if (!projectId || !session) return;
+        setExcelImporting(true);
+        try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${projectId}/excel/${type}`,
+                {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${session?.user?.session}` },
+                    body: fd,
+                }
+            );
+            const json = await res.json();
+            if (res.ok) {
+                const msg = `${json.processed} procesados${json.errors > 0 ? `, ${json.errors} con errores` : ""}`;
+                if (json.errors > 0) toast.error(msg); else toast.success(msg);
+            } else {
+                toast.error(json.message ?? "Error al importar");
+            }
+        } catch {
+            toast.error("Error al importar archivo");
+        }
+        setExcelImporting(false);
+    };
+
+    const ExcelDropzone = ({ type }: { type: "financing-sources" | "donations" | "expenses" }) => {
+        const { getRootProps, getInputProps, isDragActive } = useDropzone({
+            accept: { "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"] },
+            maxFiles: 1,
+            maxSize: 10 * 1024 * 1024,
+            disabled: excelImporting || !projectId,
+            onDrop: (accepted) => { if (accepted[0]) importExcelFile(accepted[0], type); },
+            onDropRejected: () => toast.error("Solo archivos .xlsx de hasta 10MB"),
+        });
+        return (
+            <div
+                {...getRootProps()}
+                className={cn(
+                    "border-2 border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors text-xs",
+                    isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-primary/50"
+                )}
+            >
+                <input {...getInputProps()} />
+                {excelImporting ? (
+                    <span className="flex items-center justify-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Importando...
+                    </span>
+                ) : (
+                    <span className="flex items-center justify-center gap-2 text-muted-foreground">
+                        <Upload className="h-4 w-4" />
+                        {isDragActive ? "Suelta el archivo aquí" : "Arrastra un Excel o haz clic para importar"}
+                    </span>
+                )}
+            </div>
+        );
+    };
+
     return (
         <Dialog
             open={isOpen}
@@ -822,15 +904,30 @@ const NewProjectModal = ({
                                         </Button>
                                     </div>
                                 ))}
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={addFinancingItem}
-                                >
-                                    <PlusCircle className="h-4 w-4 mr-2" />
-                                    Agrega más
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={addFinancingItem}
+                                    >
+                                        <PlusCircle className="h-4 w-4 mr-2" />
+                                        Agrega más
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => downloadExcelTemplate("financing-sources")}
+                                        disabled={!projectId}
+                                    >
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Plantilla Excel
+                                    </Button>
+                                </div>
+                                <div className="mt-3">
+                                    <ExcelDropzone type="financing-sources" />
+                                </div>
                                 <div ref={fuentesEndRef} />
                             </div>
                         )}
@@ -912,15 +1009,30 @@ const NewProjectModal = ({
                                         </Button>
                                     </div>
                                 ))}
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={addDonationItem}
-                                >
-                                    <PlusCircle className="h-4 w-4 mr-2" />
-                                    Agrega más
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={addDonationItem}
+                                    >
+                                        <PlusCircle className="h-4 w-4 mr-2" />
+                                        Agrega más
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => downloadExcelTemplate("donations")}
+                                        disabled={!projectId}
+                                    >
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Plantilla Excel
+                                    </Button>
+                                </div>
+                                <div className="mt-3">
+                                    <ExcelDropzone type="donations" />
+                                </div>
                                 <div ref={donacionesEndRef} />
                             </div>
                         )}
@@ -975,15 +1087,30 @@ const NewProjectModal = ({
                                         </Button>
                                     </div>
                                 ))}
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={addExpenseItem}
-                                >
-                                    <PlusCircle className="h-4 w-4 mr-2" />
-                                    Agrega más
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={addExpenseItem}
+                                    >
+                                        <PlusCircle className="h-4 w-4 mr-2" />
+                                        Agrega más
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => downloadExcelTemplate("expenses")}
+                                        disabled={!projectId}
+                                    >
+                                        <Download className="h-4 w-4 mr-2" />
+                                        Plantilla Excel
+                                    </Button>
+                                </div>
+                                <div className="mt-3">
+                                    <ExcelDropzone type="expenses" />
+                                </div>
                                 <div ref={gastosEndRef} />
                             </div>
                         )}
