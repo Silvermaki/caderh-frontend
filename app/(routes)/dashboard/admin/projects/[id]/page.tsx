@@ -1111,6 +1111,7 @@ const Page = () => {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Nombre</TableHead>
+                                            <TableHead>Descripción</TableHead>
                                             <TableHead>Monto</TableHead>
                                             <TableHead>Acciones</TableHead>
                                         </TableRow>
@@ -1119,6 +1120,7 @@ const Page = () => {
                                         {financingSources.map((r) => (
                                             <TableRow key={r.id}>
                                                 <TableCell>{r.financing_source_name ?? "-"}</TableCell>
+                                                <TableCell>{r.description || "-"}</TableCell>
                                                 <TableCell>{formatCurrency(Number(r.amount ?? 0))}</TableCell>
                                                 <TableCell>
                                                     <Button
