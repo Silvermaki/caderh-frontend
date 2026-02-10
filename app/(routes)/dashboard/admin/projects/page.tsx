@@ -38,6 +38,7 @@ function PageContent() {
     const [search, setSearch] = useState<string>(searchInit);
     const [searchInput, setSearchInput] = useState<string>(searchInit);
     const [loading, setLoading] = useState<boolean>(true);
+    const [statusFilter, setStatusFilter] = useState<string>("ACTIVE");
     const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState<boolean>(false);
 
     const getProjects = async (params: string) => {
@@ -66,7 +67,8 @@ function PageContent() {
         setLoading(false);
     };
 
-    const getDataInit = async (searchValue: string) => {
+    const getDataInit = async (searchValue: string, status?: string) => {
+        const activeStatus = status ?? statusFilter;
         setSearch(searchValue);
         const params = new URLSearchParams({
             offset: "0",
@@ -74,6 +76,7 @@ function PageContent() {
             sort,
             desc: desc ? "desc" : "asc",
             search: searchValue,
+            status: activeStatus,
         });
         await getProjects(params.toString());
         setOffset(0);
@@ -86,6 +89,7 @@ function PageContent() {
             sort,
             desc: desc ? "desc" : "asc",
             search: searching,
+            status: statusFilter,
         });
         setSearch(searching);
         await getProjects(params.toString());
@@ -100,6 +104,7 @@ function PageContent() {
             sort,
             desc: desc ? "desc" : "asc",
             search,
+            status: statusFilter,
         });
         await getProjects(params.toString());
     };
@@ -130,6 +135,7 @@ function PageContent() {
             sort,
             desc: desc ? "desc" : "asc",
             search,
+            status: statusFilter,
         });
         getProjects(params.toString());
     };
@@ -161,27 +167,45 @@ function PageContent() {
             <Card className="p-4 mt-4">
                 <CardContent className="p-0">
                     <div className="flex flex-row justify-between items-center gap-4 mb-4">
-                        <InputGroup className="max-w-sm shrink-0">
-                            <Input
-                                placeholder="Buscar..."
-                                value={searchInput}
-                                onChange={(e) => setSearchInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") onSearch();
+                        <div className="flex flex-row items-center gap-3">
+                            <InputGroup className="max-w-sm shrink-0">
+                                <Input
+                                    placeholder="Buscar..."
+                                    value={searchInput}
+                                    onChange={(e) => setSearchInput(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") onSearch();
+                                    }}
+                                    className="h-10 rounded-r-none"
+                                />
+                                <InputGroupButton className="rounded-l-none border-l-0">
+                                    <Button
+                                        color="primary"
+                                        size="sm"
+                                        className="h-10 rounded-l-none"
+                                        onClick={onSearch}
+                                    >
+                                        Buscar
+                                    </Button>
+                                </InputGroupButton>
+                            </InputGroup>
+                            <Select
+                                value={statusFilter}
+                                onValueChange={(v) => {
+                                    setStatusFilter(v);
+                                    setOffset(0);
+                                    getDataInit(search, v);
                                 }}
-                                className="h-10 rounded-r-none"
-                            />
-                            <InputGroupButton className="rounded-l-none border-l-0">
-                                <Button
-                                    color="primary"
-                                    size="sm"
-                                    className="h-10 rounded-l-none"
-                                    onClick={onSearch}
-                                >
-                                    Buscar
-                                </Button>
-                            </InputGroupButton>
-                        </InputGroup>
+                            >
+                                <SelectTrigger className="w-[160px] h-10">
+                                    <SelectValue placeholder="Estado" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ACTIVE">Activo</SelectItem>
+                                    <SelectItem value="ARCHIVED">Archivado</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                         <Button
                             color="success"
                             onClick={() => setIsNewProjectModalOpen(true)}
@@ -245,6 +269,7 @@ function PageContent() {
                                             sort,
                                             desc: desc ? "desc" : "asc",
                                             search,
+                                            status: statusFilter,
                                         });
                                         getProjects(params.toString());
                                     }}

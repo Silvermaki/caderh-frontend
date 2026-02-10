@@ -54,6 +54,8 @@ import {
     Trash2,
     PlusCircle,
     Download,
+    Archive,
+    ArchiveRestore,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { dateToString, formatCurrency, prettifyNumber } from "@/app/libs/utils";
@@ -137,6 +139,8 @@ const Page = () => {
     const [loading, setLoading] = useState(true);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+    const [archiving, setArchiving] = useState(false);
 
     const [financingSources, setFinancingSources] = useState<any[]>([]);
     const [donations, setDonations] = useState<any[]>([]);
@@ -318,6 +322,32 @@ const Page = () => {
         }
         setDeleting(false);
         setDeleteDialogOpen(false);
+    };
+
+    const isArchived = project?.project_status === "ARCHIVED";
+
+    const onArchiveProject = async () => {
+        setArchiving(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/archive`,
+                {
+                    method: "PATCH",
+                    headers: { Authorization: `Bearer ${session?.user?.session}` },
+                }
+            );
+            const json = await res.json();
+            if (res.ok) {
+                toast.success(isArchived ? "Proyecto desarchivado" : "Proyecto archivado");
+                fetchProject();
+            } else {
+                toast.error(json.message ?? (isArchived ? "Error al desarchivar" : "Error al archivar"));
+            }
+        } catch {
+            toast.error(isArchived ? "Error al desarchivar proyecto" : "Error al archivar proyecto");
+        }
+        setArchiving(false);
+        setArchiveDialogOpen(false);
     };
 
     const onSaveInfo = async () => {
@@ -693,14 +723,28 @@ const Page = () => {
                     </BreadcrumbItem>
                     <BreadcrumbItem className="text-primary">Detalle del Proyecto</BreadcrumbItem>
                 </Breadcrumbs>
-                <Button
-                    color="destructive"
-                    onClick={() => setDeleteDialogOpen(true)}
-                    disabled={deleting}
-                >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Eliminar Proyecto
-                </Button>
+                <div className="flex gap-2">
+                    {(project?.project_status === "ACTIVE" || project?.project_status === "ARCHIVED") && (
+                        <Button
+                            variant="outline"
+                            onClick={() => setArchiveDialogOpen(true)}
+                            disabled={archiving}
+                        >
+                            {isArchived
+                                ? <><ArchiveRestore className="h-4 w-4 mr-2" />Desarchivar Proyecto</>
+                                : <><Archive className="h-4 w-4 mr-2" />Archivar Proyecto</>
+                            }
+                        </Button>
+                    )}
+                    <Button
+                        color="destructive"
+                        onClick={() => setDeleteDialogOpen(true)}
+                        disabled={deleting}
+                    >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Eliminar Proyecto
+                    </Button>
+                </div>
             </div>
 
             <ProjectHeader
@@ -1204,6 +1248,27 @@ const Page = () => {
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
                         <AlertDialogAction onClick={onDeleteProject} color="destructive">
                             {deleting ? "Eliminando..." : "Eliminar"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog open={archiveDialogOpen} onOpenChange={setArchiveDialogOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{isArchived ? "Desarchivar proyecto" : "Archivar proyecto"}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {isArchived
+                                ? "¿Desarchivar este proyecto? Volverá a aparecer en la lista de proyectos activos."
+                                : "¿Archivar este proyecto? Podrás verlo filtrando por Archivados en la lista de proyectos."}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={onArchiveProject}>
+                            {archiving
+                                ? (isArchived ? "Desarchivando..." : "Archivando...")
+                                : (isArchived ? "Desarchivar" : "Archivar")}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>
