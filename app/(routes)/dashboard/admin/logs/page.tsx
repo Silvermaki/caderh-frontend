@@ -180,7 +180,7 @@ function PageContent() {
         role === "ADMIN" ? "dark" : role === "MANAGER" ? "warning" : "default";
 
     return (
-        <div>
+        <div className="mb-4">
             <Breadcrumbs>
                 <BreadcrumbItem>Plataforma</BreadcrumbItem>
                 <BreadcrumbItem>Administración</BreadcrumbItem>

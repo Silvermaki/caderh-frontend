@@ -212,7 +212,7 @@ const Page = () => {
     ];
 
     return (
-        <div>
+        <div className="mb-4">
             <Breadcrumbs>
                 <BreadcrumbItem>Plataforma</BreadcrumbItem>
                 <BreadcrumbItem className="text-primary">

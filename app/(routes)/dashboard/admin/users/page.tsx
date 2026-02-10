@@ -369,7 +369,7 @@ function PageContent() {
     }, [limit]);
 
     return (
-        <div>
+        <div className="mb-4">
             <Breadcrumbs>
                 <BreadcrumbItem>Plataforma</BreadcrumbItem>
                 <BreadcrumbItem>Administración</BreadcrumbItem>

@@ -9,7 +9,7 @@ export default function Error({ error, reset }: {
   reset: () => void
 }) {
   return (
-    <div className="space-y-4 p-8">
+    <div className="space-y-4 p-8 mb-4">
       <Alert color="destructive" variant="soft">
         <Info className="h-5 w-5" />
         <AlertDescription>Algo salió mal</AlertDescription>

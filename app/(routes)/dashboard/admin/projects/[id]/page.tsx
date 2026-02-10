@@ -713,7 +713,7 @@ const Page = () => {
         .reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
 
     return (
-        <div>
+        <div className="mb-4">
             <div className="flex justify-between items-center mb-4">
                 <Breadcrumbs>
                     <BreadcrumbItem>Plataforma</BreadcrumbItem>
