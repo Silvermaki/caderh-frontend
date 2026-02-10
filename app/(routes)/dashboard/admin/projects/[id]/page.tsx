@@ -678,6 +678,9 @@ const Page = () => {
     const totalFuentes = financingSources.reduce((s, r) => s + Number(r.amount ?? 0), 0);
     const totalDonaciones = donations.reduce((s, r) => s + Number(r.amount ?? 0), 0);
     const totalGastos = expenses.reduce((s, r) => s + Number(r.amount ?? 0), 0);
+    const inKindDonations = donations
+        .filter((d: any) => String(d.donation_type).toUpperCase() === "SUPPLY")
+        .reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
 
     return (
         <div>
@@ -711,6 +714,7 @@ const Page = () => {
                 remaining={remaining}
                 executedPct={executedPct}
                 progressColor={progressColor}
+                inKindDonations={inKindDonations}
             />
 
             <Card>

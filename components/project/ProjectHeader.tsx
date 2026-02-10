@@ -11,6 +11,7 @@ import {
     TrendingUp,
     Target,
     Wallet,
+    Package,
 } from "lucide-react";
 import { dateToString, formatCurrency } from "@/app/libs/utils";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,8 @@ interface ProjectHeaderProps {
     executedPct: number;
     progressColor: "destructive" | "warning" | "success";
     interactive?: boolean;
+    /** Suma de donaciones tipo suministro (SUPPLY). Si se pasa, se muestra la tarjeta "Donaciones en Especie" al final. */
+    inKindDonations?: number;
 }
 
 const ProjectHeader = ({
@@ -42,6 +45,7 @@ const ProjectHeader = ({
     executedPct,
     progressColor,
     interactive,
+    inKindDonations,
 }: ProjectHeaderProps) => {
     const acc = Array.isArray(accomplishments)
         ? accomplishments.filter((a: any) => a && typeof a.text === "string")
@@ -76,38 +80,43 @@ const ProjectHeader = ({
                 </div>
             </div>
 
-            {/* KPI grid */}
+            {/* KPI grid: 5 cards en una fila; Logros al final */}
             <div className="px-6 pb-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {acc.length > 0 && (
-                        <KPIBlock
-                            icon={Target}
-                            label="Logros"
-                            value={`${completedCount} / ${acc.length}`}
-                            iconColor="text-[#04bb36]"
-                            index={0}
-                        />
-                    )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                     <KPIBlock
                         icon={DollarSign}
-                        label="Monto Financiado"
+                        label="Presupuesto General"
                         value={formatCurrency(financed)}
                         iconColor="text-success"
-                        index={acc.length > 0 ? 1 : 0}
+                        index={0}
                     />
                     <KPIBlock
                         icon={TrendingUp}
-                        label="Total de Gasto"
+                        label="Presupuesto Ejecutado"
                         value={formatCurrency(totalExpenses)}
                         iconColor="text-warning"
-                        index={acc.length > 0 ? 2 : 1}
+                        index={1}
                     />
                     <KPIBlock
                         icon={Wallet}
-                        label="Restante"
+                        label="Presupuesto por Ejecutar"
                         value={formatCurrency(remaining)}
                         iconColor="text-primary"
-                        index={acc.length > 0 ? 3 : 2}
+                        index={2}
+                    />
+                    <KPIBlock
+                        icon={Package}
+                        label="Donaciones en Especie"
+                        value={formatCurrency(inKindDonations ?? 0)}
+                        iconColor="text-muted-foreground"
+                        index={3}
+                    />
+                    <KPIBlock
+                        icon={Target}
+                        label="Logros"
+                        value={acc.length > 0 ? `${completedCount} / ${acc.length}` : "-"}
+                        iconColor="text-[#04bb36]"
+                        index={4}
                     />
                 </div>
             </div>
