@@ -28,6 +28,7 @@ import { Stepper, Step, StepLabel } from "@/components/ui/steps";
 import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { Loader2, PlusCircle, Trash2, Upload, FileText, Download } from "lucide-react";
+import * as XLSX from "xlsx";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
@@ -559,29 +560,60 @@ const NewProjectModal = ({
         }
     };
 
-    const importExcelFile = async (file: File, type: "financing-sources" | "donations" | "expenses") => {
-        if (!projectId || !session) return;
+    const DONATION_TYPE_MAP: Record<string, string> = {
+        EFECTIVO: "CASH", SUMINISTROS: "SUPPLY", CASH: "CASH", SUPPLY: "SUPPLY",
+    };
+
+    const importExcelLocal = async (file: File, type: "financing-sources" | "donations" | "expenses") => {
         setExcelImporting(true);
         try {
-            const fd = new FormData();
-            fd.append("file", file);
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${projectId}/excel/${type}`,
-                {
-                    method: "POST",
-                    headers: { Authorization: `Bearer ${session?.user?.session}` },
-                    body: fd,
+            const buffer = await file.arrayBuffer();
+            const workbook = XLSX.read(buffer, { type: "array" });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonRows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+            let imported = 0;
+            let errorCount = 0;
+
+            if (type === "financing-sources") {
+                const items: { financing_source_id: string; amount: string; description: string }[] = [];
+                for (const row of jsonRows) {
+                    const fsId = String(row["Fuente ID"] ?? "").trim();
+                    const monto = Number(row["Monto"]);
+                    const desc = String(row["Descripcion"] ?? "").trim();
+                    if (!fsId || isNaN(monto)) { errorCount++; continue; }
+                    items.push({ financing_source_id: fsId, amount: String(monto), description: desc });
+                    imported++;
                 }
-            );
-            const json = await res.json();
-            if (res.ok) {
-                const msg = `${json.processed} procesados${json.errors > 0 ? `, ${json.errors} con errores` : ""}`;
-                if (json.errors > 0) toast.error(msg); else toast.success(msg);
-            } else {
-                toast.error(json.message ?? "Error al importar");
+                if (items.length > 0) setFinancingItems(items);
+            } else if (type === "donations") {
+                const items: { amount: string; description: string; donation_type: string }[] = [];
+                for (const row of jsonRows) {
+                    const monto = Number(row["Monto"]);
+                    const desc = String(row["Descripcion"] ?? "").trim();
+                    const tipoRaw = String(row["Tipo"] ?? "").trim().toUpperCase();
+                    const dtype = DONATION_TYPE_MAP[tipoRaw];
+                    if (isNaN(monto) || !dtype) { errorCount++; continue; }
+                    items.push({ amount: String(monto), description: desc, donation_type: dtype });
+                    imported++;
+                }
+                if (items.length > 0) setDonationItems(items);
+            } else if (type === "expenses") {
+                const items: { amount: string; description: string }[] = [];
+                for (const row of jsonRows) {
+                    const monto = Number(row["Monto"]);
+                    const desc = String(row["Descripcion"] ?? "").trim();
+                    if (isNaN(monto)) { errorCount++; continue; }
+                    items.push({ amount: String(monto), description: desc });
+                    imported++;
+                }
+                if (items.length > 0) setExpenseItems(items);
             }
+
+            const msg = `${imported} registros importados${errorCount > 0 ? `, ${errorCount} con errores` : ""}`;
+            if (errorCount > 0) toast.error(msg); else toast.success(msg);
         } catch {
-            toast.error("Error al importar archivo");
+            toast.error("Error al leer el archivo Excel");
         }
         setExcelImporting(false);
     };
@@ -592,27 +624,29 @@ const NewProjectModal = ({
             maxFiles: 1,
             maxSize: 10 * 1024 * 1024,
             disabled: excelImporting || !projectId,
-            onDrop: (accepted) => { if (accepted[0]) importExcelFile(accepted[0], type); },
+            onDrop: (accepted) => { if (accepted[0]) importExcelLocal(accepted[0], type); },
             onDropRejected: () => toast.error("Solo archivos .xlsx de hasta 10MB"),
         });
         return (
             <div
                 {...getRootProps()}
                 className={cn(
-                    "border-2 border-dashed rounded-lg p-3 text-center cursor-pointer transition-colors text-xs",
+                    "border-2 border-dashed rounded-lg py-8 px-4 text-center cursor-pointer transition-colors text-sm",
                     isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-primary/50"
                 )}
             >
                 <input {...getInputProps()} />
                 {excelImporting ? (
-                    <span className="flex items-center justify-center gap-2 text-muted-foreground">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Importando...
-                    </span>
+                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                        <span>Importando...</span>
+                    </div>
                 ) : (
-                    <span className="flex items-center justify-center gap-2 text-muted-foreground">
-                        <Upload className="h-4 w-4" />
-                        {isDragActive ? "Suelta el archivo aquí" : "Arrastra un Excel o haz clic para importar"}
-                    </span>
+                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <Upload className="h-6 w-6" />
+                        <span>{isDragActive ? "Suelta el archivo aquí" : "Arrastra un Excel o haz clic para importar"}</span>
+                        <span className="text-xs">Solo archivos .xlsx</span>
+                    </div>
                 )}
             </div>
         );
@@ -904,7 +938,7 @@ const NewProjectModal = ({
                                         </Button>
                                     </div>
                                 ))}
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center justify-between mr-3">
                                     <Button
                                         type="button"
                                         variant="outline"
@@ -1009,7 +1043,7 @@ const NewProjectModal = ({
                                         </Button>
                                     </div>
                                 ))}
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center justify-between mr-3">
                                     <Button
                                         type="button"
                                         variant="outline"
@@ -1087,7 +1121,7 @@ const NewProjectModal = ({
                                         </Button>
                                     </div>
                                 ))}
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center justify-between mr-3">
                                     <Button
                                         type="button"
                                         variant="outline"
