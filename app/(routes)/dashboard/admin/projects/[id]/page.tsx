@@ -1091,7 +1091,7 @@ const Page = () => {
                                     {excelImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
                                     Importar Excel
                                 </Button>
-                                <Button onClick={() => setAddSourceOpen(true)} color="success">
+                                <Button size="sm" onClick={() => setAddSourceOpen(true)} color="success">
                                     <PlusCircle className="h-4 w-4 mr-2" />
                                     Agregar Fuente
                                 </Button>
@@ -1167,7 +1167,7 @@ const Page = () => {
                                     {excelImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
                                     Importar Excel
                                 </Button>
-                                <Button onClick={() => setAddDonationOpen(true)} color="success">
+                                <Button size="sm" onClick={() => setAddDonationOpen(true)} color="success">
                                     <PlusCircle className="h-4 w-4 mr-2" />
                                     Agregar Donación
                                 </Button>
@@ -1249,7 +1249,7 @@ const Page = () => {
                                     {excelImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
                                     Importar Excel
                                 </Button>
-                                <Button onClick={() => setAddExpenseOpen(true)} color="success">
+                                <Button size="sm" onClick={() => setAddExpenseOpen(true)} color="success">
                                     <PlusCircle className="h-4 w-4 mr-2" />
                                     Agregar Gasto
                                 </Button>
