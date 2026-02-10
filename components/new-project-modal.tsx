@@ -976,7 +976,7 @@ const NewProjectModal = ({
                                         disabled={!projectId}
                                     >
                                         <Download className="h-4 w-4 mr-2" />
-                                        Plantilla Excel
+                                        Descargar Formato
                                     </Button>
                                 </div>
                                 <div className="mt-3">
@@ -1081,7 +1081,7 @@ const NewProjectModal = ({
                                         disabled={!projectId}
                                     >
                                         <Download className="h-4 w-4 mr-2" />
-                                        Plantilla Excel
+                                        Descargar Formato
                                     </Button>
                                 </div>
                                 <div className="mt-3">
@@ -1159,7 +1159,7 @@ const NewProjectModal = ({
                                         disabled={!projectId}
                                     >
                                         <Download className="h-4 w-4 mr-2" />
-                                        Plantilla Excel
+                                        Descargar Formato
                                     </Button>
                                 </div>
                                 <div className="mt-3">

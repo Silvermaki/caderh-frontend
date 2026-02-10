@@ -96,17 +96,17 @@ const ProjectHeader = ({
                         index={0}
                     />
                     <KPIBlock
-                        icon={TrendingUp}
-                        label="Presupuesto Ejecutado"
-                        value={formatCurrency(totalExpenses)}
-                        iconColor="text-warning"
-                        index={1}
-                    />
-                    <KPIBlock
                         icon={Wallet}
                         label="Presupuesto por Ejecutar"
                         value={formatCurrency(remaining)}
                         iconColor="text-primary"
+                        index={1}
+                    />
+                    <KPIBlock
+                        icon={TrendingUp}
+                        label="Presupuesto Ejecutado"
+                        value={formatCurrency(totalExpenses)}
+                        iconColor="text-warning"
                         index={2}
                     />
                     {overExecution > 0 && (

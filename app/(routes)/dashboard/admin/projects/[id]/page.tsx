@@ -1076,7 +1076,7 @@ const Page = () => {
                                     onClick={() => downloadExcelTemplate("financing-sources")}
                                 >
                                     <Download className="h-4 w-4 mr-2" />
-                                    Plantilla Excel
+                                    Descargar Formato
                                 </Button>
                                 <Button
                                     variant="outline"
@@ -1154,7 +1154,7 @@ const Page = () => {
                                     onClick={() => downloadExcelTemplate("donations")}
                                 >
                                     <Download className="h-4 w-4 mr-2" />
-                                    Plantilla Excel
+                                    Descargar Formato
                                 </Button>
                                 <Button
                                     variant="outline"
@@ -1236,7 +1236,7 @@ const Page = () => {
                                     onClick={() => downloadExcelTemplate("expenses")}
                                 >
                                     <Download className="h-4 w-4 mr-2" />
-                                    Plantilla Excel
+                                    Descargar Formato
                                 </Button>
                                 <Button
                                     variant="outline"
