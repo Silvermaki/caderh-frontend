@@ -12,6 +12,7 @@ import {
     Target,
     Wallet,
     Package,
+    AlertCircle,
 } from "lucide-react";
 import { dateToString, formatCurrency } from "@/app/libs/utils";
 import { cn } from "@/lib/utils";
@@ -51,6 +52,7 @@ const ProjectHeader = ({
         ? accomplishments.filter((a: any) => a && typeof a.text === "string")
         : [];
     const completedCount = acc.filter((a: any) => a && a.completed).length;
+    const overExecution = totalExpenses > financed ? totalExpenses - financed : 0;
 
     return (
         <Card className={cn(
@@ -80,9 +82,12 @@ const ProjectHeader = ({
                 </div>
             </div>
 
-            {/* KPI grid: 5 cards en una fila; Logros al final */}
+            {/* KPI grid; Logros al final */}
             <div className="px-6 pb-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div className={cn(
+                    "grid grid-cols-1 sm:grid-cols-2 gap-3",
+                    overExecution > 0 ? "lg:grid-cols-6" : "lg:grid-cols-5"
+                )}>
                     <KPIBlock
                         icon={DollarSign}
                         label="Presupuesto General"
@@ -104,19 +109,28 @@ const ProjectHeader = ({
                         iconColor="text-primary"
                         index={2}
                     />
+                    {overExecution > 0 && (
+                        <KPIBlock
+                            icon={AlertCircle}
+                            label="Sobre Ejecución"
+                            value={formatCurrency(overExecution)}
+                            iconColor="text-destructive"
+                            index={3}
+                        />
+                    )}
                     <KPIBlock
                         icon={Package}
                         label="Donaciones en Especie"
                         value={formatCurrency(inKindDonations ?? 0)}
                         iconColor="text-muted-foreground"
-                        index={3}
+                        index={overExecution > 0 ? 4 : 3}
                     />
                     <KPIBlock
                         icon={Target}
                         label="Logros"
                         value={acc.length > 0 ? `${completedCount} / ${acc.length}` : "-"}
                         iconColor="text-[#04bb36]"
-                        index={4}
+                        index={overExecution > 0 ? 5 : 4}
                     />
                 </div>
             </div>
