@@ -343,7 +343,12 @@ const Page = () => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `plantilla-${type}.xlsx`;
+            const fileNames: Record<string, string> = {
+                "financing-sources": "plantilla-fuentes",
+                "donations": "plantilla-donaciones",
+                "expenses": "plantilla-gastos",
+            };
+            a.download = `${fileNames[type] ?? `plantilla-${type}`}.xlsx`;
             a.click();
             URL.revokeObjectURL(url);
         } catch {

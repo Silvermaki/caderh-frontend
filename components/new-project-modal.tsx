@@ -544,7 +544,7 @@ const NewProjectModal = ({
         if (!projectId || !session) return;
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${projectId}/excel/${type}`,
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${projectId}/excel/${type}?includeIds=0`,
                 { headers: { Authorization: `Bearer ${session?.user?.session}` } }
             );
             if (!res.ok) { toast.error("Error al descargar plantilla"); return; }
@@ -552,7 +552,12 @@ const NewProjectModal = ({
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `plantilla-${type}.xlsx`;
+            const fileNames: Record<string, string> = {
+                "financing-sources": "plantilla-fuentes",
+                "donations": "plantilla-donaciones",
+                "expenses": "plantilla-gastos",
+            };
+            a.download = `${fileNames[type] ?? `plantilla-${type}`}.xlsx`;
             a.click();
             URL.revokeObjectURL(url);
         } catch {
