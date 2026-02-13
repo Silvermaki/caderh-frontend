@@ -12,10 +12,12 @@ import {
     Target,
     Wallet,
     Package,
+    Banknote,
     AlertCircle,
 } from "lucide-react";
 import { dateToString, formatCurrency } from "@/app/libs/utils";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import KPIBlock from "./KPIBlock";
 
 interface ProjectHeaderProps {
@@ -30,8 +32,12 @@ interface ProjectHeaderProps {
     executedPct: number;
     progressColor: "destructive" | "warning" | "success";
     interactive?: boolean;
-    /** Suma de donaciones tipo suministro (SUPPLY). Si se pasa, se muestra la tarjeta "Donaciones en Especie" al final. */
+    /** Suma de donaciones tipo suministro (SUPPLY). */
     inKindDonations?: number;
+    /** Suma de donaciones tipo efectivo (CASH). */
+    cashDonations?: number;
+    /** Categoría del proyecto (PROJECT o AGREEMENT). */
+    projectCategory?: string;
 }
 
 const ProjectHeader = ({
@@ -47,6 +53,8 @@ const ProjectHeader = ({
     progressColor,
     interactive,
     inKindDonations,
+    cashDonations,
+    projectCategory,
 }: ProjectHeaderProps) => {
     const acc = Array.isArray(accomplishments)
         ? accomplishments.filter((a: any) => a && typeof a.text === "string")
@@ -61,12 +69,19 @@ const ProjectHeader = ({
         )}>
             {/* Title + description + dates */}
             <div className="p-6 pb-4">
-                <h1 className={cn(
-                    "text-2xl lg:text-3xl font-bold tracking-tight break-words relative inline-block text-primary",
-                    interactive && "after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:bg-primary after:w-0 after:transition-all after:duration-[5000ms] after:ease-in-out group-hover:after:w-full"
-                )}>
-                    {name}
-                </h1>
+                <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className={cn(
+                        "text-2xl lg:text-3xl font-bold tracking-tight break-words relative inline-block text-primary",
+                        interactive && "after:content-[''] after:absolute after:bottom-0 after:left-0 after:h-0.5 after:bg-primary after:w-0 after:transition-all after:duration-[5000ms] after:ease-in-out group-hover:after:w-full"
+                    )}>
+                        {name}
+                    </h1>
+                    {projectCategory && (
+                        <Badge variant={projectCategory === "AGREEMENT" ? "outline" : "default"} className="text-xs shrink-0">
+                            {projectCategory === "AGREEMENT" ? "Convenio" : "Proyecto"}
+                        </Badge>
+                    )}
+                </div>
                 <p className="text-sm text-muted-foreground mt-2 break-words max-w-3xl leading-relaxed">
                     {description}
                 </p>
@@ -86,7 +101,7 @@ const ProjectHeader = ({
             <div className="px-6 pb-2">
                 <div className={cn(
                     "grid grid-cols-1 sm:grid-cols-2 gap-3",
-                    overExecution > 0 ? "lg:grid-cols-6" : "lg:grid-cols-5"
+                    overExecution > 0 ? "lg:grid-cols-7" : "lg:grid-cols-6"
                 )}>
                     <KPIBlock
                         icon={DollarSign}
@@ -96,17 +111,17 @@ const ProjectHeader = ({
                         index={0}
                     />
                     <KPIBlock
-                        icon={Wallet}
-                        label="Presupuesto por Ejecutar"
-                        value={formatCurrency(remaining)}
-                        iconColor="text-primary"
-                        index={1}
-                    />
-                    <KPIBlock
                         icon={TrendingUp}
                         label="Presupuesto Ejecutado"
                         value={formatCurrency(totalExpenses)}
                         iconColor="text-warning"
+                        index={1}
+                    />
+                    <KPIBlock
+                        icon={Wallet}
+                        label="Presupuesto Disponible"
+                        value={formatCurrency(remaining)}
+                        iconColor="text-primary"
                         index={2}
                     />
                     {overExecution > 0 && (
@@ -126,11 +141,18 @@ const ProjectHeader = ({
                         index={overExecution > 0 ? 4 : 3}
                     />
                     <KPIBlock
+                        icon={Banknote}
+                        label="Donaciones en Efectivo"
+                        value={formatCurrency(cashDonations ?? 0)}
+                        iconColor="text-success"
+                        index={overExecution > 0 ? 5 : 4}
+                    />
+                    <KPIBlock
                         icon={Target}
                         label="Logros"
                         value={acc.length > 0 ? `${completedCount} / ${acc.length}` : "-"}
                         iconColor="text-[#04bb36]"
-                        index={overExecution > 0 ? 5 : 4}
+                        index={overExecution > 0 ? 6 : 5}
                     />
                 </div>
             </div>

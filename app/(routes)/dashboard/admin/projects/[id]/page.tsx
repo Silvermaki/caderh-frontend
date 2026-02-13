@@ -157,6 +157,7 @@ const Page = () => {
         objectives: "",
         start_date: "",
         end_date: "",
+        project_category: "PROJECT",
         accomplishments: [] as { text: string; completed: boolean }[],
     });
     const [infoSaving, setInfoSaving] = useState(false);
@@ -171,8 +172,12 @@ const Page = () => {
     const [addDonationSaving, setAddDonationSaving] = useState(false);
 
     const [addExpenseOpen, setAddExpenseOpen] = useState(false);
-    const [addExpenseForm, setAddExpenseForm] = useState({ amount: "", description: "" });
+    const [addExpenseForm, setAddExpenseForm] = useState({ amount: "", description: "", expense_category_id: "" });
     const [addExpenseSaving, setAddExpenseSaving] = useState(false);
+
+    const [expenseCategories, setExpenseCategories] = useState<any[]>([]);
+    const [newCategoryName, setNewCategoryName] = useState("");
+    const [creatingCategory, setCreatingCategory] = useState(false);
 
     const [fileUploading, setFileUploading] = useState(false);
     const [fileDescription, setFileDescription] = useState("");
@@ -203,6 +208,7 @@ const Page = () => {
                     objectives: json.data.objectives ?? "",
                     start_date: json.data.start_date ? json.data.start_date.slice(0, 10) : "",
                     end_date: json.data.end_date ? json.data.end_date.slice(0, 10) : "",
+                    project_category: json.data.project_category ?? "PROJECT",
                     accomplishments: accArr,
                 });
             } else {
@@ -278,6 +284,48 @@ const Page = () => {
         }
     };
 
+    const fetchExpenseCategories = async () => {
+        if (!session) return;
+        const res = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/expense-categories`,
+            { headers: { Authorization: `Bearer ${session?.user?.session}` } }
+        );
+        if (res.ok) {
+            const json = await res.json();
+            setExpenseCategories(json.data ?? []);
+        }
+    };
+
+    const onCreateCategory = async () => {
+        if (!newCategoryName.trim()) return;
+        setCreatingCategory(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/expense-categories`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session?.user?.session}`,
+                    },
+                    body: JSON.stringify({ name: newCategoryName.trim() }),
+                }
+            );
+            const json = await res.json();
+            if (res.ok) {
+                toast.success("Categoría creada");
+                setNewCategoryName("");
+                fetchExpenseCategories();
+                setAddExpenseForm((p) => ({ ...p, expense_category_id: json.id }));
+            } else {
+                toast.error(json.message ?? "Error al crear categoría");
+            }
+        } catch {
+            toast.error("Error al crear categoría");
+        }
+        setCreatingCategory(false);
+    };
+
     const reloadAll = () => {
         fetchProject();
         fetchStep2();
@@ -290,6 +338,7 @@ const Page = () => {
         if (session && id) {
             fetchProject();
             fetchFinancingSourcesList();
+            fetchExpenseCategories();
         }
     }, [session, id]);
 
@@ -430,6 +479,7 @@ const Page = () => {
                         objectives: infoForm.objectives,
                         start_date: infoForm.start_date,
                         end_date: infoForm.end_date,
+                        project_category: infoForm.project_category,
                         accomplishments: infoForm.accomplishments.map((a) => ({
                             text: a.text,
                             completed: a.completed,
@@ -616,6 +666,7 @@ const Page = () => {
                     body: JSON.stringify({
                         amount: Number(addExpenseForm.amount),
                         description: addExpenseForm.description || "",
+                        expense_category_id: addExpenseForm.expense_category_id || null,
                     }),
                 }
             );
@@ -623,7 +674,7 @@ const Page = () => {
             if (res.ok) {
                 toast.success("Gasto agregado");
                 setAddExpenseOpen(false);
-                setAddExpenseForm({ amount: "", description: "" });
+                setAddExpenseForm({ amount: "", description: "", expense_category_id: "" });
                 fetchStep4();
                 fetchProject();
             } else {
@@ -773,6 +824,12 @@ const Page = () => {
     const inKindDonations = donations
         .filter((d: any) => String(d.donation_type).toUpperCase() === "SUPPLY")
         .reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
+    const cashDonations = donations
+        .filter((d: any) => String(d.donation_type).toUpperCase() === "CASH")
+        .reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
+    const benefitDonations = donations
+        .filter((d: any) => String(d.donation_type).toUpperCase() === "BENEFIT")
+        .reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
 
     return (
         <div className="mb-4">
@@ -821,6 +878,8 @@ const Page = () => {
                 executedPct={executedPct}
                 progressColor={progressColor}
                 inKindDonations={inKindDonations}
+                cashDonations={cashDonations}
+                projectCategory={project.project_category}
             />
 
             <Card>
@@ -886,6 +945,7 @@ const Page = () => {
                                                 objectives: project?.objectives ?? "",
                                                 start_date: project?.start_date ? String(project.start_date).slice(0, 10) : "",
                                                 end_date: project?.end_date ? String(project.end_date).slice(0, 10) : "",
+                                                project_category: project?.project_category ?? "PROJECT",
                                                 accomplishments: accArr,
                                             });
                                             setInfoEditing(false);
@@ -939,13 +999,30 @@ const Page = () => {
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    <div>
-                                        <Label>Nombre del Proyecto *</Label>
-                                        <Input
-                                            value={infoForm.name}
-                                            onChange={(e) => setInfoForm((p) => ({ ...p, name: e.target.value }))}
-                                            className="mt-1"
-                                        />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <Label>Nombre del Proyecto *</Label>
+                                            <Input
+                                                value={infoForm.name}
+                                                onChange={(e) => setInfoForm((p) => ({ ...p, name: e.target.value }))}
+                                                className="mt-1"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Label>Categoría *</Label>
+                                            <Select
+                                                value={infoForm.project_category}
+                                                onValueChange={(v) => setInfoForm((p) => ({ ...p, project_category: v }))}
+                                            >
+                                                <SelectTrigger className="mt-1">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="PROJECT">Proyecto</SelectItem>
+                                                    <SelectItem value="AGREEMENT">Convenio</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
                                     </div>
                                     <div>
                                         <Label>Descripción *</Label>
@@ -1140,13 +1217,8 @@ const Page = () => {
                     </TabsContent>
 
                     <TabsContent value="donaciones" className="mt-0 px-6 pt-6 pb-6">
-                        <div className="flex flex-row items-center justify-between mb-6">
-                            <div className="flex items-center gap-4">
-                                <h3 className="text-lg font-semibold">Donaciones Recibidas</h3>
-                                <span className="text-sm text-muted-foreground">
-                                    Total: {formatCurrency(totalDonaciones)}
-                                </span>
-                            </div>
+                        <div className="flex flex-row items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold">Donaciones Recibidas</h3>
                             <div className="flex gap-2">
                                 <Button
                                     variant="outline"
@@ -1180,6 +1252,24 @@ const Page = () => {
                                 </Button>
                             </div>
                         </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 mb-4">
+                            <div className="border border-border rounded-md px-3 py-2">
+                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Total</span>
+                                <p className="text-sm font-semibold text-foreground mt-0.5">{formatCurrency(totalDonaciones)}</p>
+                            </div>
+                            <div className="border border-border rounded-md px-3 py-2">
+                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Efectivo</span>
+                                <p className="text-sm font-semibold text-foreground mt-0.5">{formatCurrency(cashDonations)}</p>
+                            </div>
+                            <div className="border border-border rounded-md px-3 py-2">
+                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Especie</span>
+                                <p className="text-sm font-semibold text-foreground mt-0.5">{formatCurrency(inKindDonations)}</p>
+                            </div>
+                            <div className="border border-border rounded-md px-3 py-2">
+                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Beneficio</span>
+                                <p className="text-sm font-semibold text-foreground mt-0.5">{formatCurrency(benefitDonations)}</p>
+                            </div>
+                        </div>
                         {donations.length === 0 ? (
                                 <p className="text-muted-foreground py-8 text-center">
                                     No hay donaciones. Agrega una para comenzar.
@@ -1199,7 +1289,7 @@ const Page = () => {
                                         {donations.map((r) => (
                                             <TableRow key={r.id}>
                                                 <TableCell>{r.description || "-"}</TableCell>
-                                                <TableCell>{r.donation_type === "CASH" ? "Efectivo" : "Suministros"}</TableCell>
+                                                <TableCell>{r.donation_type === "CASH" ? "Efectivo" : r.donation_type === "BENEFIT" ? "Beneficio" : "Suministros"}</TableCell>
                                                 <TableCell>{formatCurrency(Number(r.amount ?? 0))}</TableCell>
                                                 <TableCell>
                                                     {r.created_dt ? dateToString(new Date(r.created_dt)) : "-"}
@@ -1271,27 +1361,32 @@ const Page = () => {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Descripción</TableHead>
+                                            <TableHead>Categoría</TableHead>
                                             <TableHead>Monto</TableHead>
                                             <TableHead>Acciones</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {expenses.map((r) => (
-                                            <TableRow key={r.id}>
-                                                <TableCell>{r.description || "-"}</TableCell>
-                                                <TableCell>{formatCurrency(Number(r.amount ?? 0))}</TableCell>
-                                                <TableCell>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="text-destructive"
-                                                        onClick={() => onDeleteExpense(r.id)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
+                                        {expenses.map((r) => {
+                                            const cat = expenseCategories.find((c) => c.id === r.expense_category_id);
+                                            return (
+                                                <TableRow key={r.id}>
+                                                    <TableCell>{r.description || "-"}</TableCell>
+                                                    <TableCell>{cat?.name ?? "-"}</TableCell>
+                                                    <TableCell>{formatCurrency(Number(r.amount ?? 0))}</TableCell>
+                                                    <TableCell>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="text-destructive"
+                                                            onClick={() => onDeleteExpense(r.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
                                     </TableBody>
                                 </Table>
                             )}
@@ -1343,7 +1438,7 @@ const Page = () => {
                                 <div className="space-y-2">
                                     <Label>Archivos subidos ({files.length})</Label>
                                     {files.map((f) => {
-                                        const name = typeof f.file === "string" ? f.file.split("/").pop() : f.description || "archivo";
+                                        const name = typeof f.file === "string" ? f.file.split(/[/\\]/).pop() : f.description || "archivo";
                                         return (
                                             <div
                                                 key={f.id}
@@ -1498,6 +1593,7 @@ const Page = () => {
                                     <SelectContent>
                                         <SelectItem value="CASH">Efectivo</SelectItem>
                                         <SelectItem value="SUPPLY">Suministros</SelectItem>
+                                        <SelectItem value="BENEFIT">Beneficio</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -1533,6 +1629,38 @@ const Page = () => {
                                     value={addExpenseForm.amount}
                                     onChange={(v) => setAddExpenseForm((p) => ({ ...p, amount: v }))}
                                 />
+                            </div>
+                            <div>
+                                <Label>Categoría (opcional)</Label>
+                                <Select
+                                    value={addExpenseForm.expense_category_id}
+                                    onValueChange={(v) => setAddExpenseForm((p) => ({ ...p, expense_category_id: v }))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Sin categoría" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {expenseCategories.map((c) => (
+                                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <div className="flex gap-2 mt-2">
+                                    <Input
+                                        value={newCategoryName}
+                                        onChange={(e) => setNewCategoryName(e.target.value)}
+                                        placeholder="Nueva categoría..."
+                                        className="flex-1"
+                                    />
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={onCreateCategory}
+                                        disabled={creatingCategory || !newCategoryName.trim()}
+                                    >
+                                        {creatingCategory ? "..." : "Crear"}
+                                    </Button>
+                                </div>
                             </div>
                             <div>
                                 <Label>Descripción (opcional)</Label>

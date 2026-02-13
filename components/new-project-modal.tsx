@@ -152,6 +152,7 @@ const STEP1_SCHEMA = z.object({
     objectives: z.string().min(1, { message: "Requerido" }),
     start_date: z.string().min(1, { message: "Requerido" }),
     end_date: z.string().min(1, { message: "Requerido" }),
+    project_category: z.string().min(1, { message: "Requerido" }),
 }).refine((data) => new Date(data.start_date) <= new Date(data.end_date), {
     message: "La fecha de fin debe ser mayor o igual a la de inicio",
     path: ["end_date"],
@@ -187,8 +188,11 @@ const NewProjectModal = ({
 
     // Step 4
     const [expenseItems, setExpenseItems] = useState<
-        { amount: string; description: string }[]
-    >([{ amount: "", description: "" }]);
+        { amount: string; description: string; expense_category_id: string }[]
+    >([{ amount: "", description: "", expense_category_id: "" }]);
+    const [wizardExpenseCategories, setWizardExpenseCategories] = useState<any[]>([]);
+    const [wizardNewCategoryName, setWizardNewCategoryName] = useState("");
+    const [wizardCreatingCategory, setWizardCreatingCategory] = useState(false);
 
     // Step 5
     const [uploadedFiles, setUploadedFiles] = useState<
@@ -211,6 +215,8 @@ const NewProjectModal = ({
         handleSubmit,
         formState: { errors },
         reset,
+        setValue,
+        watch,
     } = useForm({
         resolver: zodResolver(STEP1_SCHEMA),
         mode: "onSubmit",
@@ -220,6 +226,7 @@ const NewProjectModal = ({
             objectives: "",
             start_date: "",
             end_date: "",
+            project_category: "PROJECT",
         },
     });
 
@@ -246,6 +253,54 @@ const NewProjectModal = ({
         }
     }, [step, session]);
 
+    const fetchWizardExpenseCategories = async () => {
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/expense-categories`,
+                { headers: { Authorization: `Bearer ${session?.user?.session}` } }
+            );
+            if (res.ok) {
+                const json = await res.json();
+                setWizardExpenseCategories(json.data ?? []);
+            }
+        } catch { /* ignore */ }
+    };
+
+    const onCreateWizardCategory = async () => {
+        if (!wizardNewCategoryName.trim()) return;
+        setWizardCreatingCategory(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/expense-categories`,
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session?.user?.session}`,
+                    },
+                    body: JSON.stringify({ name: wizardNewCategoryName.trim() }),
+                }
+            );
+            const json = await res.json();
+            if (res.ok) {
+                toast.success("Categoría creada");
+                setWizardNewCategoryName("");
+                fetchWizardExpenseCategories();
+            } else {
+                toast.error(json.message ?? "Error al crear categoría");
+            }
+        } catch {
+            toast.error("Error al crear categoría");
+        }
+        setWizardCreatingCategory(false);
+    };
+
+    useEffect(() => {
+        if (step === 4 && session) {
+            fetchWizardExpenseCategories();
+        }
+    }, [step, session]);
+
     const resetModal = () => {
         setStep(1);
         setProjectId(null);
@@ -254,7 +309,7 @@ const NewProjectModal = ({
             { financing_source_id: "", amount: "", description: "" },
         ]);
         setDonationItems([{ amount: "", description: "", donation_type: "CASH" }]);
-        setExpenseItems([{ amount: "", description: "" }]);
+        setExpenseItems([{ amount: "", description: "", expense_category_id: "" }]);
         setUploadedFiles([]);
         setFileDescription("");
         setFileFilename("");
@@ -281,6 +336,7 @@ const NewProjectModal = ({
                         objectives: data.objectives,
                         start_date: data.start_date,
                         end_date: data.end_date,
+                        project_category: data.project_category,
                         accomplishments: accomplishmentItems
                             .filter((a) => a.text.trim())
                             .map((a) => ({
@@ -403,6 +459,7 @@ const NewProjectModal = ({
                         items: valid.map((i) => ({
                             amount: Number(i.amount),
                             description: i.description || "",
+                            expense_category_id: i.expense_category_id || null,
                         })),
                     }),
                 }
@@ -566,7 +623,7 @@ const NewProjectModal = ({
     };
 
     const addExpenseItem = () => {
-        setExpenseItems((prev) => [...prev, { amount: "", description: "" }]);
+        setExpenseItems((prev) => [...prev, { amount: "", description: "", expense_category_id: "" }]);
         setTimeout(
             () =>
                 gastosEndRef.current?.scrollIntoView({
@@ -615,7 +672,7 @@ const NewProjectModal = ({
     };
 
     const DONATION_TYPE_MAP: Record<string, string> = {
-        EFECTIVO: "CASH", SUMINISTROS: "SUPPLY", CASH: "CASH", SUPPLY: "SUPPLY",
+        EFECTIVO: "CASH", SUMINISTROS: "SUPPLY", BENEFICIO: "BENEFIT", CASH: "CASH", SUPPLY: "SUPPLY", BENEFIT: "BENEFIT",
     };
 
     const importExcelLocal = async (file: File, type: "financing-sources" | "donations" | "expenses") => {
@@ -720,7 +777,7 @@ const NewProjectModal = ({
                                 className="px-5"
                             >
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="md:col-span-2">
+                                    <div>
                                         <Label className="mb-2 font-medium text-default-600">
                                             Nombre
                                         </Label>
@@ -732,6 +789,29 @@ const NewProjectModal = ({
                                         {errors.name && (
                                             <div className="text-destructive mt-1 text-sm">
                                                 {errors.name.message}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <Label className="mb-2 font-medium text-default-600">
+                                            Categoría
+                                        </Label>
+                                        <Select
+                                            value={watch("project_category")}
+                                            onValueChange={(v) => setValue("project_category", v)}
+                                            disabled={isSubmitting}
+                                        >
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Seleccionar" />
+                                            </SelectTrigger>
+                                            <SelectContent className="z-[99990]">
+                                                <SelectItem value="PROJECT">Proyecto</SelectItem>
+                                                <SelectItem value="AGREEMENT">Convenio</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        {errors.project_category && (
+                                            <div className="text-destructive mt-1 text-sm">
+                                                {errors.project_category.message}
                                             </div>
                                         )}
                                     </div>
@@ -1033,6 +1113,9 @@ const NewProjectModal = ({
                                                     <SelectItem value="SUPPLY">
                                                         Suministros
                                                     </SelectItem>
+                                                    <SelectItem value="BENEFIT">
+                                                        Beneficio
+                                                    </SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
@@ -1116,6 +1199,30 @@ const NewProjectModal = ({
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <Label className="mb-1 text-xs">
+                                                Categoría
+                                            </Label>
+                                            <Select
+                                                value={item.expense_category_id}
+                                                onValueChange={(v) =>
+                                                    updateExpenseItem(
+                                                        i,
+                                                        "expense_category_id",
+                                                        v
+                                                    )
+                                                }
+                                            >
+                                                <SelectTrigger size="md">
+                                                    <SelectValue placeholder="Sin categoría" />
+                                                </SelectTrigger>
+                                                <SelectContent className="z-[99990]">
+                                                    {wizardExpenseCategories.map((c) => (
+                                                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <Label className="mb-1 text-xs">
                                                 Descripción
                                             </Label>
                                             <Input
@@ -1141,6 +1248,28 @@ const NewProjectModal = ({
                                         </Button>
                                     </div>
                                 ))}
+                                <div className="flex gap-2 items-end mb-4 mr-3">
+                                    <div className="flex-1 min-w-0">
+                                        <Label className="mb-1 text-xs">Nueva categoría de gasto</Label>
+                                        <div className="flex gap-2">
+                                            <Input
+                                                value={wizardNewCategoryName}
+                                                onChange={(e) => setWizardNewCategoryName(e.target.value)}
+                                                placeholder="Nombre de categoría..."
+                                                className="flex-1"
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={onCreateWizardCategory}
+                                                disabled={wizardCreatingCategory || !wizardNewCategoryName.trim()}
+                                            >
+                                                {wizardCreatingCategory ? "..." : "Crear"}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </div>
                                 <div className="flex items-center justify-between mr-3">
                                     <Button
                                         type="button"

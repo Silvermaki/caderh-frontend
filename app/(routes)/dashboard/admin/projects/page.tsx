@@ -221,6 +221,7 @@ function PageContent() {
                                 const financed = Number(p.financed_amount ?? 0);
                                 const expenses = Number(p.total_expenses ?? 0);
                                 const inKindDonations = Number((p as any).in_kind_donations ?? 0);
+                                const cashDonations = Number((p as any).cash_donations ?? 0);
                                 const executedPct =
                                     financed > 0 ? Math.min(100, Math.round((expenses / financed) * 100)) : 0;
                                 const remaining = Math.max(0, financed - expenses);
@@ -244,6 +245,8 @@ function PageContent() {
                                             executedPct={executedPct}
                                             progressColor={progressColor}
                                             inKindDonations={inKindDonations}
+                                            cashDonations={cashDonations}
+                                            projectCategory={p.project_category}
                                             interactive
                                         />
                                     </Link>
