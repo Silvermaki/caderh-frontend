@@ -49,6 +49,20 @@ let navs = [
         href: "/dashboard/admin/projects",
       },
     ]
+  },
+  {
+    title: "Centros",
+    icon: DashBoard,
+    child: [
+      {
+        title: 'Áreas',
+        href: "/dashboard/centros/areas",
+      },
+      {
+        title: 'Gestionar Centros',
+        href: "/dashboard/centros/manage",
+      },
+    ]
   }
 ];
 

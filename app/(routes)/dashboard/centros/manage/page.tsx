@@ -12,15 +12,14 @@ import {
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupButton } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import SkeletonTable from "@/components/skeleton-table";
 import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
-import { PlusCircle, RefreshCcw } from "lucide-react";
+import { PlusCircle, RefreshCcw, MapPin, Phone, Mail, User } from "lucide-react";
 import { Icon } from "@iconify/react";
 import { prettifyNumber } from "@/app/libs/utils";
-import NewProjectModal from "@/components/new-project-modal";
-import ProjectHeader from "@/components/project/ProjectHeader";
 import { Suspense } from "react";
 
 function PageContent() {
@@ -29,25 +28,23 @@ function PageContent() {
     const searchParams = useSearchParams();
     const searchInit = searchParams?.get("search") ?? "";
     const { data: session } = useSession() as any;
-    const [projects, setProjects] = useState<any[]>([]);
+    const [centros, setCentros] = useState<any[]>([]);
     const [offset, setOffset] = useState<number>(0);
     const [limit, setLimit] = useState<number>(10);
     const [count, setCount] = useState<number>(0);
     const [desc, setDesc] = useState<boolean>(true);
-    const [sort, setSort] = useState<string>("created_dt");
+    const [sort, setSort] = useState<string>("nombre");
     const [search, setSearch] = useState<string>(searchInit);
     const [searchInput, setSearchInput] = useState<string>(searchInit);
     const [loading, setLoading] = useState<boolean>(true);
-    const [statusFilter, setStatusFilter] = useState<string>("ACTIVE");
-    const [assignedFilter, setAssignedFilter] = useState<string>("ALL");
-    const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState<boolean>(false);
+    const [statusFilter, setStatusFilter] = useState<string>("1");
     const userRole = session?.user?.role;
 
-    const getProjects = async (params: string) => {
+    const getCentros = async (params: string) => {
         setLoading(true);
         try {
             const request = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects?${params}`,
+                `${process.env.NEXT_PUBLIC_API_URL}/api/centros/centros?${params}`,
                 {
                     method: "GET",
                     headers: {
@@ -57,21 +54,20 @@ function PageContent() {
             );
             if (request.ok) {
                 const response = await request.json();
-                setProjects(response.data ?? []);
+                setCentros(response.data ?? []);
                 setCount(response.count ?? 0);
             } else {
                 const response = await request.json();
-                toast.error(response.message ?? "Error al cargar proyectos");
+                toast.error(response.message ?? "Error al cargar centros");
             }
         } catch (error: any) {
-            toast.error("Error al cargar proyectos");
+            toast.error("Error al cargar centros");
         }
         setLoading(false);
     };
 
-    const getDataInit = async (searchValue: string, status?: string, assigned?: string) => {
-        const activeStatus = status ?? statusFilter;
-        const activeAssigned = assigned ?? assignedFilter;
+    const getDataInit = async (searchValue: string, estatus?: string) => {
+        const activeStatus = estatus ?? statusFilter;
         setSearch(searchValue);
         const params = new URLSearchParams({
             offset: "0",
@@ -79,10 +75,9 @@ function PageContent() {
             sort,
             desc: desc ? "desc" : "asc",
             search: searchValue,
-            status: activeStatus,
+            estatus: activeStatus,
         });
-        if (activeAssigned === "MINE") params.set("assigned_to", "me");
-        await getProjects(params.toString());
+        await getCentros(params.toString());
         setOffset(0);
     };
 
@@ -93,11 +88,10 @@ function PageContent() {
             sort,
             desc: desc ? "desc" : "asc",
             search: searching,
-            status: statusFilter,
+            estatus: statusFilter,
         });
-        if (assignedFilter === "MINE") params.set("assigned_to", "me");
         setSearch(searching);
-        await getProjects(params.toString());
+        await getCentros(params.toString());
         setOffset(0);
     };
 
@@ -109,10 +103,9 @@ function PageContent() {
             sort,
             desc: desc ? "desc" : "asc",
             search,
-            status: statusFilter,
+            estatus: statusFilter,
         });
-        if (assignedFilter === "MINE") params.set("assigned_to", "me");
-        await getProjects(params.toString());
+        await getCentros(params.toString());
     };
 
     const onSearch = () => {
@@ -132,19 +125,6 @@ function PageContent() {
         router.replace(pathname);
         setSearchInput("");
         getDataInit("");
-    };
-
-    const reloadList = () => {
-        const params = new URLSearchParams({
-            offset: offset * limit + "",
-            limit: limit + "",
-            sort,
-            desc: desc ? "desc" : "asc",
-            search,
-            status: statusFilter,
-        });
-        if (assignedFilter === "MINE") params.set("assigned_to", "me");
-        getProjects(params.toString());
     };
 
     useEffect(() => {
@@ -167,17 +147,17 @@ function PageContent() {
         <div className="mb-4">
             <Breadcrumbs>
                 <BreadcrumbItem>Plataforma</BreadcrumbItem>
-                <BreadcrumbItem>Administración</BreadcrumbItem>
-                <BreadcrumbItem className="text-primary">Proyectos</BreadcrumbItem>
+                <BreadcrumbItem>Centros</BreadcrumbItem>
+                <BreadcrumbItem className="text-primary">Gestionar Centros</BreadcrumbItem>
             </Breadcrumbs>
-            <div className="mt-5 text-sm font-bold">Listado de Proyectos</div>
+            <div className="mt-5 text-sm font-bold">Listado de Centros</div>
             <Card className="p-4 mt-4">
                 <CardContent className="p-0">
                     <div className="flex flex-row justify-between items-center gap-4 mb-4">
                         <div className="flex flex-row items-center gap-3">
                             <InputGroup className="max-w-sm shrink-0">
                                 <Input
-                                    placeholder="Buscar..."
+                                    placeholder="Buscar por nombre, siglas o código..."
                                     value={searchInput}
                                     onChange={(e) => setSearchInput(e.target.value)}
                                     onKeyDown={(e) => {
@@ -208,35 +188,20 @@ function PageContent() {
                                     <SelectValue placeholder="Estado" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="ACTIVE">Activo</SelectItem>
-                                    <SelectItem value="ARCHIVED">Archivado</SelectItem>
+                                    <SelectItem value="1">Activo</SelectItem>
+                                    <SelectItem value="0">Inactivo</SelectItem>
                                 </SelectContent>
                             </Select>
-                            {userRole === "USER" && (
-                                <Select
-                                    value={assignedFilter}
-                                    onValueChange={(v) => {
-                                        setAssignedFilter(v);
-                                        setOffset(0);
-                                        getDataInit(search, undefined, v);
-                                    }}
-                                >
-                                    <SelectTrigger className="w-auto min-w-[140px] h-10">
-                                        <SelectValue placeholder="Asignación" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ALL">Todos</SelectItem>
-                                        <SelectItem value="MINE">Mis proyectos</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            )}
                         </div>
                         {userRole !== "USER" && (
                             <Button
                                 color="success"
-                                onClick={() => setIsNewProjectModalOpen(true)}
+                                onClick={() => {
+                                    // TODO: Phase 2 - create centro modal
+                                    toast("Crear centro se habilitará en la siguiente fase");
+                                }}
                             >
-                                Crear nuevo proyecto
+                                Crear Centro
                                 <PlusCircle className="h-4 w-4 ml-2" />
                             </Button>
                         )}
@@ -244,46 +209,82 @@ function PageContent() {
                     {loading && <SkeletonTable />}
                     {!loading && (
                         <div className="grid grid-cols-1 gap-4">
-                            {projects.map((p) => {
-                                const financed = Number(p.financed_amount ?? 0);
-                                const expenses = Number(p.total_expenses ?? 0);
-                                const inKindDonations = Number((p as any).in_kind_donations ?? 0);
-                                const cashDonations = Number((p as any).cash_donations ?? 0);
-                                const executedPct =
-                                    financed > 0 ? Math.min(100, Math.round((expenses / financed) * 100)) : 0;
-                                const remaining = Math.max(0, financed - expenses);
-                                const progressColor: "destructive" | "warning" | "success" =
-                                    executedPct >= 90 ? "destructive" : executedPct >= 70 ? "warning" : "success";
-                                return (
-                                    <Link
-                                        key={p.id}
-                                        href={`/dashboard/admin/projects/${p.id}`}
-                                        className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
-                                    >
-                                        <ProjectHeader
-                                            name={p.name ?? "-"}
-                                            description={p.description ?? "-"}
-                                            startDate={p.start_date}
-                                            endDate={p.end_date}
-                                            accomplishments={p.accomplishments}
-                                            financed={financed}
-                                            totalExpenses={expenses}
-                                            remaining={remaining}
-                                            executedPct={executedPct}
-                                            progressColor={progressColor}
-                                            inKindDonations={inKindDonations}
-                                            cashDonations={cashDonations}
-                                            projectCategory={p.project_category}
-                                            interactive
-                                        />
-                                    </Link>
-                                );
-                            })}
+                            {centros.map((c) => (
+                                <Link
+                                    key={c.id}
+                                    href={`/dashboard/centros/manage/${c.id}`}
+                                    className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
+                                >
+                                    <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+                                        <CardContent className="p-4">
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex flex-row items-start justify-between gap-2">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <h3 className="font-semibold text-card-foreground text-sm leading-tight">
+                                                                {c.nombre}
+                                                            </h3>
+                                                            {c.siglas && (
+                                                                <Badge variant="secondary" className="text-xs">
+                                                                    {c.siglas}
+                                                                </Badge>
+                                                            )}
+                                                            {c.codigo && (
+                                                                <Badge variant="outline" className="text-xs">
+                                                                    {c.codigo}
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                        {c.descripcion && (
+                                                            <p className="text-muted-foreground text-xs mt-1 line-clamp-2">
+                                                                {c.descripcion}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <Badge
+                                                        variant={c.estatus === 1 ? "soft" : "secondary"}
+                                                        color={c.estatus === 1 ? "success" : "secondary"}
+                                                        className="shrink-0"
+                                                    >
+                                                        {c.estatus === 1 ? "Activo" : "Inactivo"}
+                                                    </Badge>
+                                                </div>
+                                                <div className="flex flex-row flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground mt-1">
+                                                    {(c.departamento_nombre || c.municipio_nombre) && (
+                                                        <span className="inline-flex items-center gap-1">
+                                                            <MapPin className="h-3 w-3" />
+                                                            {[c.municipio_nombre, c.departamento_nombre].filter(Boolean).join(", ")}
+                                                        </span>
+                                                    )}
+                                                    {c.nombre_director && (
+                                                        <span className="inline-flex items-center gap-1">
+                                                            <User className="h-3 w-3" />
+                                                            {c.nombre_director}
+                                                        </span>
+                                                    )}
+                                                    {c.telefono && (
+                                                        <span className="inline-flex items-center gap-1">
+                                                            <Phone className="h-3 w-3" />
+                                                            {c.telefono}
+                                                        </span>
+                                                    )}
+                                                    {c.email && (
+                                                        <span className="inline-flex items-center gap-1">
+                                                            <Mail className="h-3 w-3" />
+                                                            {c.email}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </Link>
+                            ))}
                         </div>
                     )}
-                    {!loading && projects.length === 0 && (
+                    {!loading && centros.length === 0 && (
                         <div className="py-12 text-center text-muted-foreground">
-                            No hay proyectos. Crea uno nuevo para comenzar.
+                            No hay centros registrados.
                         </div>
                     )}
                     {!loading && count > 0 && (
@@ -301,10 +302,9 @@ function PageContent() {
                                             sort,
                                             desc: desc ? "desc" : "asc",
                                             search,
-                                            status: statusFilter,
+                                            estatus: statusFilter,
                                         });
-                                        if (assignedFilter === "MINE") params.set("assigned_to", "me");
-                                        getProjects(params.toString());
+                                        getCentros(params.toString());
                                     }}
                                 >
                                     <SelectTrigger size="sm" className="w-[100px]">
@@ -373,11 +373,6 @@ function PageContent() {
                     )}
                 </CardContent>
             </Card>
-            <NewProjectModal
-                isOpen={isNewProjectModalOpen}
-                setIsOpen={setIsNewProjectModalOpen}
-                reloadList={reloadList}
-            />
         </div>
     );
 }
