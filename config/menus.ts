@@ -7,6 +7,7 @@ import {
   Pages,
   User
 } from "@/components/svg";
+import { Folder } from "lucide-react";
 
 
 export interface MenuItemProps {
@@ -40,6 +41,12 @@ let navs = [
         title: 'Bitácoras',
         href: "/dashboard/admin/logs",
       },
+    ]
+  },
+  {
+    title: "Proyectos",
+    icon: Folder,
+    child: [
       {
         title: 'Fuentes',
         href: "/dashboard/admin/financing-sources",

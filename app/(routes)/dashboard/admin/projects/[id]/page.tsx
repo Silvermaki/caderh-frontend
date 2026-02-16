@@ -1096,12 +1096,11 @@ const Page = () => {
                                                         className="mt-1 w-full justify-between font-normal hover:bg-transparent hover:text-primary hover:border-current"
                                                         disabled={assigningAgent}
                                                     >
-                                                        <span className="truncate">
+                                                        <span className="truncate min-w-0">
                                                             {(() => {
                                                                 const assigned = Array.isArray(project?.assigned_agents) ? project.assigned_agents : [];
                                                                 if (assigned.length === 0) return "Sin asignar";
-                                                                if (assigned.length === 1) return assigned[0].name;
-                                                                return `${assigned.length} agentes seleccionados`;
+                                                                return assigned.map((a: any) => a.name).join(", ");
                                                             })()}
                                                         </span>
                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

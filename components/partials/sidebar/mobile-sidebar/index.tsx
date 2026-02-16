@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { cn, isLocationMatch } from "@/lib/utils";
 import { useSidebar, useThemeStore } from "@/store";
 import SidebarLogo from "../common/logo";
@@ -10,12 +10,19 @@ import { usePathname } from "next/navigation";
 import SingleMenuItem from "./single-menu-item";
 import SubMenuHandler from "./sub-menu-handler";
 import NestedSubMenu from "../common/nested-menus";
+import { useSession } from "next-auth/react";
 
 const MobileSidebar = ({ className }: { className?: string }) => {
   const { sidebarBg, mobileMenu, setMobileMenu } = useSidebar();
   const [activeSubmenu, setActiveSubmenu] = useState<number | null>(null);
   const [activeMultiMenu, setMultiMenu] = useState<number | null>(null);
-  const menus = menusConfig?.sidebarNav?.classic || [];
+  const { data: session } = useSession() as { data?: { user?: { role?: string } } };
+  const userRole = session?.user?.role;
+  const menus = useMemo(() => {
+    const classic = menusConfig?.sidebarNav?.classic || [];
+    if (userRole === "ADMIN") return classic;
+    return classic.filter((item: any) => item.title !== "Administración");
+  }, [userRole]);
   const { collapsed } = useSidebar();
 
   const toggleSubmenu = (i: number) => {

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { cn, isLocationMatch, getDynamicPath } from "@/lib/utils";
 import SidebarLogo from "../common/logo";
 import { menusConfig } from "@/config/menus";
@@ -10,11 +10,18 @@ import NestedSubMenu from "../common/nested-menus";
 import { useSidebar, useThemeStore } from "@/store";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 const PopoverSidebar = () => {
   const { collapsed, sidebarBg } = useSidebar();
   const { layout, isRtl } = useThemeStore();
-  const menus = menusConfig?.sidebarNav?.classic || [];
+  const { data: session } = useSession() as { data?: { user?: { role?: string } } };
+  const userRole = session?.user?.role;
+  const menus = useMemo(() => {
+    const classic = menusConfig?.sidebarNav?.classic || [];
+    if (userRole === "ADMIN") return classic;
+    return classic.filter((item: any) => item.title !== "Administración");
+  }, [userRole]);
   const [activeSubmenu, setActiveSubmenu] = useState<number | null>(null);
   const [activeMultiMenu, setMultiMenu] = useState<number | null>(null);
 
