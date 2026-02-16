@@ -894,26 +894,6 @@ const Page = () => {
                     <BreadcrumbItem className="text-primary">Detalle del Proyecto</BreadcrumbItem>
                 </Breadcrumbs>
                 <div className="flex gap-2 items-center">
-                    {isSupervisor && (
-                        <div className="flex items-center gap-2 mr-2">
-                            <span className="text-sm text-muted-foreground whitespace-nowrap">Agente:</span>
-                            <Select
-                                value={project?.assigned_agent_id ?? "__none__"}
-                                onValueChange={(v) => onAssignAgent(v === "__none__" ? null : v)}
-                                disabled={assigningAgent}
-                            >
-                                <SelectTrigger className="w-[200px] h-9">
-                                    <SelectValue placeholder="Sin asignar" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="__none__">Sin asignar</SelectItem>
-                                    {agents.map((a: any) => (
-                                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    )}
                     {isSupervisor && (project?.project_status === "ACTIVE" || project?.project_status === "ARCHIVED") && (
                         <Button
                             variant="outline"
@@ -1104,6 +1084,26 @@ const Page = () => {
                                             </Select>
                                         </div>
                                     </div>
+                                    {isSupervisor && (
+                                        <div>
+                                            <Label>Agente asignado</Label>
+                                            <Select
+                                                value={project?.assigned_agent_id ?? "__none__"}
+                                                onValueChange={(v) => onAssignAgent(v === "__none__" ? null : v)}
+                                                disabled={assigningAgent}
+                                            >
+                                                <SelectTrigger className="mt-1">
+                                                    <SelectValue placeholder="Sin asignar" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="__none__">Sin asignar</SelectItem>
+                                                    {agents.map((a: any) => (
+                                                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
                                     <div>
                                         <Label>Descripción *</Label>
                                         <Textarea
