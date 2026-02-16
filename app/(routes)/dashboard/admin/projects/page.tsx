@@ -274,7 +274,6 @@ function PageContent() {
                                             inKindDonations={inKindDonations}
                                             cashDonations={cashDonations}
                                             projectCategory={p.project_category}
-                                            assignedAgentName={p.assigned_agent_name}
                                             interactive
                                         />
                                     </Link>

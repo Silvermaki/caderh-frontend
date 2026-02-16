@@ -58,7 +58,10 @@ import {
     Loader2,
     Archive,
     ArchiveRestore,
+    ChevronsUpDown,
+    Check,
 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { dateToString, formatCurrency, prettifyNumber } from "@/app/libs/utils";
 import { Progress } from "@/components/ui/progress";
@@ -346,7 +349,7 @@ const Page = () => {
         } catch { }
     };
 
-    const onAssignAgent = async (agentId: string | null) => {
+    const onAssignAgents = async (agentIds: string[]) => {
         setAssigningAgent(true);
         try {
             const res = await fetch(
@@ -357,18 +360,18 @@ const Page = () => {
                         "Content-Type": "application/json",
                         Authorization: `Bearer ${session?.user?.session}`,
                     },
-                    body: JSON.stringify({ agent_id: agentId }),
+                    body: JSON.stringify({ agent_ids: agentIds }),
                 }
             );
             const json = await res.json();
             if (res.ok) {
-                toast.success(agentId ? "Agente asignado" : "Agente desasignado");
+                toast.success("Agentes actualizados");
                 fetchProject();
             } else {
-                toast.error(json.message ?? "Error al asignar agente");
+                toast.error(json.message ?? "Error al asignar agentes");
             }
         } catch {
-            toast.error("Error al asignar agente");
+            toast.error("Error al asignar agentes");
         }
         setAssigningAgent(false);
     };
@@ -880,7 +883,7 @@ const Page = () => {
         .reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
 
     const isSupervisor = userRole === 'ADMIN' || userRole === 'MANAGER';
-    const canEdit = isSupervisor || (userRole === 'USER' && project?.assigned_agent_id === userId);
+    const canEdit = isSupervisor || (userRole === 'USER' && Array.isArray(project?.assigned_agents) && project.assigned_agents.some((a: any) => a.id === userId));
 
     return (
         <div className="mb-4">
@@ -939,7 +942,6 @@ const Page = () => {
                 inKindDonations={inKindDonations}
                 cashDonations={cashDonations}
                 projectCategory={project.project_category}
-                assignedAgentName={project.assigned_agent_name}
             />
 
             <Card>
@@ -1086,22 +1088,58 @@ const Page = () => {
                                     </div>
                                     {isSupervisor && (
                                         <div>
-                                            <Label>Agente asignado</Label>
-                                            <Select
-                                                value={project?.assigned_agent_id ?? "__none__"}
-                                                onValueChange={(v) => onAssignAgent(v === "__none__" ? null : v)}
-                                                disabled={assigningAgent}
-                                            >
-                                                <SelectTrigger className="mt-1">
-                                                    <SelectValue placeholder="Sin asignar" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="__none__">Sin asignar</SelectItem>
-                                                    {agents.map((a: any) => (
-                                                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <Label>Agentes asignados</Label>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        className="mt-1 w-full justify-between font-normal hover:bg-transparent hover:text-primary hover:border-current"
+                                                        disabled={assigningAgent}
+                                                    >
+                                                        <span className="truncate">
+                                                            {(() => {
+                                                                const assigned = Array.isArray(project?.assigned_agents) ? project.assigned_agents : [];
+                                                                if (assigned.length === 0) return "Sin asignar";
+                                                                if (assigned.length === 1) return assigned[0].name;
+                                                                return `${assigned.length} agentes seleccionados`;
+                                                            })()}
+                                                        </span>
+                                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                    </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[300px] p-0" align="start">
+                                                    <div className="max-h-[250px] overflow-y-auto p-1">
+                                                        {agents.map((a: any) => {
+                                                            const currentIds = Array.isArray(project?.assigned_agents) ? project.assigned_agents.map((x: any) => x.id) : [];
+                                                            const isSelected = currentIds.includes(a.id);
+                                                            return (
+                                                                <button
+                                                                    key={a.id}
+                                                                    type="button"
+                                                                    className="flex items-center gap-2 w-full rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                                                                    onClick={() => {
+                                                                        const newIds = isSelected
+                                                                            ? currentIds.filter((id: string) => id !== a.id)
+                                                                            : [...currentIds, a.id];
+                                                                        onAssignAgents(newIds);
+                                                                    }}
+                                                                >
+                                                                    <div className={cn(
+                                                                        "flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                                                                        isSelected ? "bg-primary text-primary-foreground" : "opacity-50"
+                                                                    )}>
+                                                                        {isSelected && <Check className="h-3 w-3" />}
+                                                                    </div>
+                                                                    {a.name}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                        {agents.length === 0 && (
+                                                            <p className="text-sm text-muted-foreground p-2">No hay agentes disponibles</p>
+                                                        )}
+                                                    </div>
+                                                </PopoverContent>
+                                            </Popover>
                                         </div>
                                     )}
                                     <div>
