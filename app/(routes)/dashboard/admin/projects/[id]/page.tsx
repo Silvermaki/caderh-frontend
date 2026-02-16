@@ -183,6 +183,12 @@ const Page = () => {
     const [fileDescription, setFileDescription] = useState("");
     const [fileFilename, setFileFilename] = useState("");
 
+    const [agents, setAgents] = useState<any[]>([]);
+    const [assigningAgent, setAssigningAgent] = useState(false);
+
+    const userRole = session?.user?.role;
+    const userId = session?.user?.id;
+
     const fetchProject = async () => {
         if (!id || !session) return;
         try {
@@ -326,6 +332,47 @@ const Page = () => {
         setCreatingCategory(false);
     };
 
+    const fetchAgents = async () => {
+        if (!session || userRole === 'USER') return;
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/agents`,
+                { headers: { Authorization: `Bearer ${session?.user?.session}` } }
+            );
+            if (res.ok) {
+                const json = await res.json();
+                setAgents(json.data ?? []);
+            }
+        } catch { }
+    };
+
+    const onAssignAgent = async (agentId: string | null) => {
+        setAssigningAgent(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/assign`,
+                {
+                    method: "PATCH",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session?.user?.session}`,
+                    },
+                    body: JSON.stringify({ agent_id: agentId }),
+                }
+            );
+            const json = await res.json();
+            if (res.ok) {
+                toast.success(agentId ? "Agente asignado" : "Agente desasignado");
+                fetchProject();
+            } else {
+                toast.error(json.message ?? "Error al asignar agente");
+            }
+        } catch {
+            toast.error("Error al asignar agente");
+        }
+        setAssigningAgent(false);
+    };
+
     const reloadAll = () => {
         fetchProject();
         fetchStep2();
@@ -339,6 +386,7 @@ const Page = () => {
             fetchProject();
             fetchFinancingSourcesList();
             fetchExpenseCategories();
+            fetchAgents();
         }
     }, [session, id]);
 
@@ -831,6 +879,9 @@ const Page = () => {
         .filter((d: any) => String(d.donation_type).toUpperCase() === "BENEFIT")
         .reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
 
+    const isSupervisor = userRole === 'ADMIN' || userRole === 'MANAGER';
+    const canEdit = isSupervisor || (userRole === 'USER' && project?.assigned_agent_id === userId);
+
     return (
         <div className="mb-4">
             <div className="flex justify-between items-center mb-4">
@@ -842,8 +893,28 @@ const Page = () => {
                     </BreadcrumbItem>
                     <BreadcrumbItem className="text-primary">Detalle del Proyecto</BreadcrumbItem>
                 </Breadcrumbs>
-                <div className="flex gap-2">
-                    {(project?.project_status === "ACTIVE" || project?.project_status === "ARCHIVED") && (
+                <div className="flex gap-2 items-center">
+                    {isSupervisor && (
+                        <div className="flex items-center gap-2 mr-2">
+                            <span className="text-sm text-muted-foreground whitespace-nowrap">Agente:</span>
+                            <Select
+                                value={project?.assigned_agent_id ?? "__none__"}
+                                onValueChange={(v) => onAssignAgent(v === "__none__" ? null : v)}
+                                disabled={assigningAgent}
+                            >
+                                <SelectTrigger className="w-[200px] h-9">
+                                    <SelectValue placeholder="Sin asignar" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="__none__">Sin asignar</SelectItem>
+                                    {agents.map((a: any) => (
+                                        <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                    {isSupervisor && (project?.project_status === "ACTIVE" || project?.project_status === "ARCHIVED") && (
                         <Button
                             variant="outline"
                             onClick={() => setArchiveDialogOpen(true)}
@@ -855,16 +926,24 @@ const Page = () => {
                             }
                         </Button>
                     )}
-                    <Button
-                        color="destructive"
-                        onClick={() => setDeleteDialogOpen(true)}
-                        disabled={deleting}
-                    >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Eliminar Proyecto
-                    </Button>
+                    {isSupervisor && (
+                        <Button
+                            color="destructive"
+                            onClick={() => setDeleteDialogOpen(true)}
+                            disabled={deleting}
+                        >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Eliminar Proyecto
+                        </Button>
+                    )}
                 </div>
             </div>
+
+            {!canEdit && userRole === 'USER' && (
+                <div className="mb-4 p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm dark:bg-amber-950 dark:border-amber-800 dark:text-amber-300">
+                    Solo puedes ver este proyecto. No tienes asignación para editarlo.
+                </div>
+            )}
 
             <ProjectHeader
                 name={project.name}
@@ -880,6 +959,7 @@ const Page = () => {
                 inKindDonations={inKindDonations}
                 cashDonations={cashDonations}
                 projectCategory={project.project_category}
+                assignedAgentName={project.assigned_agent_name}
             />
 
             <Card>
@@ -921,7 +1001,7 @@ const Page = () => {
                         <div className="flex flex-row items-center justify-between mb-6">
                             <h3 className="text-lg font-semibold">Información General del Proyecto</h3>
                             {!infoEditing ? (
-                                <Button onClick={() => setInfoEditing(true)}>
+                                canEdit && <Button onClick={() => setInfoEditing(true)}>
                                     <Pencil className="h-4 w-4 mr-2" />
                                     Editar
                                 </Button>
@@ -979,7 +1059,7 @@ const Page = () => {
                                     <InfoSection title="Logros del Proyecto">
                                         <AchievementsList
                                             accomplishments={project.accomplishments}
-                                            onToggle={(index, checked) => {
+                                            onToggle={canEdit ? (index, checked) => {
                                                 const acc = Array.isArray(project.accomplishments)
                                                     ? project.accomplishments
                                                     : [];
@@ -992,8 +1072,8 @@ const Page = () => {
                                                         completed: x.completed,
                                                     }))
                                                 );
-                                            }}
-                                            disabled={accomplishmentsPatching}
+                                            } : undefined}
+                                            disabled={accomplishmentsPatching || !canEdit}
                                         />
                                     </InfoSection>
                                 </div>
@@ -1155,28 +1235,32 @@ const Page = () => {
                                     <Download className="h-4 w-4 mr-2" />
                                     Descargar Formato
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={excelImporting}
-                                    onClick={() => {
-                                        const input = document.createElement("input");
-                                        input.type = "file";
-                                        input.accept = ".xlsx";
-                                        input.onchange = (e: any) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) importExcelFile(file, "financing-sources");
-                                        };
-                                        input.click();
-                                    }}
-                                >
-                                    {excelImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-                                    Importar Excel
-                                </Button>
-                                <Button size="sm" onClick={() => setAddSourceOpen(true)} color="success">
-                                    <PlusCircle className="h-4 w-4 mr-2" />
-                                    Agregar Fuente
-                                </Button>
+                                {canEdit && (
+                                    <>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={excelImporting}
+                                            onClick={() => {
+                                                const input = document.createElement("input");
+                                                input.type = "file";
+                                                input.accept = ".xlsx";
+                                                input.onchange = (e: any) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) importExcelFile(file, "financing-sources");
+                                                };
+                                                input.click();
+                                            }}
+                                        >
+                                            {excelImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                                            Importar Excel
+                                        </Button>
+                                        <Button size="sm" onClick={() => setAddSourceOpen(true)} color="success">
+                                            <PlusCircle className="h-4 w-4 mr-2" />
+                                            Agregar Fuente
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </div>
                         {financingSources.length === 0 ? (
@@ -1190,7 +1274,7 @@ const Page = () => {
                                             <TableHead>Nombre</TableHead>
                                             <TableHead>Descripción</TableHead>
                                             <TableHead>Monto</TableHead>
-                                            <TableHead>Acciones</TableHead>
+                                            {canEdit && <TableHead>Acciones</TableHead>}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1199,16 +1283,18 @@ const Page = () => {
                                                 <TableCell>{r.financing_source_name ?? "-"}</TableCell>
                                                 <TableCell>{r.description || "-"}</TableCell>
                                                 <TableCell>{formatCurrency(Number(r.amount ?? 0))}</TableCell>
-                                                <TableCell>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="text-destructive"
-                                                        onClick={() => onDeleteSource(r.id)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </TableCell>
+                                                {canEdit && (
+                                                    <TableCell>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="text-destructive"
+                                                            onClick={() => onDeleteSource(r.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                )}
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -1228,28 +1314,32 @@ const Page = () => {
                                     <Download className="h-4 w-4 mr-2" />
                                     Descargar Formato
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={excelImporting}
-                                    onClick={() => {
-                                        const input = document.createElement("input");
-                                        input.type = "file";
-                                        input.accept = ".xlsx";
-                                        input.onchange = (e: any) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) importExcelFile(file, "donations");
-                                        };
-                                        input.click();
-                                    }}
-                                >
-                                    {excelImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-                                    Importar Excel
-                                </Button>
-                                <Button size="sm" onClick={() => setAddDonationOpen(true)} color="success">
-                                    <PlusCircle className="h-4 w-4 mr-2" />
-                                    Agregar Donación
-                                </Button>
+                                {canEdit && (
+                                    <>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={excelImporting}
+                                            onClick={() => {
+                                                const input = document.createElement("input");
+                                                input.type = "file";
+                                                input.accept = ".xlsx";
+                                                input.onchange = (e: any) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) importExcelFile(file, "donations");
+                                                };
+                                                input.click();
+                                            }}
+                                        >
+                                            {excelImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                                            Importar Excel
+                                        </Button>
+                                        <Button size="sm" onClick={() => setAddDonationOpen(true)} color="success">
+                                            <PlusCircle className="h-4 w-4 mr-2" />
+                                            Agregar Donación
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 mb-4">
@@ -1282,7 +1372,7 @@ const Page = () => {
                                             <TableHead>Tipo</TableHead>
                                             <TableHead>Monto</TableHead>
                                             <TableHead>Fecha</TableHead>
-                                            <TableHead>Acciones</TableHead>
+                                            {canEdit && <TableHead>Acciones</TableHead>}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1294,16 +1384,18 @@ const Page = () => {
                                                 <TableCell>
                                                     {r.created_dt ? dateToString(new Date(r.created_dt)) : "-"}
                                                 </TableCell>
-                                                <TableCell>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="text-destructive"
-                                                        onClick={() => onDeleteDonation(r.id)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </TableCell>
+                                                {canEdit && (
+                                                    <TableCell>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="text-destructive"
+                                                            onClick={() => onDeleteDonation(r.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                )}
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -1328,28 +1420,32 @@ const Page = () => {
                                     <Download className="h-4 w-4 mr-2" />
                                     Descargar Formato
                                 </Button>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={excelImporting}
-                                    onClick={() => {
-                                        const input = document.createElement("input");
-                                        input.type = "file";
-                                        input.accept = ".xlsx";
-                                        input.onchange = (e: any) => {
-                                            const file = e.target.files?.[0];
-                                            if (file) importExcelFile(file, "expenses");
-                                        };
-                                        input.click();
-                                    }}
-                                >
-                                    {excelImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
-                                    Importar Excel
-                                </Button>
-                                <Button size="sm" onClick={() => setAddExpenseOpen(true)} color="success">
-                                    <PlusCircle className="h-4 w-4 mr-2" />
-                                    Agregar Gasto
-                                </Button>
+                                {canEdit && (
+                                    <>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            disabled={excelImporting}
+                                            onClick={() => {
+                                                const input = document.createElement("input");
+                                                input.type = "file";
+                                                input.accept = ".xlsx";
+                                                input.onchange = (e: any) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) importExcelFile(file, "expenses");
+                                                };
+                                                input.click();
+                                            }}
+                                        >
+                                            {excelImporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                                            Importar Excel
+                                        </Button>
+                                        <Button size="sm" onClick={() => setAddExpenseOpen(true)} color="success">
+                                            <PlusCircle className="h-4 w-4 mr-2" />
+                                            Agregar Gasto
+                                        </Button>
+                                    </>
+                                )}
                             </div>
                         </div>
                         {expenses.length === 0 ? (
@@ -1363,7 +1459,7 @@ const Page = () => {
                                             <TableHead>Descripción</TableHead>
                                             <TableHead>Categoría</TableHead>
                                             <TableHead>Monto</TableHead>
-                                            <TableHead>Acciones</TableHead>
+                                            {canEdit && <TableHead>Acciones</TableHead>}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -1374,16 +1470,18 @@ const Page = () => {
                                                     <TableCell>{r.description || "-"}</TableCell>
                                                     <TableCell>{cat?.name ?? "-"}</TableCell>
                                                     <TableCell>{formatCurrency(Number(r.amount ?? 0))}</TableCell>
-                                                    <TableCell>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="text-destructive"
-                                                            onClick={() => onDeleteExpense(r.id)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </TableCell>
+                                                    {canEdit && (
+                                                        <TableCell>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="text-destructive"
+                                                                onClick={() => onDeleteExpense(r.id)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </TableCell>
+                                                    )}
                                                 </TableRow>
                                             );
                                         })}
@@ -1400,40 +1498,42 @@ const Page = () => {
                             </span>
                         </div>
                         <div className="space-y-4">
-                            <div>
-                                <Label className="mb-2 block">Nombre del archivo (opcional)</Label>
-                                <Input
-                                    value={fileFilename}
-                                    onChange={(e) => setFileFilename(e.target.value)}
-                                    placeholder="Nombre con el que se guardará"
-                                    disabled={fileUploading}
-                                    className="mb-2"
-                                />
-                                <Label className="mb-2 block">Descripción (opcional)</Label>
-                                <Input
-                                    value={fileDescription}
-                                    onChange={(e) => setFileDescription(e.target.value)}
-                                    placeholder="Descripción del archivo"
-                                    disabled={fileUploading}
-                                    className="mb-4"
-                                />
-                                <div
-                                    {...getRootProps()}
-                                    className={cn(
-                                        "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
-                                        "hover:border-primary/50 hover:bg-primary/5",
-                                        isDragActive && "border-primary bg-primary/10",
-                                        isDragReject && "border-destructive bg-destructive/10",
-                                        !isDragActive && !isDragReject && "border-default-300"
-                                    )}
-                                >
-                                    <input {...getInputProps()} />
-                                    <p className="text-sm font-medium mb-1">
-                                        {isDragActive ? "Suelta aquí" : isDragReject ? "Tipo no permitido" : "Arrastra archivos o haz clic"}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">pdf, docx, xlsx, jpg, png · Máx. 10MB</p>
+                            {canEdit && (
+                                <div>
+                                    <Label className="mb-2 block">Nombre del archivo (opcional)</Label>
+                                    <Input
+                                        value={fileFilename}
+                                        onChange={(e) => setFileFilename(e.target.value)}
+                                        placeholder="Nombre con el que se guardará"
+                                        disabled={fileUploading}
+                                        className="mb-2"
+                                    />
+                                    <Label className="mb-2 block">Descripción (opcional)</Label>
+                                    <Input
+                                        value={fileDescription}
+                                        onChange={(e) => setFileDescription(e.target.value)}
+                                        placeholder="Descripción del archivo"
+                                        disabled={fileUploading}
+                                        className="mb-4"
+                                    />
+                                    <div
+                                        {...getRootProps()}
+                                        className={cn(
+                                            "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
+                                            "hover:border-primary/50 hover:bg-primary/5",
+                                            isDragActive && "border-primary bg-primary/10",
+                                            isDragReject && "border-destructive bg-destructive/10",
+                                            !isDragActive && !isDragReject && "border-default-300"
+                                        )}
+                                    >
+                                        <input {...getInputProps()} />
+                                        <p className="text-sm font-medium mb-1">
+                                            {isDragActive ? "Suelta aquí" : isDragReject ? "Tipo no permitido" : "Arrastra archivos o haz clic"}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">pdf, docx, xlsx, jpg, png · Máx. 10MB</p>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                             {files.length > 0 && (
                                 <div className="space-y-2">
                                     <Label>Archivos subidos ({files.length})</Label>
@@ -1460,14 +1560,16 @@ const Page = () => {
                                                     >
                                                         <Download className="h-4 w-4" />
                                                     </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        className="text-destructive"
-                                                        onClick={() => deleteFile(f.id)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
+                                                    {canEdit && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="text-destructive"
+                                                            onClick={() => deleteFile(f.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    )}
                                                 </div>
                                             </div>
                                         );

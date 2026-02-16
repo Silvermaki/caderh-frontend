@@ -39,7 +39,9 @@ function PageContent() {
     const [searchInput, setSearchInput] = useState<string>(searchInit);
     const [loading, setLoading] = useState<boolean>(true);
     const [statusFilter, setStatusFilter] = useState<string>("ACTIVE");
+    const [assignedFilter, setAssignedFilter] = useState<string>("ALL");
     const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState<boolean>(false);
+    const userRole = session?.user?.role;
 
     const getProjects = async (params: string) => {
         setLoading(true);
@@ -67,8 +69,9 @@ function PageContent() {
         setLoading(false);
     };
 
-    const getDataInit = async (searchValue: string, status?: string) => {
+    const getDataInit = async (searchValue: string, status?: string, assigned?: string) => {
         const activeStatus = status ?? statusFilter;
+        const activeAssigned = assigned ?? assignedFilter;
         setSearch(searchValue);
         const params = new URLSearchParams({
             offset: "0",
@@ -78,6 +81,7 @@ function PageContent() {
             search: searchValue,
             status: activeStatus,
         });
+        if (activeAssigned === "MINE") params.set("assigned_to", "me");
         await getProjects(params.toString());
         setOffset(0);
     };
@@ -91,6 +95,7 @@ function PageContent() {
             search: searching,
             status: statusFilter,
         });
+        if (assignedFilter === "MINE") params.set("assigned_to", "me");
         setSearch(searching);
         await getProjects(params.toString());
         setOffset(0);
@@ -106,6 +111,7 @@ function PageContent() {
             search,
             status: statusFilter,
         });
+        if (assignedFilter === "MINE") params.set("assigned_to", "me");
         await getProjects(params.toString());
     };
 
@@ -137,6 +143,7 @@ function PageContent() {
             search,
             status: statusFilter,
         });
+        if (assignedFilter === "MINE") params.set("assigned_to", "me");
         getProjects(params.toString());
     };
 
@@ -205,14 +212,34 @@ function PageContent() {
                                     <SelectItem value="ARCHIVED">Archivado</SelectItem>
                                 </SelectContent>
                             </Select>
+                            {userRole === "USER" && (
+                                <Select
+                                    value={assignedFilter}
+                                    onValueChange={(v) => {
+                                        setAssignedFilter(v);
+                                        setOffset(0);
+                                        getDataInit(search, undefined, v);
+                                    }}
+                                >
+                                    <SelectTrigger className="w-auto min-w-[140px] h-10">
+                                        <SelectValue placeholder="Asignación" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ALL">Todos</SelectItem>
+                                        <SelectItem value="MINE">Mis proyectos</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            )}
                         </div>
-                        <Button
-                            color="success"
-                            onClick={() => setIsNewProjectModalOpen(true)}
-                        >
-                            Crear nuevo proyecto
-                            <PlusCircle className="h-4 w-4 ml-2" />
-                        </Button>
+                        {userRole !== "USER" && (
+                            <Button
+                                color="success"
+                                onClick={() => setIsNewProjectModalOpen(true)}
+                            >
+                                Crear nuevo proyecto
+                                <PlusCircle className="h-4 w-4 ml-2" />
+                            </Button>
+                        )}
                     </div>
                     {loading && <SkeletonTable />}
                     {!loading && (
@@ -247,6 +274,7 @@ function PageContent() {
                                             inKindDonations={inKindDonations}
                                             cashDonations={cashDonations}
                                             projectCategory={p.project_category}
+                                            assignedAgentName={p.assigned_agent_name}
                                             interactive
                                         />
                                     </Link>
@@ -276,6 +304,7 @@ function PageContent() {
                                             search,
                                             status: statusFilter,
                                         });
+                                        if (assignedFilter === "MINE") params.set("assigned_to", "me");
                                         getProjects(params.toString());
                                     }}
                                 >

@@ -38,6 +38,8 @@ interface ProjectHeaderProps {
     cashDonations?: number;
     /** Categoría del proyecto (PROJECT o AGREEMENT). */
     projectCategory?: string;
+    /** Nombre del agente asignado al proyecto. */
+    assignedAgentName?: string | null;
 }
 
 const ProjectHeader = ({
@@ -55,6 +57,7 @@ const ProjectHeader = ({
     inKindDonations,
     cashDonations,
     projectCategory,
+    assignedAgentName,
 }: ProjectHeaderProps) => {
     const acc = Array.isArray(accomplishments)
         ? accomplishments.filter((a: any) => a && typeof a.text === "string")
@@ -79,6 +82,11 @@ const ProjectHeader = ({
                     {projectCategory && (
                         <Badge variant={projectCategory === "AGREEMENT" ? "outline" : "default"} className="text-xs shrink-0">
                             {projectCategory === "AGREEMENT" ? "Convenio" : "Proyecto"}
+                        </Badge>
+                    )}
+                    {assignedAgentName && (
+                        <Badge variant="secondary" className="text-xs shrink-0">
+                            Agente: {assignedAgentName}
                         </Badge>
                     )}
                 </div>

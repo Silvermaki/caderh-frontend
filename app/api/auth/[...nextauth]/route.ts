@@ -66,7 +66,7 @@ const authOptions: AuthOptions = {
                         throw new Error(response.message);
                     } else {
                         const user = {
-                            id: response.email,
+                            id: response.id,
                             session: response.session,
                             email: response.email,
                             name: response.name,
