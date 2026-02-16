@@ -923,8 +923,8 @@ const Page = () => {
             </div>
 
             {!canEdit && userRole === 'USER' && (
-                <div className="mb-4 p-3 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm dark:bg-amber-950 dark:border-amber-800 dark:text-amber-300">
-                    Solo puedes ver este proyecto. No tienes asignación para editarlo.
+                <div className="mb-4 p-3 rounded-md bg-white border border-default-200 text-gray-400 text-sm dark:bg-default-950 dark:border-default-800 dark:text-default-300">
+                    Tienes acceso de solo lectura a este proyecto. Para editarlo, un supervisor debe asignarte como agente.
                 </div>
             )}
 
