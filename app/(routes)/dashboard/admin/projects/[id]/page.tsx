@@ -63,7 +63,9 @@ import {
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { dateToString, formatCurrency, prettifyNumber } from "@/app/libs/utils";
+import { dateToString, timeToString, formatCurrency, prettifyNumber } from "@/app/libs/utils";
+import { Icon } from "@iconify/react";
+import SkeletonTable from "@/components/skeleton-table";
 import { Progress } from "@/components/ui/progress";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
@@ -193,7 +195,7 @@ const Page = () => {
     const [logsCount, setLogsCount] = useState(0);
     const [logsOffset, setLogsOffset] = useState(0);
     const [logsLoading, setLogsLoading] = useState(false);
-    const logsLimit = 10;
+    const [logsLimit, setLogsLimit] = useState(10);
 
     const userRole = session?.user?.role;
     const userId = session?.user?.id;
@@ -355,12 +357,12 @@ const Page = () => {
         } catch { }
     };
 
-    const fetchProjectLogs = async (offsetVal = 0) => {
+    const fetchProjectLogs = async (offsetVal = 0, limitOverride?: number) => {
         if (!id || !session) return;
         setLogsLoading(true);
         try {
             const params = new URLSearchParams({
-                limit: String(logsLimit),
+                limit: String(limitOverride ?? logsLimit),
                 offset: String(offsetVal),
             });
             const res = await fetch(
@@ -1652,55 +1654,112 @@ const Page = () => {
 
                     <TabsContent value="bitacora" className="mt-0 px-6 pt-6 pb-6">
                         <h3 className="text-lg font-semibold mb-4">Bitácora del Proyecto</h3>
-                        {logsLoading ? (
-                            <div className="flex justify-center py-8">
-                                <Loader2 className="h-6 w-6 animate-spin" />
-                            </div>
-                        ) : projectLogs.length === 0 ? (
-                            <p className="text-muted-foreground text-sm">No hay registros en la bitácora.</p>
-                        ) : (
-                            <>
+                        {logsLoading && <SkeletonTable />}
+                        {!logsLoading && (
+                            <div className="rounded-md border">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead>Fecha</TableHead>
+                                            <TableHead>Hora</TableHead>
                                             <TableHead>Usuario</TableHead>
-                                            <TableHead>Acción</TableHead>
+                                            <TableHead>Bitácora</TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {projectLogs.map((l: any) => (
                                             <TableRow key={l.id}>
-                                                <TableCell className="whitespace-nowrap">{dateToString(new Date(l.created_dt))}</TableCell>
-                                                <TableCell>{l.user_name ?? "-"}</TableCell>
-                                                <TableCell>{l.log}</TableCell>
+                                                <TableCell className="text-sm whitespace-nowrap">
+                                                    {l.created_dt ? dateToString(new Date(l.created_dt)) : "-"}
+                                                </TableCell>
+                                                <TableCell className="text-sm whitespace-nowrap">
+                                                    {l.created_dt ? timeToString(new Date(l.created_dt)) : "-"}
+                                                </TableCell>
+                                                <TableCell className="text-sm">{l.user_name ?? "-"}</TableCell>
+                                                <TableCell className="text-sm text-muted-foreground max-w-[300px]">
+                                                    <span className="line-clamp-2">{l.log ?? "-"}</span>
+                                                </TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
                                 </Table>
-                                <div className="flex justify-between items-center mt-4 text-sm">
-                                    <span className="text-muted-foreground">{logsCount} registro(s)</span>
-                                    <div className="flex gap-2">
+                            </div>
+                        )}
+                        {!logsLoading && projectLogs.length === 0 && (
+                            <div className="py-12 text-center text-muted-foreground">
+                                No hay registros en la bitácora.
+                            </div>
+                        )}
+                        {!logsLoading && (() => {
+                            const logsPages = logsCount > 0 ? Math.ceil(logsCount / logsLimit) : 0;
+                            const logsPageIndices = Array.from({ length: logsPages }, (_, i) => i);
+                            const shouldShowLogPage = (pageIdx: number) => {
+                                if (logsOffset <= 2 && pageIdx <= 6) return true;
+                                if (logsOffset >= logsPages - 3 && pageIdx >= logsPages - 7) return true;
+                                if (logsOffset + 3 >= pageIdx && logsOffset - 3 <= pageIdx) return true;
+                                return false;
+                            };
+                            return (
+                                <div className="flex flex-row flex-wrap items-center justify-between gap-4 mt-6 pt-4 border-t">
+                                    <div className="flex flex-row items-center gap-4">
+                                        <Select
+                                            value={logsLimit + ""}
+                                            onValueChange={(v) => {
+                                                const newLimit = +v;
+                                                setLogsLimit(newLimit);
+                                                setLogsOffset(0);
+                                                fetchProjectLogs(0, newLimit);
+                                            }}
+                                        >
+                                            <SelectTrigger className="w-[100px] h-9">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="10">10</SelectItem>
+                                                <SelectItem value="25">25</SelectItem>
+                                                <SelectItem value="50">50</SelectItem>
+                                                <SelectItem value="100">100</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <div className="text-xs">
+                                            Total: <b>{prettifyNumber(logsCount)}</b>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 items-center">
                                         <Button
-                                            size="sm"
                                             variant="outline"
+                                            size="icon"
+                                            onClick={() => logsOffset > 0 && (() => { const n = logsOffset - 1; setLogsOffset(n); fetchProjectLogs(n * logsLimit); })()}
                                             disabled={logsOffset === 0}
-                                            onClick={() => { const n = logsOffset - 1; setLogsOffset(n); fetchProjectLogs(n * logsLimit); }}
+                                            className="h-8 w-8"
                                         >
-                                            Anterior
+                                            <Icon icon="heroicons:chevron-left" className="w-5 h-5 rtl:rotate-180" />
                                         </Button>
+                                        {logsPageIndices.map((pageIdx) =>
+                                            shouldShowLogPage(pageIdx) ? (
+                                                <Button
+                                                    key={pageIdx}
+                                                    variant={logsOffset === pageIdx ? undefined : "outline"}
+                                                    onClick={() => { setLogsOffset(pageIdx); fetchProjectLogs(pageIdx * logsLimit); }}
+                                                    className="w-8 h-8"
+                                                >
+                                                    {pageIdx + 1}
+                                                </Button>
+                                            ) : null
+                                        )}
                                         <Button
-                                            size="sm"
                                             variant="outline"
-                                            disabled={(logsOffset + 1) * logsLimit >= logsCount}
-                                            onClick={() => { const n = logsOffset + 1; setLogsOffset(n); fetchProjectLogs(n * logsLimit); }}
+                                            size="icon"
+                                            onClick={() => logsOffset + 1 < logsPages && (() => { const n = logsOffset + 1; setLogsOffset(n); fetchProjectLogs(n * logsLimit); })()}
+                                            disabled={logsOffset + 1 >= logsPages}
+                                            className="h-8 w-8"
                                         >
-                                            Siguiente
+                                            <Icon icon="heroicons:chevron-right" className="w-5 h-5 rtl:rotate-180" />
                                         </Button>
                                     </div>
                                 </div>
-                            </>
-                        )}
+                            );
+                        })()}
                     </TabsContent>
                 </Tabs>
             </Card>
