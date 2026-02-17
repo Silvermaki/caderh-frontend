@@ -189,6 +189,12 @@ const Page = () => {
     const [agents, setAgents] = useState<any[]>([]);
     const [assigningAgent, setAssigningAgent] = useState(false);
 
+    const [projectLogs, setProjectLogs] = useState<any[]>([]);
+    const [logsCount, setLogsCount] = useState(0);
+    const [logsOffset, setLogsOffset] = useState(0);
+    const [logsLoading, setLogsLoading] = useState(false);
+    const logsLimit = 10;
+
     const userRole = session?.user?.role;
     const userId = session?.user?.id;
 
@@ -349,6 +355,27 @@ const Page = () => {
         } catch { }
     };
 
+    const fetchProjectLogs = async (offsetVal = 0) => {
+        if (!id || !session) return;
+        setLogsLoading(true);
+        try {
+            const params = new URLSearchParams({
+                limit: String(logsLimit),
+                offset: String(offsetVal),
+            });
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/logs?${params}`,
+                { headers: { Authorization: `Bearer ${session?.user?.session}` } }
+            );
+            if (res.ok) {
+                const json = await res.json();
+                setProjectLogs(json.data ?? []);
+                setLogsCount(json.count ?? 0);
+            }
+        } catch { }
+        setLogsLoading(false);
+    };
+
     const onAssignAgents = async (agentIds: string[]) => {
         setAssigningAgent(true);
         try {
@@ -399,6 +426,7 @@ const Page = () => {
             fetchStep3();
             fetchStep4();
             fetchStep5();
+            fetchProjectLogs();
         }
     }, [project?.id, id]);
 
@@ -976,6 +1004,12 @@ const Page = () => {
                             className="rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                         >
                             Archivos
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="bitacora"
+                            className="rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                        >
+                            Bitácora
                         </TabsTrigger>
                     </TabsList>
 
@@ -1614,6 +1648,59 @@ const Page = () => {
                                 </div>
                             )}
                         </div>
+                    </TabsContent>
+
+                    <TabsContent value="bitacora" className="mt-0 px-6 pt-6 pb-6">
+                        <h3 className="text-lg font-semibold mb-4">Bitácora del Proyecto</h3>
+                        {logsLoading ? (
+                            <div className="flex justify-center py-8">
+                                <Loader2 className="h-6 w-6 animate-spin" />
+                            </div>
+                        ) : projectLogs.length === 0 ? (
+                            <p className="text-muted-foreground text-sm">No hay registros en la bitácora.</p>
+                        ) : (
+                            <>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Fecha</TableHead>
+                                            <TableHead>Usuario</TableHead>
+                                            <TableHead>Acción</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {projectLogs.map((l: any) => (
+                                            <TableRow key={l.id}>
+                                                <TableCell className="whitespace-nowrap">{dateToString(new Date(l.created_dt))}</TableCell>
+                                                <TableCell>{l.user_name ?? "-"}</TableCell>
+                                                <TableCell>{l.log}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                                <div className="flex justify-between items-center mt-4 text-sm">
+                                    <span className="text-muted-foreground">{logsCount} registro(s)</span>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={logsOffset === 0}
+                                            onClick={() => { const n = logsOffset - 1; setLogsOffset(n); fetchProjectLogs(n * logsLimit); }}
+                                        >
+                                            Anterior
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={(logsOffset + 1) * logsLimit >= logsCount}
+                                            onClick={() => { const n = logsOffset + 1; setLogsOffset(n); fetchProjectLogs(n * logsLimit); }}
+                                        >
+                                            Siguiente
+                                        </Button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </TabsContent>
                 </Tabs>
             </Card>
