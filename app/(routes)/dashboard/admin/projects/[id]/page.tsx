@@ -1656,7 +1656,7 @@ const Page = () => {
                         <h3 className="text-lg font-semibold mb-4">Bitácora del Proyecto</h3>
                         {logsLoading && <SkeletonTable />}
                         {!logsLoading && (
-                            <div className="rounded-md border">
+                            <div>
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
