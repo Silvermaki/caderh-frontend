@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,130 +8,209 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
-import { Loader2 } from "lucide-react";
+import { ChevronsUpDown, FileText, Loader2, Search, Trash2, Upload, X } from "lucide-react";
+import { useDropzone } from "react-dropzone";
+import { cn } from "@/lib/utils";
 
 const schema = z.object({
-    identidad: z.string().min(1, "Requerido"),
     nombres: z.string().min(2, "Mínimo 2 caracteres"),
     apellidos: z.string().min(2, "Mínimo 2 caracteres"),
-    departamento_id: z.string().min(1, "Requerido"),
-    municipio_id: z.string().min(1, "Requerido"),
-    email: z.string().optional(),
-    telefono: z.string().optional(),
-    celular: z.string().optional(),
-    sexo: z.string().min(1, "Requerido"),
-    estado_civil: z.string().min(1, "Requerido"),
-    nivel_escolaridad_id: z.string().optional(),
     titulo_obtenido: z.string().optional(),
-    fecha_nacimiento: z.string().optional(),
-    direccion: z.string().optional(),
+    otros_titulos: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
 
+const apiBase = process.env.NEXT_PUBLIC_API_URL;
+
 const InstructorModal = ({
     instructor,
     centroId,
+    centros,
     isOpen,
     setIsOpen,
     reloadList,
 }: {
     instructor: any;
-    centroId: string | number;
+    centroId?: string | number;
+    centros?: { id: number; nombre: string }[];
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
     reloadList: () => void;
 }) => {
     const { data: session } = useSession() as any;
     const isEdit = !!instructor;
-    const [departamentos, setDepartamentos] = useState<any[]>([]);
-    const [municipios, setMunicipios] = useState<any[]>([]);
-    const [nivelEscolaridades, setNivelEscolaridades] = useState<any[]>([]);
+    const authHeaders: any = { Authorization: `Bearer ${session?.user?.session}` };
+    const showCentroSelect = !centroId && !!centros;
+
+    const [selectedCentroId, setSelectedCentroId] = useState<string>("");
+    const [centroOpen, setCentroOpen] = useState(false);
+    const [centroSearch, setCentroSearch] = useState("");
+    const [centrosLocal, setCentrosLocal] = useState<{ id: number; nombre: string }[]>([]);
+    const [pendingFile, setPendingFile] = useState<File | null>(null);
+    const [existingPdf, setExistingPdf] = useState<string | null>(null);
+    const [pdfUploading, setPdfUploading] = useState(false);
+    const [pdfDeleting, setPdfDeleting] = useState(false);
+
+    const centrosList = (centros?.length ? centros : centrosLocal).map((c) => ({ id: Number(c.id), nombre: String(c.nombre) }));
+    const selectedCentro = useMemo(() => centrosList.find((c) => c.id.toString() === selectedCentroId), [centrosList, selectedCentroId]);
+    const filteredCentros = useMemo(
+        () =>
+            centroSearch.trim()
+                ? centrosList.filter((c) => c.nombre.toLowerCase().includes(centroSearch.toLowerCase()))
+                : centrosList,
+        [centrosList, centroSearch]
+    );
 
     const {
         register,
         handleSubmit,
         reset,
-        setValue,
-        watch,
         formState: { errors, isSubmitting },
     } = useForm<FormData>({
         resolver: zodResolver(schema),
         mode: "onSubmit",
-        defaultValues: {
-            identidad: "", nombres: "", apellidos: "", departamento_id: "", municipio_id: "",
-            email: "", telefono: "", celular: "", sexo: "", estado_civil: "",
-            nivel_escolaridad_id: "", titulo_obtenido: "", fecha_nacimiento: "", direccion: "",
-        },
+        defaultValues: { nombres: "", apellidos: "", titulo_obtenido: "", otros_titulos: "" },
     });
 
-    const watchDepartamento = watch("departamento_id");
+    const onDrop = useCallback((accepted: File[]) => {
+        if (accepted[0]) setPendingFile(accepted[0]);
+    }, []);
 
-    useEffect(() => {
-        if (!isOpen || !session) return;
-        const headers = { Authorization: `Bearer ${session?.user?.session}` };
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/centros/departamentos`, { headers })
-            .then(r => r.json()).then(d => setDepartamentos(d.data ?? []));
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/centros/nivel-escolaridades`, { headers })
-            .then(r => r.json()).then(d => setNivelEscolaridades(d.data ?? []));
-    }, [isOpen, session]);
-
-    useEffect(() => {
-        if (!watchDepartamento || !session) { setMunicipios([]); return; }
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/centros/municipios?departamento_id=${watchDepartamento}`, {
-            headers: { Authorization: `Bearer ${session?.user?.session}` },
-        }).then(r => r.json()).then(d => setMunicipios(d.data ?? []));
-    }, [watchDepartamento, session]);
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        onDrop,
+        maxFiles: 1,
+        maxSize: 10 * 1024 * 1024,
+        disabled: isSubmitting || pdfUploading,
+        onDropRejected: (rejections) => {
+            const err = rejections[0]?.errors[0];
+            if (err?.code === "file-too-large") toast.error("El archivo excede 10MB");
+            else toast.error(err?.message ?? "Archivo rechazado");
+        },
+    });
 
     useEffect(() => {
         if (instructor) {
             reset({
-                identidad: instructor.identidad ?? "",
                 nombres: instructor.nombres ?? "",
                 apellidos: instructor.apellidos ?? "",
-                departamento_id: instructor.departamento_id?.toString() ?? "",
-                municipio_id: instructor.municipio_id?.toString() ?? "",
-                email: instructor.email ?? "",
-                telefono: instructor.telefono ?? "",
-                celular: instructor.celular ?? "",
-                sexo: instructor.sexo ?? "",
-                estado_civil: instructor.estado_civil ?? "",
-                nivel_escolaridad_id: instructor.nivel_escolaridad_id?.toString() ?? "",
                 titulo_obtenido: instructor.titulo_obtenido ?? "",
-                fecha_nacimiento: instructor.fecha_nacimiento ?? "",
-                direccion: instructor.direccion ?? "",
+                otros_titulos: instructor.otros_titulos ?? "",
             });
+            setExistingPdf(instructor.pdf || null);
+            setSelectedCentroId(instructor.centro_id != null ? String(instructor.centro_id) : "");
         } else {
-            reset({
-                identidad: "", nombres: "", apellidos: "", departamento_id: "", municipio_id: "",
-                email: "", telefono: "", celular: "", sexo: "", estado_civil: "",
-                nivel_escolaridad_id: "", titulo_obtenido: "", fecha_nacimiento: "", direccion: "",
-            });
+            reset({ nombres: "", apellidos: "", titulo_obtenido: "", otros_titulos: "" });
+            setExistingPdf(null);
+            setSelectedCentroId(centroId != null ? String(centroId) : "");
         }
-    }, [instructor, reset, isOpen]);
+        setPendingFile(null);
+    }, [instructor, reset, isOpen, centroId]);
+
+    useEffect(() => {
+        if (!isOpen || !showCentroSelect || centros?.length || !session?.user?.session) return;
+        const token = (session as any)?.user?.session;
+        fetch(`${apiBase}/api/centros/centros?all=true`, { headers: { Authorization: `Bearer ${token}` } })
+            .then((r) => r.json())
+            .then((d) => setCentrosLocal(d.data ?? []))
+            .catch(() => setCentrosLocal([]));
+    }, [isOpen, showCentroSelect, centros?.length, session?.user?.session]);
+
+    const uploadPdf = async (instructorId: number | string) => {
+        if (!pendingFile) return;
+        setPdfUploading(true);
+        try {
+            const fd = new FormData();
+            fd.append("file", pendingFile);
+            const res = await fetch(`${apiBase}/api/centros/instructors/${instructorId}/pdf`, {
+                method: "POST",
+                headers: authHeaders,
+                body: fd,
+            });
+            if (!res.ok) {
+                const d = await res.json();
+                toast.error(d.message ?? "Error al subir hoja de vida");
+            }
+        } catch {
+            toast.error("Error al subir hoja de vida");
+        }
+        setPdfUploading(false);
+    };
+
+    const deletePdf = async () => {
+        if (!instructor?.id) return;
+        setPdfDeleting(true);
+        try {
+            const res = await fetch(`${apiBase}/api/centros/instructors/${instructor.id}/pdf`, {
+                method: "DELETE",
+                headers: authHeaders,
+            });
+            if (res.ok) {
+                setExistingPdf(null);
+                toast.success("Hoja de vida eliminada");
+            } else {
+                const d = await res.json();
+                toast.error(d.message ?? "Error al eliminar");
+            }
+        } catch {
+            toast.error("Error al eliminar hoja de vida");
+        }
+        setPdfDeleting(false);
+    };
+
+    const downloadPdf = async () => {
+        if (!instructor?.id) return;
+        try {
+            const res = await fetch(`${apiBase}/api/centros/instructors/${instructor.id}/pdf`, {
+                headers: authHeaders,
+            });
+            if (!res.ok) { toast.error("Error al descargar"); return; }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `hoja_de_vida_${instructor.nombres}_${instructor.apellidos}`.replace(/\s+/g, "_");
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            toast.error("Error al descargar");
+        }
+    };
 
     const onSubmit = async (data: FormData) => {
         try {
-            const url = `${process.env.NEXT_PUBLIC_API_URL}/api/centros/centros/${centroId}/instructors`;
+            const effectiveCentroId = centroId || selectedCentroId;
+            if (showCentroSelect && !selectedCentroId) {
+                toast.error("Selecciona un centro");
+                return;
+            }
+
+            const useGlobal = !centroId;
+            const url = useGlobal
+                ? `${apiBase}/api/centros/instructors`
+                : `${apiBase}/api/centros/centros/${effectiveCentroId}/instructors`;
             const method = isEdit ? "PUT" : "POST";
-            const body: any = {
-                ...data,
-                departamento_id: Number(data.departamento_id),
-                municipio_id: Number(data.municipio_id),
-                nivel_escolaridad_id: data.nivel_escolaridad_id ? Number(data.nivel_escolaridad_id) : 0,
-            };
+            const body: any = { ...data };
             if (isEdit) body.id = instructor.id;
+            if (!centroId) body.centro_id = Number(effectiveCentroId);
 
             const request = await fetch(url, {
                 method,
-                headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.user?.session}` },
+                headers: { "Content-Type": "application/json", ...authHeaders },
                 body: JSON.stringify(body),
             });
 
             if (request.ok) {
+                const response = await request.json();
+                const newId = isEdit ? instructor.id : response.id;
+
+                if (pendingFile && newId) {
+                    await uploadPdf(newId);
+                }
+
                 toast.success(isEdit ? "Instructor actualizado" : "Instructor creado");
                 setIsOpen(false);
                 reloadList();
@@ -139,26 +218,70 @@ const InstructorModal = ({
                 const response = await request.json();
                 toast.error(response.message ?? "Error al guardar");
             }
-        } catch (error: any) {
+        } catch {
             toast.error("Error al guardar");
         }
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => { if (!isSubmitting) { setIsOpen(open); } }}>
-            <DialogContent size="2xl">
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!isSubmitting && !pdfUploading) setIsOpen(open); }}>
+            <DialogContent size="lg">
                 <DialogTitle>{isEdit ? "Editar Instructor" : "Crear Instructor"}</DialogTitle>
                 <form onSubmit={handleSubmit(onSubmit)} noValidate autoComplete="off">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-                        <div>
-                            <Label htmlFor="identidad" className="mb-1 font-medium text-default-600">Identidad *</Label>
-                            <Input disabled={isSubmitting} {...register("identidad")} id="identidad" placeholder="Número de identidad" />
-                            {errors.identidad && <p className="text-destructive text-xs mt-1">{errors.identidad.message}</p>}
-                        </div>
-                        <div>
-                            <Label htmlFor="fecha_nacimiento" className="mb-1 font-medium text-default-600">Fecha nacimiento</Label>
-                            <Input disabled={isSubmitting} {...register("fecha_nacimiento")} id="fecha_nacimiento" placeholder="DD/MM/AAAA" />
-                        </div>
+                        {showCentroSelect && (
+                            <div className="md:col-span-2">
+                                <Label className="mb-1 font-medium text-default-600">Centro *</Label>
+                                <Popover open={centroOpen} onOpenChange={(open) => { setCentroOpen(open); if (!open) setCentroSearch(""); }}>
+                                    <PopoverTrigger asChild>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            disabled={isSubmitting || isEdit}
+                                            className="w-full justify-between font-normal"
+                                        >
+                                            <span className={cn("truncate", !selectedCentro && "text-muted-foreground")}>
+                                                {selectedCentro ? selectedCentro.nombre : "Buscar o seleccionar centro..."}
+                                            </span>
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                                        <div className="p-2 border-b">
+                                            <div className="flex items-center gap-2 rounded-md border bg-background px-2">
+                                                <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar centro..."
+                                                    value={centroSearch}
+                                                    onChange={(e) => setCentroSearch(e.target.value)}
+                                                    className="flex h-9 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="max-h-[260px] overflow-y-auto p-1">
+                                            {filteredCentros.length === 0 ? (
+                                                <p className="py-4 text-center text-sm text-muted-foreground">No se encontraron centros.</p>
+                                            ) : (
+                                                filteredCentros.map((c) => (
+                                                    <button
+                                                        key={c.id}
+                                                        type="button"
+                                                        className="w-full rounded-sm px-2 py-2 text-left text-sm text-foreground hover:bg-accent hover:text-foreground focus:bg-accent focus:text-foreground focus:outline-none"
+                                                        onClick={() => {
+                                                            setSelectedCentroId(String(c.id));
+                                                            setCentroOpen(false);
+                                                        }}
+                                                    >
+                                                        {c.nombre}
+                                                    </button>
+                                                ))
+                                            )}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                        )}
                         <div>
                             <Label htmlFor="nombres" className="mb-1 font-medium text-default-600">Nombres *</Label>
                             <Input disabled={isSubmitting} {...register("nombres")} id="nombres" placeholder="Nombres" />
@@ -170,84 +293,55 @@ const InstructorModal = ({
                             {errors.apellidos && <p className="text-destructive text-xs mt-1">{errors.apellidos.message}</p>}
                         </div>
                         <div>
-                            <Label className="mb-1 font-medium text-default-600">Sexo *</Label>
-                            <Select value={watch("sexo")} onValueChange={(v) => setValue("sexo", v)} disabled={isSubmitting}>
-                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="M">Masculino</SelectItem>
-                                    <SelectItem value="F">Femenino</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            {errors.sexo && <p className="text-destructive text-xs mt-1">{errors.sexo.message}</p>}
-                        </div>
-                        <div>
-                            <Label className="mb-1 font-medium text-default-600">Estado civil *</Label>
-                            <Select value={watch("estado_civil")} onValueChange={(v) => setValue("estado_civil", v)} disabled={isSubmitting}>
-                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Soltero(a)">Soltero(a)</SelectItem>
-                                    <SelectItem value="Casado(a)">Casado(a)</SelectItem>
-                                    <SelectItem value="Divorciado(a)">Divorciado(a)</SelectItem>
-                                    <SelectItem value="Viudo(a)">Viudo(a)</SelectItem>
-                                    <SelectItem value="Unión libre">Unión libre</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            {errors.estado_civil && <p className="text-destructive text-xs mt-1">{errors.estado_civil.message}</p>}
-                        </div>
-                        <div>
-                            <Label className="mb-1 font-medium text-default-600">Departamento *</Label>
-                            <Select value={watch("departamento_id")} onValueChange={(v) => { setValue("departamento_id", v); setValue("municipio_id", ""); }} disabled={isSubmitting}>
-                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                                <SelectContent>
-                                    {departamentos.map((d: any) => <SelectItem key={d.id} value={d.id.toString()}>{d.nombre}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            {errors.departamento_id && <p className="text-destructive text-xs mt-1">{errors.departamento_id.message}</p>}
-                        </div>
-                        <div>
-                            <Label className="mb-1 font-medium text-default-600">Municipio *</Label>
-                            <Select value={watch("municipio_id")} onValueChange={(v) => setValue("municipio_id", v)} disabled={isSubmitting || !watchDepartamento}>
-                                <SelectTrigger><SelectValue placeholder={watchDepartamento ? "Seleccionar" : "Seleccione departamento"} /></SelectTrigger>
-                                <SelectContent>
-                                    {municipios.map((m: any) => <SelectItem key={m.id} value={m.id.toString()}>{m.nombre}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            {errors.municipio_id && <p className="text-destructive text-xs mt-1">{errors.municipio_id.message}</p>}
-                        </div>
-                        <div>
-                            <Label htmlFor="email" className="mb-1 font-medium text-default-600">Email</Label>
-                            <Input disabled={isSubmitting} {...register("email")} id="email" placeholder="correo@ejemplo.com" />
-                        </div>
-                        <div>
-                            <Label htmlFor="telefono" className="mb-1 font-medium text-default-600">Teléfono</Label>
-                            <Input disabled={isSubmitting} {...register("telefono")} id="telefono" placeholder="Teléfono" />
-                        </div>
-                        <div>
-                            <Label htmlFor="celular" className="mb-1 font-medium text-default-600">Celular</Label>
-                            <Input disabled={isSubmitting} {...register("celular")} id="celular" placeholder="Celular" />
-                        </div>
-                        <div>
-                            <Label htmlFor="direccion" className="mb-1 font-medium text-default-600">Dirección</Label>
-                            <Input disabled={isSubmitting} {...register("direccion")} id="direccion" placeholder="Dirección" />
-                        </div>
-                        <div>
-                            <Label className="mb-1 font-medium text-default-600">Nivel escolaridad</Label>
-                            <Select value={watch("nivel_escolaridad_id")} onValueChange={(v) => setValue("nivel_escolaridad_id", v)} disabled={isSubmitting}>
-                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                                <SelectContent>
-                                    {nivelEscolaridades.map((n: any) => <SelectItem key={n.id} value={n.id.toString()}>{n.nombre}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
                             <Label htmlFor="titulo_obtenido" className="mb-1 font-medium text-default-600">Título obtenido</Label>
                             <Input disabled={isSubmitting} {...register("titulo_obtenido")} id="titulo_obtenido" placeholder="Título obtenido" />
                         </div>
+                        <div>
+                            <Label htmlFor="otros_titulos" className="mb-1 font-medium text-default-600">Otros títulos</Label>
+                            <Input disabled={isSubmitting} {...register("otros_titulos")} id="otros_titulos" placeholder="Otros títulos" />
+                        </div>
+                        <div className="md:col-span-2">
+                            <Label className="mb-1 font-medium text-default-600">Hoja de vida</Label>
+                            {existingPdf && !pendingFile ? (
+                                <div className="flex items-center gap-2 mt-1 p-3 border rounded-lg bg-muted/30">
+                                    <FileText className="h-5 w-5 text-primary shrink-0" />
+                                    <button type="button" onClick={downloadPdf} className="text-sm text-primary underline truncate">
+                                        Descargar archivo actual
+                                    </button>
+                                    <Button type="button" variant="ghost" size="icon" className="ml-auto text-destructive shrink-0" onClick={deletePdf} disabled={pdfDeleting}>
+                                        {pdfDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                    </Button>
+                                </div>
+                            ) : pendingFile ? (
+                                <div className="flex items-center gap-2 mt-1 p-3 border rounded-lg bg-muted/30">
+                                    <FileText className="h-5 w-5 text-primary shrink-0" />
+                                    <span className="text-sm truncate">{pendingFile.name}</span>
+                                    <Button type="button" variant="ghost" size="icon" className="ml-auto shrink-0" onClick={() => setPendingFile(null)}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div
+                                    {...getRootProps()}
+                                    className={cn(
+                                        "mt-1 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
+                                        isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-primary/50",
+                                    )}
+                                >
+                                    <input {...getInputProps()} />
+                                    <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+                                    <p className="text-sm text-muted-foreground">
+                                        {isDragActive ? "Suelta el archivo aquí" : "Arrastra un archivo o haz clic para subir"}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">pdf, docx, xlsx, jpg, png · Máx. 10MB</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <DialogFooter>
-                        <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>Cancelar</Button>
-                        <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting || pdfUploading}>Cancelar</Button>
+                        <Button type="submit" disabled={isSubmitting || pdfUploading}>
+                            {(isSubmitting || pdfUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {isEdit ? "Guardar" : "Crear"}
                         </Button>
                     </DialogFooter>

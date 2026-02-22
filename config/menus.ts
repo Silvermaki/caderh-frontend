@@ -69,6 +69,10 @@ let navs = [
         title: 'Gestionar Centros',
         href: "/dashboard/centros/manage",
       },
+      {
+        title: 'Instructores',
+        href: "/dashboard/centros/instructores",
+      },
     ]
   }
 ];

@@ -22,7 +22,7 @@ import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import {
     MapPin, Phone, Mail, User, Building2, UserCheck, GraduationCap, BookOpen,
-    PlusCircle, Pencil, Trash2, RefreshCcw,
+    PlusCircle, Pencil, Trash2, RefreshCcw, FileText,
 } from "lucide-react";
 import { Icon } from "@iconify/react";
 import { prettifyNumber } from "@/app/libs/utils";
@@ -119,6 +119,20 @@ export default function CentroDetailPage() {
     };
 
     const reloadInstructors = () => { fetchInstructors(instSearch, instOffset, instLimit); fetchSummary(); };
+
+    const downloadInstructorPdf = async (inst: any) => {
+        try {
+            const res = await fetch(`${apiBase}/api/centros/instructors/${inst.id}/pdf`, { headers: authHeaders });
+            if (!res.ok) { toast.error("Error al descargar"); return; }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `hoja_de_vida_${inst.nombres}_${inst.apellidos}`.replace(/\s+/g, "_");
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch { toast.error("Error al descargar"); }
+    };
 
     const deleteInstructor = async () => {
         if (!instDelete) return;
@@ -391,7 +405,7 @@ export default function CentroDetailPage() {
                         <div className="flex flex-row items-center justify-between mb-4 gap-4">
                             <InputGroup className="max-w-sm shrink-0">
                                 <Input
-                                    placeholder="Buscar por identidad, nombre..."
+                                    placeholder="Buscar por nombre, título..."
                                     value={instSearchInput}
                                     onChange={(e) => setInstSearchInput(e.target.value)}
                                     onKeyDown={(e) => { if (e.key === "Enter") { setInstSearch(instSearchInput); setInstOffset(0); fetchInstructors(instSearchInput, 0, instLimit); } }}
@@ -416,24 +430,26 @@ export default function CentroDetailPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Identidad</TableHead>
                                             <TableHead>Nombres</TableHead>
                                             <TableHead>Apellidos</TableHead>
-                                            <TableHead className="hidden md:table-cell">Email</TableHead>
-                                            <TableHead className="hidden md:table-cell">Teléfono</TableHead>
-                                            <TableHead className="hidden sm:table-cell">Sexo</TableHead>
+                                            <TableHead className="hidden md:table-cell">Título Obtenido</TableHead>
+                                            <TableHead className="hidden md:table-cell">Hoja de Vida</TableHead>
                                             {isSupervisor && <TableHead className="text-right">Acciones</TableHead>}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {instructors.map((r: any) => (
                                             <TableRow key={r.id}>
-                                                <TableCell className="font-medium">{r.identidad}</TableCell>
-                                                <TableCell>{r.nombres}</TableCell>
+                                                <TableCell className="font-medium">{r.nombres}</TableCell>
                                                 <TableCell>{r.apellidos}</TableCell>
-                                                <TableCell className="hidden md:table-cell">{r.email || "-"}</TableCell>
-                                                <TableCell className="hidden md:table-cell">{r.telefono || "-"}</TableCell>
-                                                <TableCell className="hidden sm:table-cell">{r.sexo === "M" ? "Masculino" : r.sexo === "F" ? "Femenino" : r.sexo}</TableCell>
+                                                <TableCell className="hidden md:table-cell">{r.titulo_obtenido || "-"}</TableCell>
+                                                <TableCell className="hidden md:table-cell">
+                                                    {r.pdf ? (
+                                                        <Button variant="ghost" size="icon" onClick={() => downloadInstructorPdf(r)} title="Descargar hoja de vida">
+                                                            <FileText className="h-4 w-4 text-primary" />
+                                                        </Button>
+                                                    ) : "-"}
+                                                </TableCell>
                                                 {isSupervisor && (
                                                     <TableCell className="text-right">
                                                         <Button variant="ghost" size="icon" onClick={() => { setInstSelected(r); setInstModalOpen(true); }}>
