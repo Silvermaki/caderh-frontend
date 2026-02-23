@@ -77,6 +77,14 @@ let navs = [
         title: 'Estudiantes',
         href: "/dashboard/centros/students",
       },
+      {
+        title: 'Cursos',
+        href: "/dashboard/centros/courses",
+      },
+      {
+        title: 'Procesos Educativos',
+        href: "/dashboard/centros/processes",
+      },
     ]
   }
 ];

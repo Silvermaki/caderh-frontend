@@ -225,7 +225,7 @@ const InstructorModal = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => { if (!isSubmitting && !pdfUploading) setIsOpen(open); }}>
-            <DialogContent size="lg">
+            <DialogContent size="3xl">
                 <DialogTitle>{isEdit ? "Editar Instructor" : "Crear Instructor"}</DialogTitle>
                 <form onSubmit={handleSubmit(onSubmit)} noValidate autoComplete="off">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
