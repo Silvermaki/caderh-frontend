@@ -28,8 +28,9 @@ interface BlankProps {
     setLimit?: (value: any) => any;
     onInsert?: () => any;
     showLimit?: boolean;
+    onRowClick?: (rowData: any) => void;
 }
-const DataTable = ({ className, data, columns, insertString = '', onInsert = () => { }, refresh, onSort, onSearch, searchPlaceholder = 'Search...', offset, count, limit, onPagination, search, setSearch, showLimit = false, setLimit = (value: any) => { } }: BlankProps) => {
+const DataTable = ({ className, data, columns, insertString = '', onInsert = () => { }, refresh, onSort, onSearch, searchPlaceholder = 'Search...', offset, count, limit, onPagination, search, setSearch, showLimit = false, setLimit = (value: any) => { }, onRowClick }: BlankProps) => {
     const [sorting, setSorting] = useState<SortingState>([]);
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -134,8 +135,9 @@ const DataTable = ({ className, data, columns, insertString = '', onInsert = () 
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => {
+                                    const meta = header.column.columnDef.meta as { headerClassName?: string } | undefined;
                                     return (
-                                        <TableHead key={header.id} className='p-0'>
+                                        <TableHead key={header.id} className={cn('p-0', meta?.headerClassName)}>
                                             {flexRender(
                                                 header.column.columnDef.header,
                                                 header.getContext()
@@ -152,15 +154,20 @@ const DataTable = ({ className, data, columns, insertString = '', onInsert = () 
                                 <TableRow
                                     key={row.id}
                                     data-state={row.getIsSelected() && "selected"}
+                                    onClick={onRowClick ? () => onRowClick(row.original) : undefined}
+                                    className={onRowClick ? "cursor-pointer" : undefined}
                                 >
-                                    {row.getVisibleCells().map((cell) => (
-                                        <TableCell key={cell.id} className='p-2'>
-                                            {flexRender(
-                                                cell.column.columnDef.cell,
-                                                cell.getContext()
-                                            )}
-                                        </TableCell>
-                                    ))}
+                                    {row.getVisibleCells().map((cell) => {
+                                        const meta = cell.column.columnDef.meta as { cellClassName?: string } | undefined;
+                                        return (
+                                            <TableCell key={cell.id} className={cn('p-2', meta?.cellClassName)}>
+                                                {flexRender(
+                                                    cell.column.columnDef.cell,
+                                                    cell.getContext()
+                                                )}
+                                            </TableCell>
+                                        );
+                                    })}
                                 </TableRow>
                             ))
                         ) : (

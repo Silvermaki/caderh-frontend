@@ -144,10 +144,24 @@ export default function ProcessDetailPage() {
         }
     }, [form.curso_id, courses, editing]);
 
+    const DIAS_LABELS: Record<string, string> = { "1": "Domingo", "2": "Lunes", "3": "Martes", "4": "Miércoles", "5": "Jueves", "6": "Viernes", "7": "Sábado" };
+
     const parseDias = (raw: string): string[] => {
         if (!raw) return [];
-        try { const arr = JSON.parse(raw); if (Array.isArray(arr)) return arr.map(String); } catch { /* not JSON */ }
-        return raw.split(",").filter(Boolean).map((s) => s.trim());
+        const trimmed = String(raw).trim();
+        if (trimmed.startsWith("[")) {
+            try {
+                const arr = JSON.parse(trimmed);
+                if (Array.isArray(arr)) return arr.map((x: any) => String(x).trim()).filter(Boolean);
+            } catch {
+                try {
+                    const normalized = trimmed.replace(/\\"/g, '"');
+                    const arr = JSON.parse(normalized);
+                    if (Array.isArray(arr)) return arr.map((x: any) => String(x).trim()).filter(Boolean);
+                } catch { /* fallthrough */ }
+            }
+        }
+        return trimmed.split(",").map((s) => s.trim().replace(/^["']|["']$/g, "")).filter(Boolean);
     };
 
     const selectedDias = useMemo(() => parseDias(String(form.dias ?? "")), [form.dias]);
@@ -168,12 +182,13 @@ export default function ProcessDetailPage() {
             .join(", ");
     }, [selectedDias, diasCatalogo]);
 
-    const resolveDiasNames = (raw: string) => {
-        if (!raw) return "-";
-        const vals = parseDias(raw).sort((a, b) => Number(a) - Number(b));
+    const resolveDiasNames = (raw: string | unknown) => {
+        const str = raw == null ? "" : Array.isArray(raw) ? JSON.stringify(raw) : String(raw);
+        if (!str.trim()) return "-";
+        const vals = parseDias(str).sort((a, b) => Number(a) - Number(b));
         if (vals.length === 0) return "-";
         return vals
-            .map((v: string) => diasCatalogo.find((d) => d.value === v)?.label ?? v)
+            .map((v: string) => diasCatalogo.find((d) => d.value === v)?.label ?? DIAS_LABELS[v] ?? v)
             .join(", ");
     };
 

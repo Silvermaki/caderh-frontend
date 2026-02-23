@@ -4,22 +4,14 @@ import React, { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { Breadcrumbs, BreadcrumbItem } from "@/components/ui/breadcrumbs";
 import DataTable from "@/components/ui/service-datatable";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, ExternalLink, Eye, MenuSquare, Pencil, Trash2, Search, ChevronsUpDown } from "lucide-react";
-import Link from "next/link";
-import {
-    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ArrowUpDown, ExternalLink, Search, ChevronsUpDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import SkeletonTable from "@/components/skeleton-table";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import StudentWizard from "@/components/centro/student-wizard";
-import {
-    AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-    AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -31,6 +23,7 @@ function PageContent() {
     const searchParams: any = useSearchParams();
     const isMobile = useMediaQuery("(max-width: 1000px)");
     const pathname = usePathname();
+    const router = useRouter();
     const { data: session } = useSession() as any;
     const userRole = session?.user?.role;
     const isSupervisor = userRole === "ADMIN" || userRole === "MANAGER";
@@ -55,8 +48,6 @@ function PageContent() {
 
     const [selected, setSelected] = useState<any>(null);
     const [wizardOpen, setWizardOpen] = useState(false);
-    const [deleteTarget, setDeleteTarget] = useState<any>(null);
-    const [deleting, setDeleting] = useState(false);
 
     const fetchCentros = async () => {
         try {
@@ -113,17 +104,6 @@ function PageContent() {
     const onRefresh = () => { window.history.replaceState(null, "", pathname); getDataInit(""); };
     const reloadList = () => fetchStudents(buildParams());
 
-    const onDeleteConfirm = async () => {
-        if (!deleteTarget) return;
-        setDeleting(true);
-        try {
-            const res = await fetch(`${apiBase}/api/centros/students/${deleteTarget.id}`, { method: "DELETE", headers: authHeaders });
-            if (res.ok) { toast.success("Estudiante eliminado"); setDeleteTarget(null); reloadList(); }
-            else { const d = await res.json(); toast.error(d.message ?? "Error al eliminar"); }
-        } catch { toast.error("Error al eliminar"); }
-        setDeleting(false);
-    };
-
     const openPdfInNewTab = async (s: any) => {
         try {
             const res = await fetch(`${apiBase}/api/centros/students/${s.id}/pdf`, { headers: authHeaders });
@@ -156,43 +136,6 @@ function PageContent() {
     useEffect(() => { if (session) { fetchCentros(); getDataInit(searchInit); } }, [session]);
     useEffect(() => { if (students.length > 0) getDataPagination(0); }, [limit]);
 
-    const actionsColumn = {
-        id: "actions", enableHiding: false,
-        cell: ({ row }: any) => {
-            const s = row.original;
-            return (
-                <div className="text-end">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0" color="dark"><MenuSquare className="h-5 w-5" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" side="bottom">
-                            <DropdownMenuLabel>Opciones</DropdownMenuLabel>
-                            <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/centros/students/${s.id}`}>
-                                    <Eye className="h-4 w-4 mr-2" />Ver perfil
-                                </Link>
-                            </DropdownMenuItem>
-                            {s.pdf && (
-                                <DropdownMenuItem onClick={() => openPdfInNewTab(s)}>
-                                    <ExternalLink className="h-4 w-4 mr-2" />Visualizar CV
-                                </DropdownMenuItem>
-                            )}
-                            {isSupervisor && (<>
-                                <DropdownMenuItem onClick={() => { setSelected(s); setWizardOpen(true); }}>
-                                    <Pencil className="h-4 w-4 mr-2" />Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setDeleteTarget(s)} className="text-destructive">
-                                    <Trash2 className="h-4 w-4 mr-2" />Eliminar
-                                </DropdownMenuItem>
-                            </>)}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            );
-        },
-    };
-
     const sortableHeader = (label: string) => ({ column }: any) => (
         <Button variant="ghost" color="dark" className="p-2" onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
             {label}<ArrowUpDown className="ml-2 h-4 w-4" />
@@ -202,15 +145,20 @@ function PageContent() {
     const columns: any[] = [
         {
             accessorKey: "centro_nombre", header: "Centro",
-            cell: ({ row }: any) => <span className="text-sm text-muted-foreground">{row.original.centro_nombre ?? "-"}</span>,
+            meta: { headerClassName: "w-[30%] max-w-[14rem]", cellClassName: "w-[30%] max-w-[14rem] overflow-hidden" },
+            cell: ({ row }: any) => (
+                <span className="text-sm text-muted-foreground block truncate" title={row.original.centro_nombre ?? ""}>
+                    {row.original.centro_nombre ?? "-"}
+                </span>
+            ),
         },
         {
             id: "full_name", accessorFn: (r: any) => `${r.nombres ?? ""} ${r.apellidos ?? ""}`.trim(),
             header: sortableHeader("Nombre completo"),
             cell: ({ row }: any) => (
-                <Link href={`/dashboard/centros/students/${row.original.id}`} className="text-sm font-medium text-primary hover:underline">
+                <span className="text-sm font-medium text-primary">
                     {[row.original.nombres, row.original.apellidos].filter(Boolean).join(" ")}
-                </Link>
+                </span>
             ),
         },
         {
@@ -225,10 +173,9 @@ function PageContent() {
             id: "pdf", header: "Hoja de vida",
             cell: ({ row }: any) => row.original.pdf ? (
                 <Button variant="ghost" size="sm" className="h-8 bg-transparent text-primary hover:bg-primary/80 hover:text-primary-foreground rounded-md px-3 font-semibold"
-                    onClick={() => openPdfInNewTab(row.original)}>Ver</Button>
+                    onClick={(e) => { e.stopPropagation(); openPdfInNewTab(row.original); }}>Ver</Button>
             ) : <span className="text-sm text-muted-foreground">-</span>,
         },
-        actionsColumn,
     ];
 
     const mobileColumns: any[] = [
@@ -237,14 +184,13 @@ function PageContent() {
             header: sortableHeader("Nombre completo"),
             cell: ({ row }: any) => (
                 <div>
-                    <Link href={`/dashboard/centros/students/${row.original.id}`} className="text-sm font-medium text-primary hover:underline">
+                    <span className="text-sm font-medium text-primary">
                         {[row.original.nombres, row.original.apellidos].filter(Boolean).join(" ")}
-                    </Link>
+                    </span>
                     <span className="text-xs text-muted-foreground block">{row.original.centro_nombre}</span>
                 </div>
             ),
         },
-        actionsColumn,
     ];
 
     return (
@@ -333,6 +279,7 @@ function PageContent() {
                             onSort={onSort} onSearch={onSearch}
                             offset={offset} count={count} limit={limit} setLimit={setLimit}
                             showLimit={true} onPagination={getDataPagination}
+                            onRowClick={(row) => router.push(`/dashboard/centros/students/${row.id}`)}
                         />
                     )}
                 </CardContent>
@@ -344,23 +291,6 @@ function PageContent() {
                 setIsOpen={(open) => { setWizardOpen(open); if (!open) setSelected(null); }}
                 reloadList={reloadList}
             />
-
-            <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>¿Eliminar estudiante?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Se eliminará a &quot;{deleteTarget?.nombres} {deleteTarget?.apellidos}&quot;. Esta acción no se puede deshacer.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={onDeleteConfirm} disabled={deleting} color="destructive">
-                            {deleting ? "Eliminando..." : "Eliminar"}
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }
