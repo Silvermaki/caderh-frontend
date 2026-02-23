@@ -24,7 +24,7 @@ import { useSession } from "next-auth/react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
-    Building2, BookOpen, Calendar, Check, Clock, ChevronsUpDown, GraduationCap, Loader2,
+    Building2, BookOpen, Calendar, Check, Clock, ChevronsUpDown, ExternalLink, GraduationCap, Loader2,
     Pencil, PlusCircle, Trash2, User, Search,
 } from "lucide-react";
 
@@ -70,6 +70,10 @@ export default function ProcessDetailPage() {
     const [unenrollOpen, setUnenrollOpen] = useState<any>(null);
     const [unenrolling, setUnenrolling] = useState(false);
 
+    const [courseDetail, setCourseDetail] = useState<any>(null);
+    const [courseModules, setCourseModules] = useState<any[]>([]);
+    const [courseLoading, setCourseLoading] = useState(false);
+
     const fetchProcess = useCallback(async () => {
         setLoading(true);
         try {
@@ -96,6 +100,23 @@ export default function ProcessDetailPage() {
             fetch(`${apiBase}/api/centros/dias-catalogo`, { headers: authHeaders }).then(r => r.json()).then(d => setDiasCatalogo(d.data ?? [])).catch(() => {});
         }
     }, [session, processId]);
+
+    const fetchCourseData = useCallback(async (cursoId: number) => {
+        setCourseLoading(true);
+        try {
+            const [courseRes, modulesRes] = await Promise.all([
+                fetch(`${apiBase}/api/centros/courses/${cursoId}`, { headers: authHeaders }),
+                fetch(`${apiBase}/api/centros/courses/${cursoId}/modules`, { headers: authHeaders }),
+            ]);
+            if (courseRes.ok) { const d = await courseRes.json(); setCourseDetail(d.data ?? null); }
+            if (modulesRes.ok) { const d = await modulesRes.json(); setCourseModules(d.data ?? []); }
+        } catch { /* silent */ }
+        setCourseLoading(false);
+    }, [session?.user?.session]);
+
+    useEffect(() => {
+        if (process_?.curso_id) fetchCourseData(process_.curso_id);
+    }, [process_?.curso_id]);
 
     const startEditing = () => {
         if (!process_) return;
@@ -424,6 +445,7 @@ export default function ProcessDetailPage() {
                 <Tabs defaultValue="general" className="w-full">
                     <TabsList className="w-full justify-start gap-8 border-b border-default-200 rounded-none bg-transparent p-0 h-auto min-h-0 px-6 pt-4 pb-0">
                         <TabsTrigger value="general" className={TAB_CLASS}>General</TabsTrigger>
+                        <TabsTrigger value="course" className={TAB_CLASS}>Detalle del curso</TabsTrigger>
                         <TabsTrigger value="enrollment" className={TAB_CLASS}>Matrícula</TabsTrigger>
                     </TabsList>
 
@@ -497,6 +519,68 @@ export default function ProcessDetailPage() {
                                 {fieldView("Sede", Number(p.sede) ? "Sí" : "No")}
                                 {fieldView("Lugar", p.lugar)}
                             </div>
+                        )}
+                    </TabsContent>
+
+                    {/* Tab: Detalle del curso */}
+                    <TabsContent value="course" className="mt-0 px-6 pt-6 pb-6">
+                        {courseLoading ? (
+                            <SkeletonTable />
+                        ) : !courseDetail ? (
+                            <div className="py-12 text-center text-muted-foreground">No se encontró información del curso.</div>
+                        ) : (
+                            <>
+                                <div className="flex items-center justify-between mb-4">
+                                    <h3 className="text-base font-semibold">Información del Curso</h3>
+                                    <Link href={`/dashboard/centros/courses/${courseDetail.id}`}>
+                                        <Button size="sm" variant="outline">
+                                            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />Ver perfil del curso
+                                        </Button>
+                                    </Link>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
+                                    {fieldView("Código", courseDetail.codigo)}
+                                    {fieldView("Nombre", courseDetail.nombre)}
+                                    {fieldView("Código de programa", courseDetail.codigo_programa)}
+                                    {fieldView("Total horas", courseDetail.total_horas)}
+                                    {fieldView("Taller", Number(courseDetail.taller) ? "Sí" : "No")}
+                                    <div className="md:col-span-3">
+                                        {fieldView("Objetivo", courseDetail.objetivo)}
+                                    </div>
+                                </div>
+
+                                <div className="mt-8 pt-6 border-t">
+                                    <h3 className="text-base font-semibold mb-4">Módulos</h3>
+                                    {courseModules.length === 0 ? (
+                                        <div className="py-8 text-center text-muted-foreground">Este curso no tiene módulos registrados.</div>
+                                    ) : (
+                                        <Table>
+                                            <TableHeader>
+                                                <TableRow>
+                                                    <TableHead>Código</TableHead>
+                                                    <TableHead>Nombre</TableHead>
+                                                    <TableHead>Horas Teóricas</TableHead>
+                                                    <TableHead>Horas Prácticas</TableHead>
+                                                    <TableHead>Total</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {courseModules.map((m) => (
+                                                    <TableRow key={m.id}>
+                                                        <TableCell className="text-sm">{m.codigo}</TableCell>
+                                                        <TableCell className="text-sm">{m.nombre}</TableCell>
+                                                        <TableCell className="text-sm">{m.horas_teoricas ?? "-"}</TableCell>
+                                                        <TableCell className="text-sm">{m.horas_practicas ?? "-"}</TableCell>
+                                                        <TableCell className="text-sm font-medium">
+                                                            {(Number(m.horas_teoricas) || 0) + (Number(m.horas_practicas) || 0)}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    )}
+                                </div>
+                            </>
                         )}
                     </TabsContent>
 
