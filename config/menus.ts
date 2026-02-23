@@ -73,6 +73,10 @@ let navs = [
         title: 'Instructores',
         href: "/dashboard/centros/instructores",
       },
+      {
+        title: 'Estudiantes',
+        href: "/dashboard/centros/students",
+      },
     ]
   }
 ];

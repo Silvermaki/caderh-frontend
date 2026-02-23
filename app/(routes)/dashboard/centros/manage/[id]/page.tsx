@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { Breadcrumbs, BreadcrumbItem } from "@/components/ui/breadcrumbs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +28,7 @@ import {
 import { Icon } from "@iconify/react";
 import { prettifyNumber } from "@/app/libs/utils";
 import InstructorModal from "@/components/centro/instructor-modal";
-import EstudianteModal from "@/components/centro/estudiante-modal";
+import StudentWizard from "@/components/centro/student-wizard";
 import CursoModal from "@/components/centro/curso-modal";
 
 const TAB_TRIGGER_CLASS = "rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none";
@@ -143,6 +144,15 @@ export default function CentroDetailPage() {
             else { const d = await res.json(); toast.error(d.message ?? "Error al eliminar"); }
         } catch { toast.error("Error al eliminar"); }
         setInstDeleting(false);
+    };
+
+    const openStudentPdf = async (est: any) => {
+        try {
+            const res = await fetch(`${apiBase}/api/centros/students/${est.id}/pdf`, { headers: authHeaders });
+            if (!res.ok) { toast.error("Error al abrir"); return; }
+            const blob = await res.blob();
+            window.open(URL.createObjectURL(blob), "_blank", "noopener,noreferrer");
+        } catch { toast.error("Error al abrir"); }
     };
 
     // ─── Estudiantes ─────────────────────────────────────────────────────────
@@ -504,24 +514,29 @@ export default function CentroDetailPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead>Nombre completo</TableHead>
                                             <TableHead>Identidad</TableHead>
-                                            <TableHead>Nombres</TableHead>
-                                            <TableHead>Apellidos</TableHead>
-                                            <TableHead className="hidden md:table-cell">Email</TableHead>
-                                            <TableHead className="hidden md:table-cell">Teléfono</TableHead>
-                                            <TableHead className="hidden sm:table-cell">Sexo</TableHead>
+                                            <TableHead className="hidden md:table-cell">Contacto</TableHead>
+                                            <TableHead className="hidden md:table-cell">Hoja de vida</TableHead>
                                             {isSupervisor && <TableHead className="text-right">Acciones</TableHead>}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {estudiantes.map((r: any) => (
                                             <TableRow key={r.id}>
-                                                <TableCell className="font-medium">{r.identidad}</TableCell>
-                                                <TableCell>{r.nombres}</TableCell>
-                                                <TableCell>{r.apellidos}</TableCell>
-                                                <TableCell className="hidden md:table-cell">{r.email || "-"}</TableCell>
-                                                <TableCell className="hidden md:table-cell">{r.telefono || "-"}</TableCell>
-                                                <TableCell className="hidden sm:table-cell">{r.sexo === "M" ? "Masculino" : r.sexo === "F" ? "Femenino" : r.sexo}</TableCell>
+                                                <TableCell className="font-medium">
+                                                    <Link href={`/dashboard/centros/students/${r.id}`} className="text-primary hover:underline">
+                                                        {[r.nombres, r.apellidos].filter(Boolean).join(" ")}
+                                                    </Link>
+                                                </TableCell>
+                                                <TableCell>{r.identidad}</TableCell>
+                                                <TableCell className="hidden md:table-cell">{r.celular || r.email || "-"}</TableCell>
+                                                <TableCell className="hidden md:table-cell">
+                                                    {r.pdf ? (
+                                                        <Button variant="ghost" size="sm" className="h-8 bg-transparent text-primary hover:bg-primary/80 hover:text-primary-foreground rounded-md px-3 font-semibold"
+                                                            onClick={() => openStudentPdf(r)}>Ver</Button>
+                                                    ) : "-"}
+                                                </TableCell>
                                                 {isSupervisor && (
                                                     <TableCell className="text-right">
                                                         <Button variant="ghost" size="icon" onClick={() => { setEstSelected(r); setEstModalOpen(true); }}>
@@ -626,8 +641,8 @@ export default function CentroDetailPage() {
                 setIsOpen={(open) => { setInstModalOpen(open); if (!open) setInstSelected(null); }}
                 reloadList={reloadInstructors}
             />
-            <EstudianteModal
-                estudiante={estSelected}
+            <StudentWizard
+                student={estSelected}
                 centroId={centroId}
                 isOpen={estModalOpen}
                 setIsOpen={(open) => { setEstModalOpen(open); if (!open) setEstSelected(null); }}
