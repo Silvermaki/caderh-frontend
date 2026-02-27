@@ -74,6 +74,17 @@ export default function ProcessDetailPage() {
     const [courseModules, setCourseModules] = useState<any[]>([]);
     const [courseLoading, setCourseLoading] = useState(false);
 
+    const [linkedProjects, setLinkedProjects] = useState<any[]>([]);
+    const [projectsLoading, setProjectsLoading] = useState(false);
+    const [linkProjectDialogOpen, setLinkProjectDialogOpen] = useState(false);
+    const [linkProjectSearch, setLinkProjectSearch] = useState("");
+    const [availableProjects, setAvailableProjects] = useState<any[]>([]);
+    const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
+    const [linkingProject, setLinkingProject] = useState(false);
+    const [unlinkProjectTarget, setUnlinkProjectTarget] = useState<any>(null);
+    const [unlinkingProject, setUnlinkingProject] = useState(false);
+    const [availableProjectsLoading, setAvailableProjectsLoading] = useState(false);
+
     const fetchProcess = useCallback(async () => {
         setLoading(true);
         try {
@@ -117,6 +128,76 @@ export default function ProcessDetailPage() {
     useEffect(() => {
         if (process_?.curso_id) fetchCourseData(process_.curso_id);
     }, [process_?.curso_id]);
+
+    const fetchLinkedProjects = useCallback(async () => {
+        if (!processId || !session) return;
+        setProjectsLoading(true);
+        try {
+            const res = await fetch(`${apiBase}/api/centros/processes/${processId}/projects`, { headers: authHeaders });
+            if (res.ok) { const d = await res.json(); setLinkedProjects(d.data ?? []); }
+        } catch { /* silent */ }
+        setProjectsLoading(false);
+    }, [processId, session?.user?.session]);
+
+    useEffect(() => {
+        if (process_) fetchLinkedProjects();
+    }, [process_?.id]);
+
+    const openLinkProjectDialog = async () => {
+        setLinkProjectDialogOpen(true);
+        setLinkProjectSearch("");
+        setSelectedProjectIds([]);
+        setAvailableProjectsLoading(true);
+        try {
+            const res = await fetch(`${apiBase}/api/supervisor/projects?limit=100&offset=0&status=ACTIVE`, { headers: authHeaders });
+            if (res.ok) { const d = await res.json(); setAvailableProjects(d.data ?? []); }
+        } catch { /* silent */ }
+        setAvailableProjectsLoading(false);
+    };
+
+    const submitLinkProjects = async () => {
+        if (!selectedProjectIds.length) return;
+        setLinkingProject(true);
+        try {
+            const res = await fetch(`${apiBase}/api/centros/processes/${processId}/projects`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", ...authHeaders },
+                body: JSON.stringify({ project_ids: selectedProjectIds }),
+            });
+            if (res.ok) {
+                toast.success("Proyectos vinculados");
+                setLinkProjectDialogOpen(false);
+                fetchLinkedProjects();
+            } else { const d = await res.json(); toast.error(d.message ?? "Error al vincular"); }
+        } catch { toast.error("Error al vincular"); }
+        setLinkingProject(false);
+    };
+
+    const unlinkProject = async () => {
+        if (!unlinkProjectTarget) return;
+        setUnlinkingProject(true);
+        try {
+            const res = await fetch(`${apiBase}/api/centros/processes/${processId}/projects/${unlinkProjectTarget.id}`, {
+                method: "DELETE",
+                headers: authHeaders,
+            });
+            if (res.ok) {
+                toast.success("Proyecto desvinculado");
+                setUnlinkProjectTarget(null);
+                fetchLinkedProjects();
+            } else { const d = await res.json(); toast.error(d.message ?? "Error al desvincular"); }
+        } catch { toast.error("Error al desvincular"); }
+        setUnlinkingProject(false);
+    };
+
+    const linkedProjectIds = new Set(linkedProjects.map((p: any) => p.id));
+    const filteredAvailableProjects = availableProjects
+        .filter((p: any) => !linkedProjectIds.has(p.id))
+        .filter((p: any) => {
+            if (!linkProjectSearch.trim()) return true;
+            const q = linkProjectSearch.toLowerCase();
+            return (p.name ?? "").toLowerCase().includes(q) || (p.description ?? "").toLowerCase().includes(q);
+        });
 
     const startEditing = () => {
         if (!process_) return;
@@ -447,6 +528,7 @@ export default function ProcessDetailPage() {
                         <TabsTrigger value="general" className={TAB_CLASS}>General</TabsTrigger>
                         <TabsTrigger value="course" className={TAB_CLASS}>Detalle del curso</TabsTrigger>
                         <TabsTrigger value="enrollment" className={TAB_CLASS}>Matrícula</TabsTrigger>
+                        <TabsTrigger value="projects" className={TAB_CLASS}>Proyectos Relacionados</TabsTrigger>
                     </TabsList>
 
                     {/* Tab: General */}
@@ -627,6 +709,58 @@ export default function ProcessDetailPage() {
                             </div>
                         )}
                     </TabsContent>
+
+                    {/* Tab: Proyectos Relacionados */}
+                    <TabsContent value="projects" className="mt-0 px-6 pt-6 pb-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-base font-semibold">Proyectos Relacionados</h3>
+                            {isSupervisor && (
+                                <Button size="sm" onClick={openLinkProjectDialog}>
+                                    <PlusCircle className="h-3.5 w-3.5 mr-1.5" />Vincular Proyecto
+                                </Button>
+                            )}
+                        </div>
+                        {projectsLoading ? (
+                            <SkeletonTable />
+                        ) : linkedProjects.length === 0 ? (
+                            <div className="py-12 text-center text-muted-foreground">No hay proyectos vinculados a este proceso.</div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Proyecto</TableHead>
+                                        <TableHead>Categoría</TableHead>
+                                        <TableHead>Estado</TableHead>
+                                        <TableHead>Fecha inicio</TableHead>
+                                        <TableHead>Fecha fin</TableHead>
+                                        {isSupervisor && <TableHead className="w-[60px]"></TableHead>}
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {linkedProjects.map((proj: any) => (
+                                        <TableRow key={proj.id} className="cursor-pointer" onClick={() => router.push(`/dashboard/admin/projects/${proj.id}`)}>
+                                            <TableCell className="font-medium text-primary">{proj.name}</TableCell>
+                                            <TableCell className="text-muted-foreground">{proj.project_category === "PROGRAM" ? "Programa" : "Proyecto"}</TableCell>
+                                            <TableCell>
+                                                <Badge variant={proj.project_status === "ACTIVE" ? "default" : "secondary"}>
+                                                    {proj.project_status === "ACTIVE" ? "Activo" : proj.project_status === "ARCHIVED" ? "Archivado" : proj.project_status}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-muted-foreground">{proj.start_date ? proj.start_date.slice(0, 10) : "-"}</TableCell>
+                                            <TableCell className="text-muted-foreground">{proj.end_date ? proj.end_date.slice(0, 10) : "-"}</TableCell>
+                                            {isSupervisor && (
+                                                <TableCell>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); setUnlinkProjectTarget(proj); }}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            )}
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </TabsContent>
                 </Tabs>
             </Card>
 
@@ -716,6 +850,76 @@ export default function ProcessDetailPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Link project dialog */}
+            <Dialog open={linkProjectDialogOpen} onOpenChange={setLinkProjectDialogOpen}>
+                <DialogContent className="sm:max-w-md p-0">
+                    <div className="px-6 pt-6 pb-2">
+                        <DialogTitle>Vincular Proyecto</DialogTitle>
+                    </div>
+                    <div className="p-2 border-b">
+                        <div className="flex items-center gap-2 rounded-md border bg-background px-2">
+                            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <input
+                                type="text"
+                                placeholder="Buscar proyecto..."
+                                value={linkProjectSearch}
+                                onChange={(e) => setLinkProjectSearch(e.target.value)}
+                                className="flex h-9 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+                            />
+                        </div>
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto p-1">
+                        {availableProjectsLoading ? (
+                            <div className="py-8 text-center text-sm text-muted-foreground">Cargando...</div>
+                        ) : filteredAvailableProjects.length === 0 ? (
+                            <div className="py-8 text-center text-sm text-muted-foreground">No hay proyectos disponibles.</div>
+                        ) : (
+                            filteredAvailableProjects.map((proj: any) => {
+                                const checked = selectedProjectIds.includes(proj.id);
+                                return (
+                                    <button
+                                        key={proj.id}
+                                        type="button"
+                                        onClick={() => setSelectedProjectIds((prev) => checked ? prev.filter((x) => x !== proj.id) : [...prev, proj.id])}
+                                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
+                                    >
+                                        <Checkbox checked={checked} />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate font-medium">{proj.name}</p>
+                                            <p className="truncate text-xs text-muted-foreground">{proj.project_category === "PROGRAM" ? "Programa" : "Proyecto"}</p>
+                                        </div>
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+                    <DialogFooter className="px-6 pb-4">
+                        <Button onClick={submitLinkProjects} disabled={linkingProject || selectedProjectIds.length === 0} className="w-full">
+                            {linkingProject && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                            Vincular {selectedProjectIds.length > 0 && `(${selectedProjectIds.length})`}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Unlink project dialog */}
+            <AlertDialog open={!!unlinkProjectTarget} onOpenChange={(open) => { if (!open) setUnlinkProjectTarget(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Desvincular proyecto?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Se desvinculará el proyecto &quot;{unlinkProjectTarget?.name}&quot; de este proceso educativo.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={unlinkingProject}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={unlinkProject} disabled={unlinkingProject} color="destructive">
+                            {unlinkingProject ? "Desvinculando..." : "Desvincular"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

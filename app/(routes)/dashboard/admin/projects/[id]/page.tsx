@@ -60,7 +60,9 @@ import {
     ArchiveRestore,
     ChevronsUpDown,
     Check,
+    Search,
 } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { dateToString, timeToString, formatCurrency, prettifyNumber } from "@/app/libs/utils";
@@ -196,6 +198,17 @@ const Page = () => {
     const [logsOffset, setLogsOffset] = useState(0);
     const [logsLoading, setLogsLoading] = useState(false);
     const [logsLimit, setLogsLimit] = useState(10);
+
+    const [linkedProcesses, setLinkedProcesses] = useState<any[]>([]);
+    const [processesLoading, setProcessesLoading] = useState(false);
+    const [linkProcessDialogOpen, setLinkProcessDialogOpen] = useState(false);
+    const [linkProcessSearch, setLinkProcessSearch] = useState("");
+    const [availableProcesses, setAvailableProcesses] = useState<any[]>([]);
+    const [selectedProcessIds, setSelectedProcessIds] = useState<number[]>([]);
+    const [linkingProcess, setLinkingProcess] = useState(false);
+    const [unlinkProcessTarget, setUnlinkProcessTarget] = useState<any>(null);
+    const [unlinkingProcess, setUnlinkingProcess] = useState(false);
+    const [availableProcessesLoading, setAvailableProcessesLoading] = useState(false);
 
     const userRole = session?.user?.role;
     const userId = session?.user?.id;
@@ -405,6 +418,81 @@ const Page = () => {
         setAssigningAgent(false);
     };
 
+    const fetchLinkedProcesses = async () => {
+        if (!id || !session) return;
+        setProcessesLoading(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/processes`,
+                { headers: { Authorization: `Bearer ${session?.user?.session}` } }
+            );
+            if (res.ok) { const json = await res.json(); setLinkedProcesses(json.data ?? []); }
+        } catch { /* silent */ }
+        setProcessesLoading(false);
+    };
+
+    const openLinkProcessDialog = async () => {
+        setLinkProcessDialogOpen(true);
+        setLinkProcessSearch("");
+        setSelectedProcessIds([]);
+        setAvailableProcessesLoading(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/centros/processes?limit=100&offset=0`,
+                { headers: { Authorization: `Bearer ${session?.user?.session}` } }
+            );
+            if (res.ok) { const json = await res.json(); setAvailableProcesses(json.data ?? []); }
+        } catch { /* silent */ }
+        setAvailableProcessesLoading(false);
+    };
+
+    const submitLinkProcesses = async () => {
+        if (!selectedProcessIds.length) return;
+        setLinkingProcess(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/processes`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.user?.session}` },
+                    body: JSON.stringify({ process_ids: selectedProcessIds }),
+                }
+            );
+            if (res.ok) {
+                toast.success("Procesos vinculados");
+                setLinkProcessDialogOpen(false);
+                fetchLinkedProcesses();
+            } else { const d = await res.json(); toast.error(d.message ?? "Error al vincular"); }
+        } catch { toast.error("Error al vincular"); }
+        setLinkingProcess(false);
+    };
+
+    const unlinkProcess = async () => {
+        if (!unlinkProcessTarget) return;
+        setUnlinkingProcess(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/processes/${unlinkProcessTarget.id}`,
+                { method: "DELETE", headers: { Authorization: `Bearer ${session?.user?.session}` } }
+            );
+            if (res.ok) {
+                toast.success("Proceso desvinculado");
+                setUnlinkProcessTarget(null);
+                fetchLinkedProcesses();
+            } else { const d = await res.json(); toast.error(d.message ?? "Error al desvincular"); }
+        } catch { toast.error("Error al desvincular"); }
+        setUnlinkingProcess(false);
+    };
+
+    const linkedProcessIds = new Set(linkedProcesses.map((p: any) => p.id));
+    const filteredAvailableProcesses = availableProcesses
+        .filter((p: any) => !linkedProcessIds.has(p.id))
+        .filter((p: any) => {
+            if (!linkProcessSearch.trim()) return true;
+            const q = linkProcessSearch.toLowerCase();
+            return (p.nombre ?? "").toLowerCase().includes(q) || (p.codigo ?? "").toLowerCase().includes(q) || (p.centro_nombre ?? "").toLowerCase().includes(q) || (p.curso_nombre ?? "").toLowerCase().includes(q);
+        });
+
     const reloadAll = () => {
         fetchProject();
         fetchStep2();
@@ -429,6 +517,7 @@ const Page = () => {
             fetchStep4();
             fetchStep5();
             fetchProjectLogs();
+            fetchLinkedProcesses();
         }
     }, [project?.id, id]);
 
@@ -1006,6 +1095,12 @@ const Page = () => {
                             className="rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                         >
                             Archivos
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="beneficiarios"
+                            className="rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                        >
+                            Beneficiarios
                         </TabsTrigger>
                         <TabsTrigger
                             value="bitacora"
@@ -1652,6 +1747,53 @@ const Page = () => {
                         </div>
                     </TabsContent>
 
+                    <TabsContent value="beneficiarios" className="mt-0 px-6 pt-6 pb-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-lg font-semibold">Beneficiarios</h3>
+                            {isSupervisor && (
+                                <Button size="sm" onClick={openLinkProcessDialog}>
+                                    <PlusCircle className="h-3.5 w-3.5 mr-1.5" />Vincular Proceso
+                                </Button>
+                            )}
+                        </div>
+                        {processesLoading ? (
+                            <SkeletonTable />
+                        ) : linkedProcesses.length === 0 ? (
+                            <div className="py-12 text-center text-muted-foreground">No hay procesos educativos vinculados.</div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Proceso</TableHead>
+                                        <TableHead>Centro</TableHead>
+                                        <TableHead>Curso</TableHead>
+                                        <TableHead>Instructor</TableHead>
+                                        <TableHead>Beneficiarios</TableHead>
+                                        {isSupervisor && <TableHead className="w-[60px]"></TableHead>}
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {linkedProcesses.map((proc: any) => (
+                                        <TableRow key={proc.id} className="cursor-pointer" onClick={() => router.push(`/dashboard/centros/processes/${proc.id}`)}>
+                                            <TableCell className="font-medium text-primary">{proc.nombre}</TableCell>
+                                            <TableCell className="text-muted-foreground">{proc.centro_nombre ?? "-"}</TableCell>
+                                            <TableCell className="text-muted-foreground">{proc.curso_nombre ?? "-"}</TableCell>
+                                            <TableCell className="text-muted-foreground">{proc.instructor_nombre ?? "-"}</TableCell>
+                                            <TableCell>{proc.enrolled_count ?? 0}</TableCell>
+                                            {isSupervisor && (
+                                                <TableCell>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); setUnlinkProcessTarget(proc); }}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            )}
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </TabsContent>
+
                     <TabsContent value="bitacora" className="mt-0 px-6 pt-6 pb-6">
                         <h3 className="text-lg font-semibold mb-4">Bitácora del Proyecto</h3>
                         {logsLoading && <SkeletonTable />}
@@ -1964,6 +2106,74 @@ const Page = () => {
                     </Card>
                 </div>
             )}
+
+            <Dialog open={linkProcessDialogOpen} onOpenChange={setLinkProcessDialogOpen}>
+                <DialogContent className="sm:max-w-md p-0">
+                    <div className="px-6 pt-6 pb-2">
+                        <DialogTitle>Vincular Proceso Educativo</DialogTitle>
+                    </div>
+                    <div className="p-2 border-b">
+                        <div className="flex items-center gap-2 rounded-md border bg-background px-2">
+                            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                            <input
+                                type="text"
+                                placeholder="Buscar proceso..."
+                                value={linkProcessSearch}
+                                onChange={(e) => setLinkProcessSearch(e.target.value)}
+                                className="flex h-9 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+                            />
+                        </div>
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto p-1">
+                        {availableProcessesLoading ? (
+                            <div className="py-8 text-center text-sm text-muted-foreground">Cargando...</div>
+                        ) : filteredAvailableProcesses.length === 0 ? (
+                            <div className="py-8 text-center text-sm text-muted-foreground">No hay procesos disponibles.</div>
+                        ) : (
+                            filteredAvailableProcesses.map((p: any) => {
+                                const checked = selectedProcessIds.includes(p.id);
+                                return (
+                                    <button
+                                        key={p.id}
+                                        type="button"
+                                        onClick={() => setSelectedProcessIds((prev) => checked ? prev.filter((x) => x !== p.id) : [...prev, p.id])}
+                                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
+                                    >
+                                        <Checkbox checked={checked} />
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate font-medium">{p.nombre}</p>
+                                            <p className="truncate text-xs text-muted-foreground">{[p.centro_nombre, p.curso_nombre].filter(Boolean).join(" · ")}</p>
+                                        </div>
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+                    <DialogFooter className="px-6 pb-4">
+                        <Button onClick={submitLinkProcesses} disabled={linkingProcess || selectedProcessIds.length === 0} className="w-full">
+                            {linkingProcess && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
+                            Vincular {selectedProcessIds.length > 0 && `(${selectedProcessIds.length})`}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <AlertDialog open={!!unlinkProcessTarget} onOpenChange={(open) => { if (!open) setUnlinkProcessTarget(null); }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Desvincular proceso?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Se desvinculará el proceso &quot;{unlinkProcessTarget?.nombre}&quot; de este proyecto. Los estudiantes matriculados no serán afectados.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={unlinkingProcess}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={unlinkProcess} disabled={unlinkingProcess} color="destructive">
+                            {unlinkingProcess ? "Desvinculando..." : "Desvincular"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };
