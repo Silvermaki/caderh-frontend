@@ -25,7 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import {
     Building2, BookOpen, Calendar, Check, Clock, ChevronsUpDown, ExternalLink, GraduationCap, Loader2,
-    Pencil, PlusCircle, Trash2, User, Search,
+    Pencil, PlusCircle, Trash2, User, Search, DollarSign, Users, Target, Phone, Mail, IdCard,
 } from "lucide-react";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL;
@@ -245,6 +245,32 @@ export default function ProcessDetailPage() {
             set("duracion_horas", String(selected.total_horas));
         }
     }, [form.curso_id, courses, editing]);
+
+    const getAgeFromBirthDate = (fechaNacimiento: string | null | undefined): number | null => {
+        const raw = fechaNacimiento != null && typeof fechaNacimiento === "string" ? fechaNacimiento.trim() : "";
+        if (!raw) return null;
+        let date: Date;
+        const iso = /^\d{4}-\d{2}-\d{2}/.test(raw);
+        const dmy = /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(raw);
+        if (iso) {
+            date = new Date(raw);
+        } else if (dmy) {
+            const parts = raw.split(/[\/\-]/);
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const year = parseInt(parts[2], 10);
+            const y = year < 100 ? 2000 + year : year;
+            date = new Date(y, month, day);
+        } else {
+            date = new Date(raw);
+        }
+        if (isNaN(date.getTime())) return null;
+        const today = new Date();
+        let age = today.getFullYear() - date.getFullYear();
+        const m = today.getMonth() - date.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < date.getDate())) age--;
+        return age >= 0 ? age : null;
+    };
 
     const DIAS_LABELS: Record<string, string> = { "1": "Domingo", "2": "Lunes", "3": "Martes", "4": "Miércoles", "5": "Jueves", "6": "Viernes", "7": "Sábado" };
 
@@ -800,106 +826,210 @@ export default function ProcessDetailPage() {
 
             {/* Enroll dialog */}
             <Dialog open={enrollDialogOpen} onOpenChange={setEnrollDialogOpen}>
-                <DialogContent className="sm:max-w-md p-0">
-                    <div className="px-6 pt-6 pb-2">
+                <DialogContent size="5xl" className="p-0 gap-0 overflow-hidden max-h-[90vh]">
+                    <div className="px-6 pt-6 pb-3">
                         <DialogTitle>Matricular Estudiantes</DialogTitle>
+                        <p className="text-sm text-muted-foreground mt-1">Selecciona los estudiantes a matricular en este proceso educativo.</p>
                     </div>
-                    <div className="p-2 border-b">
-                        <div className="flex items-center gap-2 rounded-md border bg-background px-2">
+                    <div className="px-4 pb-2 border-b">
+                        <div className="flex items-center gap-2 rounded-md border bg-background px-3">
                             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
                             <input
                                 type="text"
-                                placeholder="Buscar estudiante..."
+                                placeholder="Buscar por nombre o identidad..."
                                 value={enrollSearch}
                                 onChange={(e) => setEnrollSearch(e.target.value)}
-                                className="flex h-9 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+                                className="flex h-10 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
                             />
                         </div>
                     </div>
-                    <div className="max-h-[300px] overflow-y-auto p-1">
+                    <div className="overflow-y-auto px-4 py-3" style={{ maxHeight: "calc(90vh - 200px)" }}>
                         {studentsLoading ? (
-                            <div className="py-8 text-center text-sm text-muted-foreground">Cargando...</div>
+                            <div className="py-12 text-center text-sm text-muted-foreground">Cargando...</div>
                         ) : filteredStudents.length === 0 ? (
-                            <div className="py-8 text-center text-sm text-muted-foreground">No hay estudiantes disponibles.</div>
+                            <div className="py-12 text-center text-sm text-muted-foreground">No hay estudiantes disponibles.</div>
                         ) : (
-                            filteredStudents.map((s) => {
-                                const name = [s.nombres, s.apellidos].filter(Boolean).join(" ");
-                                const checked = enrollSelected.includes(s.id);
-                                return (
-                                    <button
-                                        key={s.id}
-                                        type="button"
-                                        onClick={() => toggleEnrollStudent(s.id)}
-                                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
-                                    >
-                                        <Checkbox checked={checked} />
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate font-medium">{name}</p>
-                                            {s.identidad && <p className="truncate text-xs text-muted-foreground">{s.identidad}</p>}
-                                        </div>
-                                    </button>
-                                );
-                            })
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {filteredStudents.map((s: any) => {
+                                    const name = [s.nombres, s.apellidos].filter(Boolean).join(" ");
+                                    const checked = enrollSelected.includes(s.id);
+                                    return (
+                                        <button
+                                            key={s.id}
+                                            type="button"
+                                            onClick={() => toggleEnrollStudent(s.id)}
+                                            className={cn(
+                                                "relative flex flex-col rounded-lg border p-4 text-left transition-all duration-150",
+                                                checked ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "border-border hover:border-primary/40 hover:shadow-sm"
+                                            )}
+                                        >
+                                            <div className="flex items-start gap-3 mb-3">
+                                                <Checkbox checked={checked} className="mt-0.5 shrink-0" />
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="font-semibold text-sm leading-tight">{name}</p>
+                                                    {s.identidad && (
+                                                        <span className="inline-block mt-1.5 text-[10px] font-medium bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
+                                                            {s.identidad}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 pl-7 text-xs">
+                                                {(() => {
+                                                    const fechaNac = s.fecha_nacimiento ?? (s as any).fechaNacimiento;
+                                                    const age = getAgeFromBirthDate(fechaNac);
+                                                    return (
+                                                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                            <Calendar className="h-3 w-3 shrink-0" />
+                                                            <span>{age !== null ? `${age} años` : "-"}</span>
+                                                        </div>
+                                                    );
+                                                })()}
+                                                {s.sexo && (
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                        <User className="h-3 w-3 shrink-0" />
+                                                        <span>{s.sexo === "M" ? "Masculino" : s.sexo === "F" ? "Femenino" : s.sexo}</span>
+                                                    </div>
+                                                )}
+                                                {s.centro_nombre && (
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                        <Building2 className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">{s.centro_nombre}</span>
+                                                    </div>
+                                                )}
+                                                {s.celular && (
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                        <Phone className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">{s.celular}</span>
+                                                    </div>
+                                                )}
+                                                {s.email && (
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                        <Mail className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">{s.email}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         )}
                     </div>
-                    <DialogFooter className="px-6 pb-4">
+                    <div className="px-4 py-3 border-t bg-background">
                         <Button onClick={submitEnrollment} disabled={enrolling || enrollSelected.length === 0} className="w-full">
                             {enrolling && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
                             Matricular {enrollSelected.length > 0 && `(${enrollSelected.length})`}
                         </Button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 
             {/* Link project dialog */}
             <Dialog open={linkProjectDialogOpen} onOpenChange={setLinkProjectDialogOpen}>
-                <DialogContent className="sm:max-w-md p-0">
-                    <div className="px-6 pt-6 pb-2">
+                <DialogContent size="5xl" className="p-0 gap-0 overflow-hidden max-h-[90vh]">
+                    <div className="px-6 pt-6 pb-3">
                         <DialogTitle>Vincular Proyecto</DialogTitle>
+                        <p className="text-sm text-muted-foreground mt-1">Selecciona los proyectos a vincular con este proceso educativo.</p>
                     </div>
-                    <div className="p-2 border-b">
-                        <div className="flex items-center gap-2 rounded-md border bg-background px-2">
+                    <div className="px-4 pb-2 border-b">
+                        <div className="flex items-center gap-2 rounded-md border bg-background px-3">
                             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
                             <input
                                 type="text"
-                                placeholder="Buscar proyecto..."
+                                placeholder="Buscar por nombre o descripción..."
                                 value={linkProjectSearch}
                                 onChange={(e) => setLinkProjectSearch(e.target.value)}
-                                className="flex h-9 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+                                className="flex h-10 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
                             />
                         </div>
                     </div>
-                    <div className="max-h-[300px] overflow-y-auto p-1">
+                    <div className="overflow-y-auto px-4 py-3" style={{ maxHeight: "calc(90vh - 200px)" }}>
                         {availableProjectsLoading ? (
-                            <div className="py-8 text-center text-sm text-muted-foreground">Cargando...</div>
+                            <div className="py-12 text-center text-sm text-muted-foreground">Cargando...</div>
                         ) : filteredAvailableProjects.length === 0 ? (
-                            <div className="py-8 text-center text-sm text-muted-foreground">No hay proyectos disponibles.</div>
+                            <div className="py-12 text-center text-sm text-muted-foreground">No hay proyectos disponibles.</div>
                         ) : (
-                            filteredAvailableProjects.map((proj: any) => {
-                                const checked = selectedProjectIds.includes(proj.id);
-                                return (
-                                    <button
-                                        key={proj.id}
-                                        type="button"
-                                        onClick={() => setSelectedProjectIds((prev) => checked ? prev.filter((x) => x !== proj.id) : [...prev, proj.id])}
-                                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
-                                    >
-                                        <Checkbox checked={checked} />
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate font-medium">{proj.name}</p>
-                                            <p className="truncate text-xs text-muted-foreground">{proj.project_category === "PROGRAM" ? "Programa" : "Proyecto"}</p>
-                                        </div>
-                                    </button>
-                                );
-                            })
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {filteredAvailableProjects.map((proj: any) => {
+                                    const checked = selectedProjectIds.includes(proj.id);
+                                    const agents = Array.isArray(proj.assigned_agents) ? proj.assigned_agents : [];
+                                    return (
+                                        <button
+                                            key={proj.id}
+                                            type="button"
+                                            onClick={() => setSelectedProjectIds((prev) => checked ? prev.filter((x) => x !== proj.id) : [...prev, proj.id])}
+                                            className={cn(
+                                                "relative flex flex-col rounded-lg border p-4 text-left transition-all duration-150",
+                                                checked ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "border-border hover:border-primary/40 hover:shadow-sm"
+                                            )}
+                                        >
+                                            <div className="flex items-start gap-3 mb-3">
+                                                <Checkbox checked={checked} className="mt-0.5 shrink-0" />
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <p className="font-semibold text-sm leading-tight">{proj.name}</p>
+                                                        <span className={cn(
+                                                            "text-[10px] font-medium px-1.5 py-0.5 rounded",
+                                                            proj.project_category === "PROGRAM"
+                                                                ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
+                                                                : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                                                        )}>
+                                                            {proj.project_category === "PROGRAM" ? "Programa" : "Proyecto"}
+                                                        </span>
+                                                    </div>
+                                                    {proj.description && (
+                                                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{proj.description}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 pl-7 text-xs">
+                                                {(proj.start_date || proj.end_date) && (
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                        <Calendar className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">{proj.start_date ?? "—"} → {proj.end_date ?? "—"}</span>
+                                                    </div>
+                                                )}
+                                                {proj.financed_amount != null && Number(proj.financed_amount) > 0 && (
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                        <DollarSign className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">L {Number(proj.financed_amount).toLocaleString("es-HN", { minimumFractionDigits: 2 })}</span>
+                                                    </div>
+                                                )}
+                                                {agents.length > 0 && (
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
+                                                        <Users className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">{agents.map((a: any) => a.name).join(", ")}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="mt-3 pl-7">
+                                                <a
+                                                    href={`/dashboard/admin/projects/${proj.id}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                                                >
+                                                    <ExternalLink className="h-3 w-3" />
+                                                    Ver proyecto
+                                                </a>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         )}
                     </div>
-                    <DialogFooter className="px-6 pb-4">
+                    <div className="px-4 py-3 border-t bg-background">
                         <Button onClick={submitLinkProjects} disabled={linkingProject || selectedProjectIds.length === 0} className="w-full">
                             {linkingProject && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
                             Vincular {selectedProjectIds.length > 0 && `(${selectedProjectIds.length})`}
                         </Button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 
