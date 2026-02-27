@@ -205,6 +205,29 @@ export default function CentroDetailPage() {
         setCurDeleting(false);
     };
 
+    const getAgeFromBirthDate = (fechaNacimiento: string | null | undefined): number | null => {
+        const raw = fechaNacimiento != null && typeof fechaNacimiento === "string" ? String(fechaNacimiento).trim() : "";
+        if (!raw) return null;
+        let date: Date;
+        const iso = /^\d{4}-\d{2}-\d{2}/.test(raw);
+        const dmy = /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(raw);
+        if (iso) date = new Date(raw);
+        else if (dmy) {
+            const parts = raw.split(/[\/\-]/);
+            const day = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const year = parseInt(parts[2], 10);
+            const y = year < 100 ? 2000 + year : year;
+            date = new Date(y, month, day);
+        } else date = new Date(raw);
+        if (isNaN(date.getTime())) return null;
+        const today = new Date();
+        let age = today.getFullYear() - date.getFullYear();
+        const m = today.getMonth() - date.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < date.getDate())) age--;
+        return age >= 0 ? age : null;
+    };
+
     // ─── Init ────────────────────────────────────────────────────────────────
     useEffect(() => {
         if (session && centroId) {
@@ -365,9 +388,9 @@ export default function CentroDetailPage() {
                 <Tabs defaultValue="resumen" className="w-full">
                     <TabsList className="w-full justify-start gap-8 border-b border-default-200 rounded-none bg-transparent p-0 h-auto min-h-0 px-6 pt-4 pb-0">
                         <TabsTrigger value="resumen" className={TAB_TRIGGER_CLASS}>Resumen</TabsTrigger>
+                        <TabsTrigger value="cursos" className={TAB_TRIGGER_CLASS}>Cursos</TabsTrigger>
                         <TabsTrigger value="instructores" className={TAB_TRIGGER_CLASS}>Instructores</TabsTrigger>
                         <TabsTrigger value="estudiantes" className={TAB_TRIGGER_CLASS}>Estudiantes</TabsTrigger>
-                        <TabsTrigger value="cursos" className={TAB_TRIGGER_CLASS}>Cursos</TabsTrigger>
                     </TabsList>
 
                     {/* ═══ Tab Resumen ═══ */}
@@ -516,13 +539,16 @@ export default function CentroDetailPage() {
                                         <TableRow>
                                             <TableHead>Nombre completo</TableHead>
                                             <TableHead>Identidad</TableHead>
+                                            <TableHead>Edad</TableHead>
                                             <TableHead className="hidden md:table-cell">Contacto</TableHead>
-                                            <TableHead className="hidden md:table-cell">Hoja de vida</TableHead>
                                             {isSupervisor && <TableHead className="text-right">Acciones</TableHead>}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {estudiantes.map((r: any) => (
+                                        {estudiantes.map((r: any) => {
+                                            const fechaNac = r.fecha_nacimiento ?? (r as any).fechaNacimiento;
+                                            const age = getAgeFromBirthDate(fechaNac);
+                                            return (
                                             <TableRow key={r.id}>
                                                 <TableCell className="font-medium">
                                                     <Link href={`/dashboard/centros/students/${r.id}`} className="text-primary hover:underline">
@@ -530,13 +556,8 @@ export default function CentroDetailPage() {
                                                     </Link>
                                                 </TableCell>
                                                 <TableCell>{r.identidad}</TableCell>
+                                                <TableCell>{age !== null ? `${age} años` : "-"}</TableCell>
                                                 <TableCell className="hidden md:table-cell">{r.celular || r.email || "-"}</TableCell>
-                                                <TableCell className="hidden md:table-cell">
-                                                    {r.pdf ? (
-                                                        <Button variant="ghost" size="sm" className="h-8 bg-transparent text-primary hover:bg-primary/80 hover:text-primary-foreground rounded-md px-3 font-semibold"
-                                                            onClick={() => openStudentPdf(r)}>Ver</Button>
-                                                    ) : "-"}
-                                                </TableCell>
                                                 {isSupervisor && (
                                                     <TableCell className="text-right">
                                                         <Button variant="ghost" size="icon" onClick={() => { setEstSelected(r); setEstModalOpen(true); }}>
@@ -548,7 +569,7 @@ export default function CentroDetailPage() {
                                                     </TableCell>
                                                 )}
                                             </TableRow>
-                                        ))}
+                                        ); })}
                                     </TableBody>
                                 </Table>
                                 <PaginationBar
@@ -591,9 +612,8 @@ export default function CentroDetailPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Código</TableHead>
+                                            <TableHead>Cód. Programa</TableHead>
                                             <TableHead>Nombre</TableHead>
-                                            <TableHead className="hidden md:table-cell">Cód. Programa</TableHead>
                                             <TableHead className="hidden sm:table-cell">Total Horas</TableHead>
                                             <TableHead className="hidden md:table-cell">Taller</TableHead>
                                             {isSupervisor && <TableHead className="text-right">Acciones</TableHead>}
@@ -602,9 +622,8 @@ export default function CentroDetailPage() {
                                     <TableBody>
                                         {cursos.map((r: any) => (
                                             <TableRow key={r.id}>
-                                                <TableCell className="font-medium">{r.codigo}</TableCell>
+                                                <TableCell className="font-medium">{r.codigo_programa ?? "-"}</TableCell>
                                                 <TableCell>{r.nombre}</TableCell>
-                                                <TableCell className="hidden md:table-cell">{r.codigo_programa}</TableCell>
                                                 <TableCell className="hidden sm:table-cell">{r.total_horas}</TableCell>
                                                 <TableCell className="hidden md:table-cell">{r.taller === 1 ? "Sí" : "No"}</TableCell>
                                                 {isSupervisor && (

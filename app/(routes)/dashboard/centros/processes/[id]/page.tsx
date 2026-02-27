@@ -640,7 +640,7 @@ export default function ProcessDetailPage() {
                             <>
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-base font-semibold">Información del Curso</h3>
-                                    <Link href={`/dashboard/centros/courses/${courseDetail.id}`}>
+                                    <Link href={`/dashboard/centros/courses/${courseDetail.id}`} target="_blank" rel="noopener noreferrer">
                                         <Button size="sm" variant="outline">
                                             <ExternalLink className="h-3.5 w-3.5 mr-1.5" />Ver perfil del curso
                                         </Button>
