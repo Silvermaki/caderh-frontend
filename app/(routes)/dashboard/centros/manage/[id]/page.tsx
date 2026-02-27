@@ -21,12 +21,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import SkeletonTable from "@/components/skeleton-table";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
     MapPin, Phone, Mail, User, Building2, UserCheck, GraduationCap, BookOpen,
-    PlusCircle, Pencil, Trash2, RefreshCcw, FileText,
+    PlusCircle, Pencil, Trash2, RefreshCcw, FileText, Globe, Save, X,
 } from "lucide-react";
 import { Icon } from "@iconify/react";
 import { prettifyNumber } from "@/app/libs/utils";
+import KPIBlock from "@/components/project/KPIBlock";
 import InstructorModal from "@/components/centro/instructor-modal";
 import StudentWizard from "@/components/centro/student-wizard";
 import CursoModal from "@/components/centro/curso-modal";
@@ -86,6 +89,13 @@ export default function CentroDetailPage() {
     const [curDelete, setCurDelete] = useState<any>(null);
     const [curDeleting, setCurDeleting] = useState(false);
 
+    // Edit centro
+    const [editing, setEditing] = useState(false);
+    const [editForm, setEditForm] = useState<any>({});
+    const [editSaving, setEditSaving] = useState(false);
+    const [departamentos, setDepartamentos] = useState<any[]>([]);
+    const [municipios, setMunicipios] = useState<any[]>([]);
+
     const authHeaders = { Authorization: `Bearer ${session?.user?.session}` };
     const apiBase = process.env.NEXT_PUBLIC_API_URL;
 
@@ -106,6 +116,65 @@ export default function CentroDetailPage() {
             if (res.ok) { const d = await res.json(); setSummary(d); }
         } catch { /* silent */ }
     };
+
+    const fetchDepartamentos = async () => {
+        try {
+            const res = await fetch(`${apiBase}/api/centros/departamentos`, { headers: authHeaders });
+            if (res.ok) { const d = await res.json(); setDepartamentos(d.data ?? []); }
+        } catch { /* silent */ }
+    };
+
+    const fetchMunicipios = async (depId: number) => {
+        try {
+            const res = await fetch(`${apiBase}/api/centros/municipios?departamento_id=${depId}`, { headers: authHeaders });
+            if (res.ok) { const d = await res.json(); setMunicipios(d.data ?? []); }
+        } catch { /* silent */ }
+    };
+
+    const startEdit = () => {
+        setEditForm({
+            nombre: centro.nombre ?? "", siglas: centro.siglas ?? "", codigo: centro.codigo ?? "",
+            descripcion: centro.descripcion ?? "", departamento_id: centro.departamento_id ?? "",
+            municipio_id: centro.municipio_id ?? "", direccion: centro.direccion ?? "",
+            telefono: centro.telefono ?? "", email: centro.email ?? "",
+            pagina_web: centro.pagina_web ?? "", facebook: centro.facebook ?? "", twitter: centro.twitter ?? "",
+            nombre_director: centro.nombre_director ?? "", telefono_director: centro.telefono_director ?? "",
+            email_director: centro.email_director ?? "",
+            nombre_contacto: centro.nombre_contacto ?? "", telefono_contacto: centro.telefono_contacto ?? "",
+            email_contacto: centro.email_contacto ?? "", puesto_contacto: centro.puesto_contacto ?? "",
+        });
+        fetchDepartamentos();
+        if (centro.departamento_id) fetchMunicipios(centro.departamento_id);
+        setEditing(true);
+    };
+
+    const cancelEdit = () => { setEditing(false); setEditForm({}); };
+
+    const saveEdit = async () => {
+        if (!editForm.nombre || !editForm.siglas || !editForm.codigo || !editForm.departamento_id || !editForm.municipio_id) {
+            toast.error("Nombre, siglas, código, departamento y municipio son requeridos");
+            return;
+        }
+        setEditSaving(true);
+        try {
+            const res = await fetch(`${apiBase}/api/centros/centros/${centroId}`, {
+                method: "PUT",
+                headers: { ...authHeaders, "Content-Type": "application/json" },
+                body: JSON.stringify(editForm),
+            });
+            if (res.ok) {
+                toast.success("Centro actualizado");
+                setEditing(false);
+                fetchCentro();
+            } else {
+                const d = await res.json();
+                toast.error(d.message ?? "Error al actualizar");
+            }
+        } catch { toast.error("Error al actualizar"); }
+        setEditSaving(false);
+    };
+
+    const ef = (field: string, value: any) => setEditForm((prev: any) => ({ ...prev, [field]: value }));
 
     // ─── Instructors ─────────────────────────────────────────────────────────
     const fetchInstructors = async (search: string, offset: number, limit: number) => {
@@ -328,109 +397,299 @@ export default function CentroDetailPage() {
             </Breadcrumbs>
 
             {/* Header Card */}
-            <Card className="mt-5">
-                <CardContent className="p-6">
-                    <div className="flex flex-col gap-4">
-                        <div className="flex items-start justify-between gap-2">
-                            <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <Building2 className="h-5 w-5 text-primary" />
-                                    <h2 className="text-lg font-semibold">{centro.nombre}</h2>
-                                    {centro.siglas && <Badge variant="secondary">{centro.siglas}</Badge>}
-                                    {centro.codigo && <Badge variant="outline">{centro.codigo}</Badge>}
-                                </div>
-                                {centro.descripcion && (
-                                    <p className="text-muted-foreground text-sm mt-2">{centro.descripcion}</p>
-                                )}
-                            </div>
-                            <Badge variant={centro.estatus === 1 ? "soft" : "secondary"} color={centro.estatus === 1 ? "success" : "secondary"}>
-                                {centro.estatus === 1 ? "Activo" : "Inactivo"}
-                            </Badge>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                            <div className="space-y-2">
-                                <h3 className="text-sm font-semibold text-muted-foreground">Información general</h3>
-                                {(centro.departamento_nombre || centro.municipio_nombre) && (
-                                    <div className="flex items-center gap-2 text-sm">
-                                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                                        <span>{[centro.municipio_nombre, centro.departamento_nombre].filter(Boolean).join(", ")}</span>
-                                    </div>
-                                )}
-                                {centro.direccion && (
-                                    <div className="flex items-center gap-2 text-sm"><MapPin className="h-4 w-4 text-muted-foreground" /><span>{centro.direccion}</span></div>
-                                )}
-                                {centro.telefono && (
-                                    <div className="flex items-center gap-2 text-sm"><Phone className="h-4 w-4 text-muted-foreground" /><span>{centro.telefono}</span></div>
-                                )}
-                                {centro.email && (
-                                    <div className="flex items-center gap-2 text-sm"><Mail className="h-4 w-4 text-muted-foreground" /><span>{centro.email}</span></div>
-                                )}
-                            </div>
-                            <div className="space-y-2">
-                                <h3 className="text-sm font-semibold text-muted-foreground">Director</h3>
-                                {centro.nombre_director && (
-                                    <div className="flex items-center gap-2 text-sm"><User className="h-4 w-4 text-muted-foreground" /><span>{centro.nombre_director}</span></div>
-                                )}
-                                {centro.telefono_director && (
-                                    <div className="flex items-center gap-2 text-sm"><Phone className="h-4 w-4 text-muted-foreground" /><span>{centro.telefono_director}</span></div>
-                                )}
-                                {centro.email_director && (
-                                    <div className="flex items-center gap-2 text-sm"><Mail className="h-4 w-4 text-muted-foreground" /><span>{centro.email_director}</span></div>
-                                )}
-                            </div>
-                        </div>
+            <Card className="mt-5 overflow-hidden">
+                <div className="p-6 pb-4">
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-primary">{centro.nombre}</h1>
+                        {centro.siglas && <Badge variant="secondary">{centro.siglas}</Badge>}
+                        {centro.codigo && <Badge variant="outline">{centro.codigo}</Badge>}
+                        <Badge variant={centro.estatus === 1 ? "soft" : "secondary"} color={centro.estatus === 1 ? "success" : "secondary"}>
+                            {centro.estatus === 1 ? "Activo" : "Inactivo"}
+                        </Badge>
                     </div>
-                </CardContent>
+                    {centro.descripcion && (
+                        <p className="text-sm text-muted-foreground mt-2 max-w-3xl leading-relaxed">{centro.descripcion}</p>
+                    )}
+                    <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 text-sm text-muted-foreground">
+                        {(centro.municipio_nombre || centro.departamento_nombre) && (
+                            <span className="flex items-center gap-2">
+                                <MapPin className="h-4 w-4 shrink-0" />
+                                {[centro.municipio_nombre, centro.departamento_nombre].filter(Boolean).join(", ")}
+                            </span>
+                        )}
+                        {centro.direccion && (
+                            <span className="flex items-center gap-2">
+                                <MapPin className="h-4 w-4 shrink-0" />
+                                {centro.direccion}
+                            </span>
+                        )}
+                        {centro.telefono && (
+                            <span className="flex items-center gap-2">
+                                <Phone className="h-4 w-4 shrink-0" />
+                                {centro.telefono}
+                            </span>
+                        )}
+                        {centro.email && (
+                            <span className="flex items-center gap-2">
+                                <Mail className="h-4 w-4 shrink-0" />
+                                {centro.email}
+                            </span>
+                        )}
+                    </div>
+                    {centro.nombre_director && (
+                        <div className="flex flex-wrap gap-x-6 gap-y-2 mt-2 text-sm text-muted-foreground">
+                            <span className="flex items-center gap-2">
+                                <User className="h-4 w-4 shrink-0" />
+                                Director: {centro.nombre_director}
+                            </span>
+                            {centro.telefono_director && (
+                                <span className="flex items-center gap-2">
+                                    <Phone className="h-4 w-4 shrink-0" />
+                                    {centro.telefono_director}
+                                </span>
+                            )}
+                            {centro.email_director && (
+                                <span className="flex items-center gap-2">
+                                    <Mail className="h-4 w-4 shrink-0" />
+                                    {centro.email_director}
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </div>
+                <div className="px-6 pb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <KPIBlock icon={UserCheck} label="Instructores" value={prettifyNumber(summary.instructores)} iconColor="text-primary" index={0} />
+                        <KPIBlock icon={GraduationCap} label="Estudiantes" value={prettifyNumber(summary.estudiantes)} iconColor="text-success" index={1} />
+                        <KPIBlock icon={BookOpen} label="Cursos" value={prettifyNumber(summary.cursos)} iconColor="text-warning" index={2} />
+                    </div>
+                </div>
             </Card>
 
             {/* Tabs Card */}
             <Card className="mt-4">
-                <Tabs defaultValue="resumen" className="w-full">
+                <Tabs defaultValue="general" className="w-full">
                     <TabsList className="w-full justify-start gap-8 border-b border-default-200 rounded-none bg-transparent p-0 h-auto min-h-0 px-6 pt-4 pb-0">
-                        <TabsTrigger value="resumen" className={TAB_TRIGGER_CLASS}>Resumen</TabsTrigger>
+                        <TabsTrigger value="general" className={TAB_TRIGGER_CLASS}>General</TabsTrigger>
                         <TabsTrigger value="cursos" className={TAB_TRIGGER_CLASS}>Cursos</TabsTrigger>
                         <TabsTrigger value="instructores" className={TAB_TRIGGER_CLASS}>Instructores</TabsTrigger>
                         <TabsTrigger value="estudiantes" className={TAB_TRIGGER_CLASS}>Estudiantes</TabsTrigger>
                     </TabsList>
 
-                    {/* ═══ Tab Resumen ═══ */}
-                    <TabsContent value="resumen" className="mt-0 px-6 pt-6 pb-6">
-                        <h3 className="text-lg font-semibold mb-4">Resumen del Centro</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <Card className="border-l-4 border-l-primary">
-                                <CardContent className="p-4 flex items-center gap-4">
-                                    <div className="rounded-full bg-primary/10 p-3">
-                                        <UserCheck className="h-6 w-6 text-primary" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Instructores</p>
-                                        <p className="text-2xl font-bold">{prettifyNumber(summary.instructores)}</p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card className="border-l-4 border-l-success">
-                                <CardContent className="p-4 flex items-center gap-4">
-                                    <div className="rounded-full bg-success/10 p-3">
-                                        <GraduationCap className="h-6 w-6 text-success" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Estudiantes</p>
-                                        <p className="text-2xl font-bold">{prettifyNumber(summary.estudiantes)}</p>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <Card className="border-l-4 border-l-warning">
-                                <CardContent className="p-4 flex items-center gap-4">
-                                    <div className="rounded-full bg-warning/10 p-3">
-                                        <BookOpen className="h-6 w-6 text-warning" />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">Cursos</p>
-                                        <p className="text-2xl font-bold">{prettifyNumber(summary.cursos)}</p>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                    {/* ═══ Tab General ═══ */}
+                    <TabsContent value="general" className="mt-0 px-6 pt-6 pb-6">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-semibold">Información General</h3>
+                            {isSupervisor && !editing && (
+                                <Button size="sm" variant="outline" onClick={startEdit}>
+                                    <Pencil className="h-4 w-4 mr-2" />Editar
+                                </Button>
+                            )}
+                            {editing && (
+                                <div className="flex gap-2">
+                                    <Button size="sm" variant="outline" onClick={cancelEdit} disabled={editSaving}>
+                                        <X className="h-4 w-4 mr-2" />Cancelar
+                                    </Button>
+                                    <Button size="sm" color="success" onClick={saveEdit} disabled={editSaving}>
+                                        <Save className="h-4 w-4 mr-2" />{editSaving ? "Guardando..." : "Guardar"}
+                                    </Button>
+                                </div>
+                            )}
                         </div>
+
+                        {!editing ? (() => {
+                            const Field = ({ label, value }: { label: string; value: any }) =>
+                                value ? <div><p className="text-xs text-muted-foreground">{label}</p><p className="text-sm font-medium">{value}</p></div> : null;
+
+                            const centroFields = [
+                                { label: "Nombre", value: centro.nombre },
+                                { label: "Siglas", value: centro.siglas },
+                                { label: "Código", value: centro.codigo },
+                                { label: "Descripción", value: centro.descripcion },
+                            ].filter(f => f.value);
+
+                            const ubicacionFields = [
+                                { label: "Departamento", value: centro.departamento_nombre },
+                                { label: "Municipio", value: centro.municipio_nombre },
+                                { label: "Dirección", value: centro.direccion },
+                                { label: "Teléfono", value: centro.telefono },
+                                { label: "Email", value: centro.email },
+                                { label: "Página Web", value: centro.pagina_web },
+                                { label: "Facebook", value: centro.facebook },
+                            ].filter(f => f.value);
+
+                            const directorFields = [
+                                { label: "Nombre", value: centro.nombre_director },
+                                { label: "Teléfono", value: centro.telefono_director },
+                                { label: "Email", value: centro.email_director },
+                            ].filter(f => f.value);
+
+                            const contactoFields = [
+                                { label: "Nombre", value: centro.nombre_contacto },
+                                { label: "Puesto", value: centro.puesto_contacto },
+                                { label: "Teléfono", value: centro.telefono_contacto },
+                                { label: "Email", value: centro.email_contacto },
+                            ].filter(f => f.value);
+
+                            return (
+                                <div className="space-y-6">
+                                    {centroFields.length > 0 && (
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-muted-foreground border-b pb-2 mb-3">Centro</h4>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-3 gap-x-6">
+                                                {centroFields.map(f => <Field key={f.label} label={f.label} value={f.value} />)}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {ubicacionFields.length > 0 && (
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-muted-foreground border-b pb-2 mb-3">Ubicación y Contacto</h4>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-3 gap-x-6">
+                                                {ubicacionFields.map(f => <Field key={f.label} label={f.label} value={f.value} />)}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {directorFields.length > 0 && (
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-muted-foreground border-b pb-2 mb-3">Director</h4>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-3 gap-x-6">
+                                                {directorFields.map(f => <Field key={f.label} label={f.label} value={f.value} />)}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {contactoFields.length > 0 && (
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-muted-foreground border-b pb-2 mb-3">Persona de Contacto</h4>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-3 gap-x-6">
+                                                {contactoFields.map(f => <Field key={f.label} label={f.label} value={f.value} />)}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })() : (
+                            <div className="space-y-6">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-muted-foreground border-b pb-2 mb-3">Centro</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="sm:col-span-2">
+                                            <Label>Nombre *</Label>
+                                            <Input value={editForm.nombre} onChange={(e) => ef("nombre", e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <Label>Siglas *</Label>
+                                            <Input value={editForm.siglas} onChange={(e) => ef("siglas", e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <Label>Código *</Label>
+                                            <Input value={editForm.codigo} onChange={(e) => ef("codigo", e.target.value)} />
+                                        </div>
+                                        <div className="sm:col-span-2 md:col-span-4">
+                                            <Label>Descripción</Label>
+                                            <Textarea value={editForm.descripcion} onChange={(e) => ef("descripcion", e.target.value)} rows={2} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="text-sm font-semibold text-muted-foreground border-b pb-2 mb-3">Ubicación y Contacto</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div>
+                                            <Label>Departamento *</Label>
+                                            <Select
+                                                value={editForm.departamento_id?.toString() ?? ""}
+                                                onValueChange={(v) => {
+                                                    ef("departamento_id", Number(v));
+                                                    ef("municipio_id", "");
+                                                    fetchMunicipios(Number(v));
+                                                }}
+                                            >
+                                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                                                <SelectContent>
+                                                    {departamentos.map((d: any) => (
+                                                        <SelectItem key={d.id} value={d.id.toString()}>{d.nombre}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div>
+                                            <Label>Municipio *</Label>
+                                            <Select
+                                                value={editForm.municipio_id?.toString() ?? ""}
+                                                onValueChange={(v) => ef("municipio_id", Number(v))}
+                                            >
+                                                <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
+                                                <SelectContent>
+                                                    {municipios.map((m: any) => (
+                                                        <SelectItem key={m.id} value={m.id.toString()}>{m.nombre}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="sm:col-span-2">
+                                            <Label>Dirección</Label>
+                                            <Input value={editForm.direccion} onChange={(e) => ef("direccion", e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <Label>Teléfono</Label>
+                                            <Input value={editForm.telefono} onChange={(e) => ef("telefono", e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <Label>Email</Label>
+                                            <Input value={editForm.email} onChange={(e) => ef("email", e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <Label>Página Web</Label>
+                                            <Input value={editForm.pagina_web} onChange={(e) => ef("pagina_web", e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <Label>Facebook</Label>
+                                            <Input value={editForm.facebook} onChange={(e) => ef("facebook", e.target.value)} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="text-sm font-semibold text-muted-foreground border-b pb-2 mb-3">Director</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="sm:col-span-2">
+                                            <Label>Nombre del Director</Label>
+                                            <Input value={editForm.nombre_director} onChange={(e) => ef("nombre_director", e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <Label>Teléfono</Label>
+                                            <Input value={editForm.telefono_director} onChange={(e) => ef("telefono_director", e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <Label>Email</Label>
+                                            <Input value={editForm.email_director} onChange={(e) => ef("email_director", e.target.value)} />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="text-sm font-semibold text-muted-foreground border-b pb-2 mb-3">Persona de Contacto</h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div>
+                                            <Label>Nombre</Label>
+                                            <Input value={editForm.nombre_contacto} onChange={(e) => ef("nombre_contacto", e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <Label>Puesto</Label>
+                                            <Input value={editForm.puesto_contacto} onChange={(e) => ef("puesto_contacto", e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <Label>Teléfono</Label>
+                                            <Input value={editForm.telefono_contacto} onChange={(e) => ef("telefono_contacto", e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <Label>Email</Label>
+                                            <Input value={editForm.email_contacto} onChange={(e) => ef("email_contacto", e.target.value)} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </TabsContent>
 
                     {/* ═══ Tab Instructores ═══ */}

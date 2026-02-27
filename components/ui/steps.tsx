@@ -85,6 +85,7 @@ const Stepper = React.forwardRef<HTMLOListElement, StepperProps>(
         className={cn(stepperVariants({ direction }), "overflow-visible", className, {
           "gap-2": gap,
           " text-center": alternativeLabel,
+          "!items-start": alternativeLabel && direction === "horizontal",
           "gap-3": content === "right",
         })}
         {...props}
