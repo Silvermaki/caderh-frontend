@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,10 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Stepper, Step, StepLabel } from "@/components/ui/steps";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
-import { Check, ChevronsUpDown, FileText, Loader2, Search, Trash2, Upload, X } from "lucide-react";
-import { useDropzone } from "react-dropzone";
+import { Check, ChevronsUpDown, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL;
@@ -23,6 +23,31 @@ const STEPS = [
     { key: "employment", label: "Situación Laboral" },
     { key: "additional", label: "Información Adicional" },
 ];
+
+const parseDateToISO = (raw: string | null | undefined): string => {
+    if (!raw || typeof raw !== "string") return "";
+    const trimmed = raw.trim();
+    if (!trimmed) return "";
+    if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return trimmed.slice(0, 10);
+    const dmy = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/.exec(trimmed);
+    if (dmy) {
+        const day = dmy[1].padStart(2, "0");
+        const month = dmy[2].padStart(2, "0");
+        const year = dmy[3].length <= 2 ? `20${dmy[3]}` : dmy[3];
+        return `${year}-${month}-${day}`;
+    }
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+    return trimmed;
+};
+
+const sanitizePhone = (value: string) => value.replace(/[^\d+\s\-]/g, "");
+
+const formatCurrencyDisplay = (value: number | string): string => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (isNaN(num) || num === 0) return "";
+    return `L ${num.toLocaleString("es-HN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
 
 interface StudentWizardProps {
     student?: any;
@@ -57,10 +82,8 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
     const [nivelEscolaridades, setNivelEscolaridades] = useState<any[]>([]);
     const [viveOptions, setViveOptions] = useState<{ value: string; label: string }[]>([]);
 
-    const [pendingFile, setPendingFile] = useState<File | null>(null);
-    const [existingPdf, setExistingPdf] = useState<string | null>(null);
-    const [pdfUploading, setPdfUploading] = useState(false);
-    const [pdfDeleting, setPdfDeleting] = useState(false);
+    const [ingresoFocused, setIngresoFocused] = useState(false);
+    const [ingresoEditValue, setIngresoEditValue] = useState("");
 
     const defaultForm = (): Record<string, any> => ({
         centro_id: centroId ? String(centroId) : "",
@@ -91,7 +114,6 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
         if (!isOpen) return;
         setCurrentStep(0);
         setErrors({});
-        setPendingFile(null);
 
         if (isEdit && student?.id && session) {
             setLoading(true);
@@ -112,14 +134,13 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                     f.departamento_id = s.departamento_id != null ? String(s.departamento_id) : "";
                     f.municipio_id = s.municipio_id != null ? String(s.municipio_id) : "";
                     f.nivel_escolaridad_id = s.nivel_escolaridad_id != null ? String(s.nivel_escolaridad_id) : "";
+                    f.fecha_nacimiento = parseDateToISO(s.fecha_nacimiento);
                     setForm(f);
-                    setExistingPdf(s.pdf || null);
                 })
                 .catch(() => toast.error("Error al cargar estudiante"))
                 .finally(() => setLoading(false));
         } else {
             setForm(defaultForm());
-            setExistingPdf(null);
         }
     }, [isOpen, student?.id, session?.user?.session]);
 
@@ -142,6 +163,15 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
             .then((r) => r.json()).then((d) => setCentrosLocal(d.data ?? [])).catch(() => {});
     }, [isOpen, showCentroSelect, centros?.length, session?.user?.session]);
 
+    useEffect(() => {
+        const viven = Number(form.cantidad_viven) || 0;
+        const trabajan = Number(form.cantidad_trabajan_viven) || 0;
+        const noTrabajan = Math.max(viven - trabajan, 0);
+        if (form.cantidad_notrabajan_viven !== noTrabajan) {
+            setForm((prev) => ({ ...prev, cantidad_notrabajan_viven: noTrabajan }));
+        }
+    }, [form.cantidad_viven, form.cantidad_trabajan_viven]);
+
     const selectedCentro = useMemo(() => centrosList.find((c) => c.id.toString() === form.centro_id), [centrosList, form.centro_id]);
 
     const validateStep = (step: number): boolean => {
@@ -156,6 +186,7 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
         } else if (step === 1) {
             if (!form.departamento_id) e.departamento_id = "Requerido";
             if (!form.municipio_id) e.municipio_id = "Requerido";
+            if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Email inválido";
         } else if (step === 2) {
             if (!form.vive) e.vive = "Requerido";
             if (!form.numero_dep.toString().trim()) e.numero_dep = "Requerido";
@@ -166,43 +197,6 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
 
     const goNext = () => { if (validateStep(currentStep)) setCurrentStep((s) => Math.min(s + 1, STEPS.length - 1)); };
     const goBack = () => setCurrentStep((s) => Math.max(s - 1, 0));
-
-    const onDrop = useCallback((accepted: File[]) => { if (accepted[0]) setPendingFile(accepted[0]); }, []);
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({
-        onDrop, maxFiles: 1, maxSize: 10 * 1024 * 1024, disabled: submitting || pdfUploading,
-        onDropRejected: (r) => { const err = r[0]?.errors[0]; toast.error(err?.code === "file-too-large" ? "El archivo excede 10MB" : err?.message ?? "Archivo rechazado"); },
-    });
-
-    const uploadPdf = async (studentId: number | string) => {
-        if (!pendingFile) return;
-        setPdfUploading(true);
-        try {
-            const fd = new FormData(); fd.append("file", pendingFile);
-            const res = await fetch(`${apiBase}/api/centros/students/${studentId}/pdf`, { method: "POST", headers: authHeaders, body: fd });
-            if (!res.ok) { const d = await res.json(); toast.error(d.message ?? "Error al subir hoja de vida"); }
-        } catch { toast.error("Error al subir hoja de vida"); }
-        setPdfUploading(false);
-    };
-
-    const deletePdf = async () => {
-        if (!student?.id) return;
-        setPdfDeleting(true);
-        try {
-            const res = await fetch(`${apiBase}/api/centros/students/${student.id}/pdf`, { method: "DELETE", headers: authHeaders });
-            if (res.ok) { setExistingPdf(null); toast.success("Hoja de vida eliminada"); }
-            else { const d = await res.json(); toast.error(d.message ?? "Error al eliminar"); }
-        } catch { toast.error("Error al eliminar hoja de vida"); }
-        setPdfDeleting(false);
-    };
-
-    const downloadPdf = async () => {
-        if (!student?.id) return;
-        try {
-            const res = await fetch(`${apiBase}/api/centros/students/${student.id}/pdf`, { headers: authHeaders });
-            if (!res.ok) { toast.error("Error al abrir"); return; }
-            const blob = await res.blob(); window.open(URL.createObjectURL(blob), "_blank", "noopener,noreferrer");
-        } catch { toast.error("Error al abrir"); }
-    };
 
     const onSubmit = async () => {
         if (!validateStep(currentStep)) return;
@@ -227,9 +221,6 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
             });
 
             if (res.ok) {
-                const json = await res.json();
-                const newId = isEdit ? student.id : json.id;
-                if (pendingFile && newId) await uploadPdf(newId);
                 toast.success(isEdit ? "Estudiante actualizado" : "Estudiante creado");
                 setIsOpen(false);
                 reloadList();
@@ -241,15 +232,31 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
         setSubmitting(false);
     };
 
-    const fieldInput = (key: string, label: string, opts?: { required?: boolean; placeholder?: string; type?: string }) => (
+    const fieldInput = (key: string, label: string, opts?: { required?: boolean; placeholder?: string; type?: string; readOnly?: boolean; className?: string }) => (
         <div>
             <Label className="mb-1 font-medium text-default-600">{label}{opts?.required ? " *" : ""}</Label>
             <Input
                 type={opts?.type ?? "text"}
                 disabled={submitting}
+                readOnly={opts?.readOnly}
                 value={form[key] ?? ""}
                 onChange={(e) => set(key, e.target.value)}
                 placeholder={opts?.placeholder ?? label}
+                className={opts?.className}
+            />
+            {errors[key] && <p className="text-destructive text-xs mt-1">{errors[key]}</p>}
+        </div>
+    );
+
+    const fieldPhone = (key: string, label: string) => (
+        <div>
+            <Label className="mb-1 font-medium text-default-600">{label}</Label>
+            <Input
+                type="tel"
+                disabled={submitting}
+                value={form[key] ?? ""}
+                onChange={(e) => set(key, sanitizePhone(e.target.value))}
+                placeholder={label}
             />
             {errors[key] && <p className="text-destructive text-xs mt-1">{errors[key]}</p>}
         </div>
@@ -270,7 +277,11 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
 
     const fieldSwitch = (key: string, label: string) => (
         <div className="flex items-center gap-3 py-2">
-            <Switch checked={!!form[key]} onCheckedChange={(v) => set(key, v ? 1 : 0)} disabled={submitting} />
+            <Switch
+                checked={form[key] === 1 || form[key] === true}
+                onCheckedChange={(v) => set(key, v ? 1 : 0)}
+                disabled={submitting}
+            />
             <Label className="text-default-600">{label}</Label>
         </div>
     );
@@ -317,7 +328,16 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                         </div>
                     )}
                     {fieldInput("identidad", "Identidad", { required: true, placeholder: "Número de identidad" })}
-                    {fieldInput("fecha_nacimiento", "Fecha de nacimiento", { placeholder: "DD/MM/AAAA" })}
+                    <div>
+                        <Label className="mb-1 font-medium text-default-600">Fecha de nacimiento</Label>
+                        <Input
+                            type="date"
+                            disabled={submitting}
+                            value={form.fecha_nacimiento ?? ""}
+                            onChange={(e) => set("fecha_nacimiento", e.target.value)}
+                        />
+                        {errors.fecha_nacimiento && <p className="text-destructive text-xs mt-1">{errors.fecha_nacimiento}</p>}
+                    </div>
                     {fieldInput("nombres", "Nombres", { required: true })}
                     {fieldInput("apellidos", "Apellidos", { required: true })}
                     {fieldSelect("sexo", "Sexo", [{ value: "M", label: "Masculino" }, { value: "F", label: "Femenino" }], { required: true })}
@@ -337,9 +357,19 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                         required: true, disabled: !form.departamento_id, placeholder: form.departamento_id ? "Seleccionar municipio" : "Seleccione departamento",
                     })}
                     {fieldInput("direccion", "Dirección")}
-                    {fieldInput("email", "Email", { placeholder: "correo@ejemplo.com" })}
-                    {fieldInput("telefono", "Teléfono")}
-                    {fieldInput("celular", "Celular")}
+                    <div>
+                        <Label className="mb-1 font-medium text-default-600">Email</Label>
+                        <Input
+                            type="email"
+                            disabled={submitting}
+                            value={form.email ?? ""}
+                            onChange={(e) => set("email", e.target.value)}
+                            placeholder="correo@ejemplo.com"
+                        />
+                        {errors.email && <p className="text-destructive text-xs mt-1">{errors.email}</p>}
+                    </div>
+                    {fieldPhone("telefono", "Teléfono")}
+                    {fieldPhone("celular", "Celular")}
                     {fieldInput("facebook", "Facebook")}
                     {fieldInput("twitter", "Twitter")}
                     {fieldInput("instagram", "Instagram")}
@@ -349,32 +379,6 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">{fieldSwitch("estudia", "¿Estudia actualmente?")}</div>
                     {fieldSelect("nivel_escolaridad_id", "Nivel de escolaridad", nivelEscolaridades.map((n: any) => ({ value: n.id.toString(), label: n.nombre })))}
-                    <div className="md:col-span-2">
-                        <Label className="mb-1 font-medium text-default-600">Hoja de vida</Label>
-                        {existingPdf && !pendingFile ? (
-                            <div className="flex items-center gap-2 mt-1 p-3 border rounded-lg bg-muted/30">
-                                <FileText className="h-5 w-5 text-primary shrink-0" />
-                                <button type="button" onClick={downloadPdf} className="text-sm text-primary underline truncate">Ver archivo actual</button>
-                                <Button type="button" variant="ghost" size="icon" className="ml-auto text-destructive shrink-0" onClick={deletePdf} disabled={pdfDeleting}>
-                                    {pdfDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                </Button>
-                            </div>
-                        ) : pendingFile ? (
-                            <div className="flex items-center gap-2 mt-1 p-3 border rounded-lg bg-muted/30">
-                                <FileText className="h-5 w-5 text-primary shrink-0" />
-                                <span className="text-sm truncate">{pendingFile.name}</span>
-                                <Button type="button" variant="ghost" size="icon" className="ml-auto shrink-0" onClick={() => setPendingFile(null)}><X className="h-4 w-4" /></Button>
-                            </div>
-                        ) : (
-                            <div {...getRootProps()} className={cn("mt-1 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors",
-                                isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-primary/50")}>
-                                <input {...getInputProps()} />
-                                <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-                                <p className="text-sm text-muted-foreground">{isDragActive ? "Suelta el archivo aquí" : "Arrastra un archivo o haz clic para subir"}</p>
-                                <p className="text-xs text-muted-foreground mt-1">pdf, docx, xlsx, jpg, png · Máx. 10MB</p>
-                            </div>
-                        )}
-                    </div>
                     {fieldSelect("vive", "¿Con quién vive?", viveOptions, { required: true })}
                     {fieldInput("numero_dep", "No. de dependientes", { required: true, placeholder: "0" })}
                     <div className="md:col-span-2">{fieldSwitch("tiene_hijos", "¿Tiene hijos?")}</div>
@@ -382,8 +386,32 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                     {fieldInput("vivienda", "Tipo de vivienda")}
                     {fieldInput("cantidad_viven", "Cantidad que viven en el hogar", { type: "number" })}
                     {fieldInput("cantidad_trabajan_viven", "Cantidad que trabajan", { type: "number" })}
-                    {fieldInput("cantidad_notrabajan_viven", "Cantidad que no trabajan", { type: "number" })}
-                    {fieldInput("ingreso_promedio", "Ingreso promedio", { type: "number" })}
+                    <div>
+                        <Label className="mb-1 font-medium text-default-600">Cantidad que no trabajan</Label>
+                        <Input
+                            type="number"
+                            disabled
+                            readOnly
+                            value={form.cantidad_notrabajan_viven ?? 0}
+                            className="bg-muted/50"
+                        />
+                    </div>
+                    <div>
+                        <Label className="mb-1 font-medium text-default-600">Ingreso promedio</Label>
+                        <Input
+                            type={ingresoFocused ? "number" : "text"}
+                            disabled={submitting}
+                            value={ingresoFocused ? ingresoEditValue : formatCurrencyDisplay(form.ingreso_promedio)}
+                            onChange={(e) => { setIngresoEditValue(e.target.value); set("ingreso_promedio", e.target.value); }}
+                            onFocus={() => {
+                                setIngresoFocused(true);
+                                const raw = form.ingreso_promedio;
+                                setIngresoEditValue(raw ? String(raw).replace(/,/g, "") : "");
+                            }}
+                            onBlur={() => { setIngresoFocused(false); }}
+                            placeholder="L 0.00"
+                        />
+                    </div>
                 </div>
             );
             case 3: return (
@@ -421,7 +449,7 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                         <h4 className="text-sm font-semibold text-foreground mb-3">Contacto de referencia</h4>
                     </div>
                     {fieldInput("nombre_r", "Nombre")}
-                    {fieldInput("telefono_r", "Teléfono")}
+                    {fieldPhone("telefono_r", "Teléfono")}
                     {fieldInput("datos_r", "Datos adicionales")}
                     {fieldInput("parentesco_r", "Parentesco")}
                     <div className="md:col-span-2">
@@ -434,29 +462,22 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
     };
 
     return (
-        <Dialog open={isOpen} onOpenChange={(open) => { if (!submitting && !pdfUploading) setIsOpen(open); }}>
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!submitting) setIsOpen(open); }}>
             <DialogContent size="2xl" className="max-h-[90vh] overflow-y-auto">
                 <DialogTitle>{isEdit ? "Editar Estudiante" : "Crear Estudiante"}</DialogTitle>
 
-                <div className="flex items-center justify-between gap-1 mb-6 mt-2 px-2">
-                    {STEPS.map((step, i) => (
-                        <div key={step.key} className="flex items-center flex-1">
-                            <button type="button" onClick={() => { if (i < currentStep) setCurrentStep(i); }}
-                                className={cn("flex flex-col items-center gap-1 w-full transition-colors",
-                                    i <= currentStep ? "text-primary" : "text-muted-foreground",
-                                    i < currentStep && "cursor-pointer hover:text-primary/80")}>
-                                <div className={cn("w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors",
-                                    i < currentStep ? "bg-primary border-primary text-primary-foreground" :
-                                    i === currentStep ? "border-primary text-primary" : "border-muted-foreground/30 text-muted-foreground")}>
-                                    {i < currentStep ? <Check className="h-4 w-4" /> : i + 1}
-                                </div>
-                                <span className="text-[10px] font-medium leading-tight text-center hidden sm:block">{step.label}</span>
-                            </button>
-                            {i < STEPS.length - 1 && (
-                                <div className={cn("h-0.5 flex-1 mx-1 rounded-full transition-colors", i < currentStep ? "bg-primary" : "bg-muted-foreground/20")} />
-                            )}
-                        </div>
-                    ))}
+                <div className="mb-6 mt-2">
+                    <Stepper direction="horizontal" current={currentStep} gap alternativeLabel>
+                        {STEPS.map((s, i) => (
+                            <Step
+                                key={s.key}
+                                onClick={() => { if (i < currentStep) setCurrentStep(i); }}
+                                className={i < currentStep ? "cursor-pointer" : ""}
+                            >
+                                <StepLabel>{s.label}</StepLabel>
+                            </Step>
+                        ))}
+                    </Stepper>
                 </div>
 
                 {renderStep()}
@@ -468,8 +489,8 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                     {currentStep < STEPS.length - 1 ? (
                         <Button type="button" onClick={goNext} disabled={submitting}>Siguiente</Button>
                     ) : (
-                        <Button type="button" onClick={onSubmit} disabled={submitting || pdfUploading}>
-                            {(submitting || pdfUploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Button type="button" onClick={onSubmit} disabled={submitting}>
+                            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Guardar
                         </Button>
                     )}

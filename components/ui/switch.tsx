@@ -68,7 +68,7 @@ const Switch = React.forwardRef<
       )}
       <SwitchPrimitives.Thumb
         className={cn(
-          "pointer-events-none z-10 origin-right  h-4 w-4 rounded-full bg-background  shadow-lg ring-0 transition-all  flex items-center justify-center   ltr:data-[state=checked]:ml-5 rtl:data-[state=checked]:mr-5 rtl:data-[state=unchecked]:mr-0.5 ",
+          "pointer-events-none z-10 origin-right  h-4 w-4 rounded-full bg-background  shadow-lg ring-0 transition-all duration-200  flex items-center justify-center   ltr:data-[state=unchecked]:ml-0.5 ltr:data-[state=checked]:ml-5 rtl:data-[state=checked]:mr-5 rtl:data-[state=unchecked]:mr-0.5 ",
           thumbClass,
           {
             "h-3 w-3 data-[state=checked]:ml-4 ": size === "sm",
