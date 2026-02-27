@@ -61,6 +61,14 @@ import {
     ChevronsUpDown,
     Check,
     Search,
+    Building2,
+    BookOpen,
+    User,
+    Clock,
+    GraduationCap,
+    ExternalLink,
+    Users,
+    UserCheck,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -71,6 +79,7 @@ import SkeletonTable from "@/components/skeleton-table";
 import { Progress } from "@/components/ui/progress";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 import ProjectHeader from "@/components/project/ProjectHeader";
 import InfoSection from "@/components/project/InfoSection";
 import ObjectivesList from "@/components/project/ObjectivesList";
@@ -209,6 +218,8 @@ const Page = () => {
     const [unlinkProcessTarget, setUnlinkProcessTarget] = useState<any>(null);
     const [unlinkingProcess, setUnlinkingProcess] = useState(false);
     const [availableProcessesLoading, setAvailableProcessesLoading] = useState(false);
+    const [beneficiaryStats, setBeneficiaryStats] = useState<any>(null);
+    const [beneficiaryStatsLoading, setBeneficiaryStatsLoading] = useState(false);
 
     const userRole = session?.user?.role;
     const userId = session?.user?.id;
@@ -431,6 +442,19 @@ const Page = () => {
         setProcessesLoading(false);
     };
 
+    const fetchBeneficiaryStats = async () => {
+        if (!id || !session) return;
+        setBeneficiaryStatsLoading(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/processes/stats`,
+                { headers: { Authorization: `Bearer ${session?.user?.session}` } }
+            );
+            if (res.ok) { const json = await res.json(); setBeneficiaryStats(json.data ?? null); }
+        } catch { /* silent */ }
+        setBeneficiaryStatsLoading(false);
+    };
+
     const openLinkProcessDialog = async () => {
         setLinkProcessDialogOpen(true);
         setLinkProcessSearch("");
@@ -462,6 +486,7 @@ const Page = () => {
                 toast.success("Procesos vinculados");
                 setLinkProcessDialogOpen(false);
                 fetchLinkedProcesses();
+                fetchBeneficiaryStats();
             } else { const d = await res.json(); toast.error(d.message ?? "Error al vincular"); }
         } catch { toast.error("Error al vincular"); }
         setLinkingProcess(false);
@@ -479,6 +504,7 @@ const Page = () => {
                 toast.success("Proceso desvinculado");
                 setUnlinkProcessTarget(null);
                 fetchLinkedProcesses();
+                fetchBeneficiaryStats();
             } else { const d = await res.json(); toast.error(d.message ?? "Error al desvincular"); }
         } catch { toast.error("Error al desvincular"); }
         setUnlinkingProcess(false);
@@ -518,6 +544,7 @@ const Page = () => {
             fetchStep5();
             fetchProjectLogs();
             fetchLinkedProcesses();
+            fetchBeneficiaryStats();
         }
     }, [project?.id, id]);
 
@@ -1748,7 +1775,7 @@ const Page = () => {
                     </TabsContent>
 
                     <TabsContent value="beneficiarios" className="mt-0 px-6 pt-6 pb-6">
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center justify-between mb-6">
                             <h3 className="text-lg font-semibold">Beneficiarios</h3>
                             {isSupervisor && (
                                 <Button size="sm" onClick={openLinkProcessDialog}>
@@ -1756,6 +1783,43 @@ const Page = () => {
                                 </Button>
                             )}
                         </div>
+
+                        {/* Mini Dashboard KPIs */}
+                        {linkedProcesses.length > 0 && (
+                            <div className="mb-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {[
+                                        { icon: BookOpen, label: "Procesos Educativos", value: beneficiaryStats?.total_processes ?? 0, color: "text-blue-500", bg: "bg-blue-500/10" },
+                                        { icon: Users, label: "Total Participantes", value: beneficiaryStats?.total_participants ?? 0, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+                                        { icon: UserCheck, label: "Estudiantes Únicos", value: beneficiaryStats?.unique_students ?? 0, color: "text-violet-500", bg: "bg-violet-500/10" },
+                                        { icon: Building2, label: "Centros Involucrados", value: beneficiaryStats?.centros_count ?? 0, color: "text-amber-500", bg: "bg-amber-500/10" },
+                                    ].map((kpi, idx) => (
+                                        <motion.div
+                                            key={kpi.label}
+                                            initial={{ opacity: 0, y: 16 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ duration: 0.35, delay: idx * 0.08, ease: "easeOut" }}
+                                            className="bg-card border border-border rounded-lg p-4 flex flex-col min-h-[88px] hover:shadow-md hover:border-primary/20 transition-all duration-200"
+                                        >
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className={cn("rounded-md p-1.5", kpi.bg)}>
+                                                    <kpi.icon className={cn("h-4 w-4 shrink-0", kpi.color)} />
+                                                </div>
+                                                <span className="text-xs text-muted-foreground uppercase tracking-wide leading-tight">{kpi.label}</span>
+                                            </div>
+                                            <p className="text-2xl font-bold text-foreground mt-auto">
+                                                {beneficiaryStatsLoading ? "—" : kpi.value}
+                                            </p>
+                                        </motion.div>
+                                    ))}
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-3">
+                                    Total Participantes incluye matrículas en todos los procesos. Estudiantes Únicos descuenta duplicados entre procesos.
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Processes Table */}
                         {processesLoading ? (
                             <SkeletonTable />
                         ) : linkedProcesses.length === 0 ? (
@@ -2108,53 +2172,119 @@ const Page = () => {
             )}
 
             <Dialog open={linkProcessDialogOpen} onOpenChange={setLinkProcessDialogOpen}>
-                <DialogContent className="sm:max-w-md p-0">
-                    <div className="px-6 pt-6 pb-2">
+                <DialogContent size="5xl" className="p-0 gap-0 overflow-hidden max-h-[90vh]">
+                    <div className="px-6 pt-6 pb-3">
                         <DialogTitle>Vincular Proceso Educativo</DialogTitle>
+                        <p className="text-sm text-muted-foreground mt-1">Selecciona los procesos educativos a vincular con este proyecto.</p>
                     </div>
-                    <div className="p-2 border-b">
-                        <div className="flex items-center gap-2 rounded-md border bg-background px-2">
+                    <div className="px-4 pb-2 border-b">
+                        <div className="flex items-center gap-2 rounded-md border bg-background px-3">
                             <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
                             <input
                                 type="text"
-                                placeholder="Buscar proceso..."
+                                placeholder="Buscar por nombre, código, centro o curso..."
                                 value={linkProcessSearch}
                                 onChange={(e) => setLinkProcessSearch(e.target.value)}
-                                className="flex h-9 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+                                className="flex h-10 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
                             />
                         </div>
                     </div>
-                    <div className="max-h-[300px] overflow-y-auto p-1">
+                    <div className="overflow-y-auto px-4 py-3" style={{ maxHeight: "calc(90vh - 200px)" }}>
                         {availableProcessesLoading ? (
-                            <div className="py-8 text-center text-sm text-muted-foreground">Cargando...</div>
+                            <div className="py-12 text-center text-sm text-muted-foreground">Cargando...</div>
                         ) : filteredAvailableProcesses.length === 0 ? (
-                            <div className="py-8 text-center text-sm text-muted-foreground">No hay procesos disponibles.</div>
+                            <div className="py-12 text-center text-sm text-muted-foreground">No hay procesos disponibles.</div>
                         ) : (
-                            filteredAvailableProcesses.map((p: any) => {
-                                const checked = selectedProcessIds.includes(p.id);
-                                return (
-                                    <button
-                                        key={p.id}
-                                        type="button"
-                                        onClick={() => setSelectedProcessIds((prev) => checked ? prev.filter((x) => x !== p.id) : [...prev, p.id])}
-                                        className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm hover:bg-accent"
-                                    >
-                                        <Checkbox checked={checked} />
-                                        <div className="min-w-0 flex-1">
-                                            <p className="truncate font-medium">{p.nombre}</p>
-                                            <p className="truncate text-xs text-muted-foreground">{[p.centro_nombre, p.curso_nombre].filter(Boolean).join(" · ")}</p>
-                                        </div>
-                                    </button>
-                                );
-                            })
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {filteredAvailableProcesses.map((p: any) => {
+                                    const checked = selectedProcessIds.includes(p.id);
+                                    return (
+                                        <button
+                                            key={p.id}
+                                            type="button"
+                                            onClick={() => setSelectedProcessIds((prev) => checked ? prev.filter((x) => x !== p.id) : [...prev, p.id])}
+                                            className={cn(
+                                                "relative flex flex-col rounded-lg border p-4 text-left transition-all duration-150",
+                                                checked ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "border-border hover:border-primary/40 hover:shadow-sm"
+                                            )}
+                                        >
+                                            <div className="flex items-start gap-3 mb-3">
+                                                <Checkbox checked={checked} className="mt-0.5 shrink-0" />
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <p className="font-semibold text-sm leading-tight">{p.nombre}</p>
+                                                        {p.codigo && (
+                                                            <span className="text-[10px] font-medium bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
+                                                                {p.codigo}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 pl-7 text-xs">
+                                                {p.centro_nombre && (
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                        <Building2 className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">{p.centro_nombre}</span>
+                                                    </div>
+                                                )}
+                                                {p.curso_nombre && (
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                        <BookOpen className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">{p.curso_nombre}</span>
+                                                    </div>
+                                                )}
+                                                {p.instructor_nombre && (
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                        <User className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">{p.instructor_nombre}</span>
+                                                    </div>
+                                                )}
+                                                {(p.fecha_inicial || p.fecha_final) && (
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                        <Calendar className="h-3 w-3 shrink-0" />
+                                                        <span className="truncate">{p.fecha_inicial ?? "—"} → {p.fecha_final ?? "—"}</span>
+                                                    </div>
+                                                )}
+                                                {p.duracion_horas && (
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                        <Clock className="h-3 w-3 shrink-0" />
+                                                        <span>{p.duracion_horas} horas</span>
+                                                    </div>
+                                                )}
+                                                {p.enrolled_count != null && (
+                                                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                                                        <Users className="h-3 w-3 shrink-0" />
+                                                        <span>{p.enrolled_count} matriculados</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="mt-3 pl-7">
+                                                <a
+                                                    href={`/dashboard/centros/processes/${p.id}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                                                >
+                                                    <ExternalLink className="h-3 w-3" />
+                                                    Ver proceso
+                                                </a>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         )}
                     </div>
-                    <DialogFooter className="px-6 pb-4">
+                    <div className="px-4 py-3 border-t bg-background">
                         <Button onClick={submitLinkProcesses} disabled={linkingProcess || selectedProcessIds.length === 0} className="w-full">
                             {linkingProcess && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
                             Vincular {selectedProcessIds.length > 0 && `(${selectedProcessIds.length})`}
                         </Button>
-                    </DialogFooter>
+                    </div>
                 </DialogContent>
             </Dialog>
 
