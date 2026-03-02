@@ -33,6 +33,7 @@ import KPIBlock from "@/components/project/KPIBlock";
 import InstructorModal from "@/components/centro/instructor-modal";
 import StudentWizard from "@/components/centro/student-wizard";
 import CursoModal from "@/components/centro/curso-modal";
+import ExcelActions from "@/components/centro/excel-actions";
 
 const TAB_TRIGGER_CLASS = "rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none";
 
@@ -709,11 +710,14 @@ export default function CentroDetailPage() {
                                     </Button>
                                 </InputGroupButton>
                             </InputGroup>
-                            {isSupervisor && (
-                                <Button size="sm" color="success" onClick={() => { setInstSelected(null); setInstModalOpen(true); }}>
-                                    <PlusCircle className="h-4 w-4 mr-2" />Crear Instructor
-                                </Button>
-                            )}
+                            <div className="flex gap-2 items-center">
+                                <ExcelActions centroId={centroId} entity="instructors" onSuccess={() => fetchInstructors(instSearch, instOffset, instLimit)} disabled={!isSupervisor} />
+                                {isSupervisor && (
+                                    <Button size="sm" color="success" onClick={() => { setInstSelected(null); setInstModalOpen(true); }}>
+                                        <PlusCircle className="h-4 w-4 mr-2" />Crear Instructor
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                         {instLoading ? <SkeletonTable /> : instructors.length === 0 ? (
                             <p className="text-muted-foreground py-8 text-center">No hay instructores registrados.</p>
@@ -783,11 +787,14 @@ export default function CentroDetailPage() {
                                     </Button>
                                 </InputGroupButton>
                             </InputGroup>
-                            {isSupervisor && (
-                                <Button size="sm" color="success" onClick={() => { setEstSelected(null); setEstModalOpen(true); }}>
-                                    <PlusCircle className="h-4 w-4 mr-2" />Crear Estudiante
-                                </Button>
-                            )}
+                            <div className="flex gap-2 items-center">
+                                <ExcelActions centroId={centroId} entity="students" onSuccess={() => fetchEstudiantes(estSearch, estOffset, estLimit)} disabled={!isSupervisor} />
+                                {isSupervisor && (
+                                    <Button size="sm" color="success" onClick={() => { setEstSelected(null); setEstModalOpen(true); }}>
+                                        <PlusCircle className="h-4 w-4 mr-2" />Crear Estudiante
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                         {estLoading ? <SkeletonTable /> : estudiantes.length === 0 ? (
                             <p className="text-muted-foreground py-8 text-center">No hay estudiantes registrados.</p>
@@ -858,11 +865,14 @@ export default function CentroDetailPage() {
                                     </Button>
                                 </InputGroupButton>
                             </InputGroup>
-                            {isSupervisor && (
-                                <Button size="sm" color="success" onClick={() => { setCurSelected(null); setCurModalOpen(true); }}>
-                                    <PlusCircle className="h-4 w-4 mr-2" />Crear Curso
-                                </Button>
-                            )}
+                            <div className="flex gap-2 items-center">
+                                <ExcelActions centroId={centroId} entity="courses" onSuccess={() => fetchCursos(curSearch, curOffset, curLimit)} disabled={!isSupervisor} />
+                                {isSupervisor && (
+                                    <Button size="sm" color="success" onClick={() => { setCurSelected(null); setCurModalOpen(true); }}>
+                                        <PlusCircle className="h-4 w-4 mr-2" />Crear Curso
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                         {curLoading ? <SkeletonTable /> : cursos.length === 0 ? (
                             <p className="text-muted-foreground py-8 text-center">No hay cursos registrados.</p>

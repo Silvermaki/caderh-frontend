@@ -12,6 +12,7 @@ import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import InstructorModal from "@/components/centro/instructor-modal";
+import ExcelActions from "@/components/centro/excel-actions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -323,6 +324,11 @@ function PageContent() {
                         </PopoverContent>
                     </Popover>
                 </div>
+                {isSupervisor && (
+                    <div className="flex items-end pb-0.5">
+                        <ExcelActions centroId={centroFilter !== "all" ? centroFilter : null} entity="instructors" onSuccess={reloadList} />
+                    </div>
+                )}
             </div>
 
             <Card className="p-4">

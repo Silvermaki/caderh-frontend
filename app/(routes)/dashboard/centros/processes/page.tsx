@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import ExcelActions from "@/components/centro/excel-actions";
 import { cn } from "@/lib/utils";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL;
@@ -416,6 +417,11 @@ function PageContent() {
                         </PopoverContent>
                     </Popover>
                 </div>
+                {isSupervisor && (
+                    <div className="flex items-end pb-0.5">
+                        <ExcelActions centroId={centroFilter !== "all" ? centroFilter : null} entity="processes" onSuccess={reloadList} />
+                    </div>
+                )}
             </div>
 
             <Card className="p-4">
