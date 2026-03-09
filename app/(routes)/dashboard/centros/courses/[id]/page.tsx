@@ -319,7 +319,7 @@ export default function CourseDetailPage() {
                             <div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <h2 className="text-lg font-semibold">{course.nombre}</h2>
-                                    <Badge variant="secondary">Código: {course.codigo}</Badge>
+                                    <Badge color="secondary">Código: {course.codigo}</Badge>
                                 </div>
                                 <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-sm text-muted-foreground">
                                     {course.centro_nombre && <span className="flex items-center gap-1.5"><Building2 className="h-4 w-4" />{course.centro_nombre}</span>}
@@ -330,7 +330,7 @@ export default function CourseDetailPage() {
                             </div>
                         </div>
                         {isSupervisor && (
-                            <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+                            <Button color="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
                                 <Trash2 className="h-4 w-4 mr-1.5" />Eliminar
                             </Button>
                         )}

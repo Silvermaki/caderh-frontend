@@ -320,7 +320,7 @@ export default function StudentDetailPage() {
                             <div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <h2 className="text-lg font-semibold">{fullName}</h2>
-                                    <Badge variant="secondary">{s.sexo === "M" ? "Masculino" : s.sexo === "F" ? "Femenino" : s.sexo}</Badge>
+                                    <Badge color="secondary">{s.sexo === "M" ? "Masculino" : s.sexo === "F" ? "Femenino" : s.sexo}</Badge>
                                 </div>
                                 <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-sm text-muted-foreground">
                                     {s.identidad && <span className="flex items-center gap-1.5"><CreditCard className="h-4 w-4" />{s.identidad}</span>}
@@ -331,7 +331,7 @@ export default function StudentDetailPage() {
                             </div>
                         </div>
                         {isSupervisor && (
-                            <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+                            <Button color="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
                                 <Trash2 className="h-4 w-4 mr-1.5" />Eliminar
                             </Button>
                         )}

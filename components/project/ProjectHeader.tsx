@@ -77,7 +77,7 @@ const ProjectHeader = ({
                         {name}
                     </h1>
                     {projectCategory && (
-                        <Badge variant={projectCategory === "AGREEMENT" ? "outline" : "default"} className="text-xs shrink-0">
+                        <Badge variant={projectCategory === "AGREEMENT" ? "outline" : undefined} color={projectCategory === "AGREEMENT" ? undefined : "default"} className="text-xs shrink-0">
                             {projectCategory === "AGREEMENT" ? "Convenio" : "Proyecto"}
                         </Badge>
                     )}

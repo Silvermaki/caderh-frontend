@@ -25,7 +25,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import {
     Building2, BookOpen, Calendar, Check, Clock, ChevronsUpDown, ExternalLink, GraduationCap, Loader2,
-    Pencil, PlusCircle, Trash2, User, Search, DollarSign, Users, Target, Phone, Mail, IdCard,
+    Pencil, PlusCircle, Trash2, User, Search, DollarSign, Users, Target, Phone, Mail,
 } from "lucide-react";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL;
@@ -525,7 +525,7 @@ export default function ProcessDetailPage() {
                             <div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <h2 className="text-lg font-semibold">{p.nombre}</h2>
-                                    <Badge variant="secondary">Código: {p.codigo}</Badge>
+                                    <Badge color="secondary">Código: {p.codigo}</Badge>
                                 </div>
                                 <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-sm text-muted-foreground">
                                     {p.centro_nombre && <span className="flex items-center gap-1.5"><Building2 className="h-4 w-4" />{p.centro_nombre}</span>}
@@ -539,7 +539,7 @@ export default function ProcessDetailPage() {
                             </div>
                         </div>
                         {isSupervisor && (
-                            <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+                            <Button color="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
                                 <Trash2 className="h-4 w-4 mr-1.5" />Eliminar
                             </Button>
                         )}
@@ -768,7 +768,7 @@ export default function ProcessDetailPage() {
                                             <TableCell className="font-medium text-primary">{proj.name}</TableCell>
                                             <TableCell className="text-muted-foreground">{proj.project_category === "PROGRAM" ? "Programa" : "Proyecto"}</TableCell>
                                             <TableCell>
-                                                <Badge variant={proj.project_status === "ACTIVE" ? "default" : "secondary"}>
+                                                <Badge color={proj.project_status === "ACTIVE" ? "default" : "secondary"}>
                                                     {proj.project_status === "ACTIVE" ? "Activo" : proj.project_status === "ARCHIVED" ? "Archivado" : proj.project_status}
                                                 </Badge>
                                             </TableCell>

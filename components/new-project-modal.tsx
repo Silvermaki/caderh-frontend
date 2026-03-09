@@ -710,12 +710,13 @@ const NewProjectModal = ({
                 }
                 if (items.length > 0) setDonationItems(items);
             } else if (type === "expenses") {
-                const items: { amount: string; description: string }[] = [];
+                const items: { amount: string; description: string; expense_category_id: string }[] = [];
                 for (const row of jsonRows) {
                     const monto = Number(row["Monto"]);
                     const desc = String(row["Descripcion"] ?? "").trim();
+                    const catId = String(row["Categoria ID"] ?? "").trim();
                     if (isNaN(monto)) { errorCount++; continue; }
-                    items.push({ amount: String(monto), description: desc });
+                    items.push({ amount: String(monto), description: desc, expense_category_id: catId });
                     imported++;
                 }
                 if (items.length > 0) setExpenseItems(items);

@@ -11,7 +11,7 @@ interface Achievement {
 
 interface AchievementsListProps {
     accomplishments: any[];
-    onToggle: (index: number, checked: boolean) => void;
+    onToggle?: (index: number, checked: boolean) => void;
     disabled?: boolean;
     className?: string;
 }
@@ -59,7 +59,7 @@ const AchievementsList = ({
                     <button
                         key={i}
                         type="button"
-                        onClick={() => onToggle(i, !a.completed)}
+                        onClick={() => onToggle?.(i, !a.completed)}
                         disabled={disabled}
                         className={cn(
                             "w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all duration-200",

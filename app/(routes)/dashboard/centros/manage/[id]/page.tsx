@@ -402,9 +402,9 @@ export default function CentroDetailPage() {
                 <div className="p-6 pb-4">
                     <div className="flex items-center gap-3 flex-wrap">
                         <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-primary">{centro.nombre}</h1>
-                        {centro.siglas && <Badge variant="secondary">{centro.siglas}</Badge>}
+                        {centro.siglas && <Badge color="secondary">{centro.siglas}</Badge>}
                         {centro.codigo && <Badge variant="outline">{centro.codigo}</Badge>}
-                        <Badge variant={centro.estatus === 1 ? "soft" : "secondary"} color={centro.estatus === 1 ? "success" : "secondary"}>
+                        <Badge variant={centro.estatus === 1 ? "soft" : undefined} color={centro.estatus === 1 ? "success" : "secondary"}>
                             {centro.estatus === 1 ? "Activo" : "Inactivo"}
                         </Badge>
                     </div>

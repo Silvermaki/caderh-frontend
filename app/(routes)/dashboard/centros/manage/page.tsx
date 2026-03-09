@@ -225,7 +225,7 @@ function PageContent() {
                                                                 {c.nombre}
                                                             </h3>
                                                             {c.siglas && (
-                                                                <Badge variant="secondary" className="text-xs">
+                                                                <Badge color="secondary" className="text-xs">
                                                                     {c.siglas}
                                                                 </Badge>
                                                             )}
@@ -242,7 +242,7 @@ function PageContent() {
                                                         )}
                                                     </div>
                                                     <Badge
-                                                        variant={c.estatus === 1 ? "soft" : "secondary"}
+                                                        variant={c.estatus === 1 ? "soft" : undefined}
                                                         color={c.estatus === 1 ? "success" : "secondary"}
                                                         className="shrink-0"
                                                     >
