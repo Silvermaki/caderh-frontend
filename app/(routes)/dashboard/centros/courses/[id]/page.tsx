@@ -319,7 +319,7 @@ export default function CourseDetailPage() {
                             <div>
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <h2 className="text-lg font-semibold">{course.nombre}</h2>
-                                    <Badge color="secondary">Código: {course.codigo}</Badge>
+                                    {course.codigo && <Badge color="secondary">Código: {course.codigo}</Badge>}
                                 </div>
                                 <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-sm text-muted-foreground">
                                     {course.centro_nombre && <span className="flex items-center gap-1.5"><Building2 className="h-4 w-4" />{course.centro_nombre}</span>}
@@ -354,7 +354,7 @@ export default function CourseDetailPage() {
                         </div>
                         {editingTab === "general" ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {fieldInput("codigo", "Código", { required: true, type: "number" })}
+                                {fieldInput("codigo", "Código", { type: "number" })}
                                 {fieldInput("nombre", "Nombre", { required: true })}
                                 {fieldInput("codigo_programa", "Código de programa", { required: true })}
                                 {fieldSelect("taller", "Taller", [{ value: "1", label: "Sí" }, { value: "0", label: "No" }])}
