@@ -24,9 +24,9 @@ import { useSession } from "next-auth/react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
-    Building2, BookOpen, Bookmark, Calendar, CalendarClock, Check, Clock, ChevronsUpDown, Download,
-    ExternalLink, GraduationCap, Hash, Layers, Loader2, MapPin, Pencil, PlusCircle, SunMedium, Trash2,
-    Upload, User, Search, DollarSign, Users, Target, Phone, Mail,
+    AlertTriangle, Building2, BookOpen, Bookmark, Calendar, CalendarClock, Check, Clock, ChevronsUpDown,
+    Download, ExternalLink, GraduationCap, Hash, Layers, Loader2, MapPin, Pencil, PlusCircle, SunMedium,
+    Trash2, Upload, User, Search, DollarSign, Users, Target, Phone, Mail,
 } from "lucide-react";
 import KPIBlock from "@/components/project/KPIBlock";
 import InfoSection from "@/components/project/InfoSection";
@@ -91,6 +91,10 @@ export default function ProcessDetailPage() {
     const [unlinkProjectTarget, setUnlinkProjectTarget] = useState<any>(null);
     const [unlinkingProject, setUnlinkingProject] = useState(false);
     const [availableProjectsLoading, setAvailableProjectsLoading] = useState(false);
+
+    const [alertStudent, setAlertStudent] = useState<any>(null);
+    const [alertProcesses, setAlertProcesses] = useState<any[]>([]);
+    const [alertLoading, setAlertLoading] = useState(false);
 
     const fetchProcess = useCallback(async () => {
         setLoading(true);
@@ -381,7 +385,29 @@ export default function ProcessDetailPage() {
         setStudentsLoading(true);
         try {
             const res = await fetch(`${apiBase}/api/centros/students?limit=100&offset=0&centro_id=${process_.centro_id}`, { headers: authHeaders });
-            if (res.ok) { const d = await res.json(); setAvailableStudents(d.data ?? []); }
+            if (res.ok) {
+                const d = await res.json();
+                const students = d.data ?? [];
+
+                // Batch-check which students are enrolled in other current processes
+                const studentIds = students.map((s: any) => s.id);
+                if (studentIds.length > 0) {
+                    try {
+                        const enrollRes = await fetch(`${apiBase}/api/centros/students/batch-enrollment-check`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json", ...authHeaders },
+                            body: JSON.stringify({ student_ids: studentIds, exclude_process_id: Number(processId) }),
+                        });
+                        if (enrollRes.ok) {
+                            const enrollData = await enrollRes.json();
+                            const countMap = new Map((enrollData.data ?? []).map((r: any) => [r.estudiante_id, r.count]));
+                            students.forEach((s: any) => { s.other_process_count = countMap.get(s.id) ?? 0; });
+                        }
+                    } catch { /* silent - students still usable without enrollment data */ }
+                }
+
+                setAvailableStudents(students);
+            }
         } catch { /* silent */ }
         setStudentsLoading(false);
     };
@@ -413,7 +439,14 @@ export default function ProcessDetailPage() {
                 body: JSON.stringify({ student_ids: enrollSelected }),
             });
             if (res.ok) {
+                const data = await res.json();
                 toast.success("Estudiantes matriculados");
+                if (data.warnings?.length) {
+                    toast.error(
+                        `${data.warnings.length} estudiante(s) ya matriculados en otros procesos vigentes: ${data.warnings.join(", ")}`,
+                        { duration: 6000 }
+                    );
+                }
                 setEnrollDialogOpen(false);
                 fetchEnrollments();
             } else {
@@ -422,6 +455,20 @@ export default function ProcessDetailPage() {
             }
         } catch { toast.error("Error al matricular"); }
         setEnrolling(false);
+    };
+
+    const openStudentAlert = async (en: any) => {
+        setAlertStudent(en);
+        setAlertLoading(true);
+        setAlertProcesses([]);
+        try {
+            const res = await fetch(`${apiBase}/api/centros/students/${en.estudiante_id}/enrollments`, { headers: authHeaders });
+            if (res.ok) {
+                const d = await res.json();
+                setAlertProcesses((d.data ?? []).filter((p: any) => p.proceso_id !== Number(processId)));
+            }
+        } catch { /* silent */ }
+        setAlertLoading(false);
     };
 
     const unenrollStudent = async () => {
@@ -868,6 +915,7 @@ export default function ProcessDetailPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
+                                            <TableHead className="w-[40px]"></TableHead>
                                             <TableHead>Nombre completo</TableHead>
                                             <TableHead>Identidad</TableHead>
                                             {isSupervisor && <TableHead className="w-[80px]">Acciones</TableHead>}
@@ -875,7 +923,19 @@ export default function ProcessDetailPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {filteredEnrollments.map((en) => (
-                                            <TableRow key={en.id}>
+                                            <TableRow key={en.id} className={en.other_process_count > 0 ? "bg-warning/10" : undefined}>
+                                                <TableCell className="px-2">
+                                                    {en.other_process_count > 0 ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openStudentAlert(en)}
+                                                            className="text-warning hover:text-warning/80 transition-colors"
+                                                            title="Matriculado en otros procesos vigentes"
+                                                        >
+                                                            <AlertTriangle className="h-4 w-4" />
+                                                        </button>
+                                                    ) : null}
+                                                </TableCell>
                                                 <TableCell>{en.estudiante_nombre}</TableCell>
                                                 <TableCell>{en.estudiante_identidad}</TableCell>
                                                 {isSupervisor && (
@@ -1030,7 +1090,14 @@ export default function ProcessDetailPage() {
                                             <div className="flex items-start gap-3 mb-3">
                                                 <Checkbox checked={checked} className="mt-0.5 shrink-0" />
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="font-semibold text-sm leading-tight">{name}</p>
+                                                    <div className="flex items-center gap-2">
+                                                        <p className="font-semibold text-sm leading-tight">{name}</p>
+                                                        {s.other_process_count > 0 && (
+                                                            <span className="inline-flex items-center gap-1 text-[10px] font-medium bg-warning/15 text-warning px-1.5 py-0.5 rounded" title="Matriculado en otros procesos vigentes">
+                                                                <AlertTriangle className="h-3 w-3" />Matriculado en otro proceso
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     {s.identidad && (
                                                         <span className="inline-block mt-1.5 text-[10px] font-medium bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
                                                             {s.identidad}
@@ -1214,6 +1281,49 @@ export default function ProcessDetailPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Student multi-enrollment alert modal */}
+            <Dialog open={!!alertStudent} onOpenChange={(open) => { if (!open) setAlertStudent(null); }}>
+                <DialogContent size="3xl">
+                    <DialogTitle>
+                        <div className="flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-warning" />
+                            Estudiante en otros procesos
+                        </div>
+                    </DialogTitle>
+                    <p className="text-sm text-muted-foreground mb-4">
+                        <strong>{alertStudent?.estudiante_nombre}</strong> ({alertStudent?.estudiante_identidad}) está matriculado en los siguientes procesos educativos vigentes:
+                    </p>
+                    {alertLoading ? (
+                        <div className="py-8 text-center text-sm text-muted-foreground">Cargando...</div>
+                    ) : alertProcesses.length === 0 ? (
+                        <div className="py-8 text-center text-sm text-muted-foreground">No se encontraron otros procesos vigentes.</div>
+                    ) : (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Proceso</TableHead>
+                                    <TableHead>Código</TableHead>
+                                    <TableHead>Centro</TableHead>
+                                    <TableHead>Fecha Inicio</TableHead>
+                                    <TableHead>Fecha Fin</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {alertProcesses.map((p: any) => (
+                                    <TableRow key={p.proceso_id}>
+                                        <TableCell className="font-medium">{p.proceso_nombre}</TableCell>
+                                        <TableCell className="text-sm">{p.proceso_codigo}</TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">{p.centro_nombre}</TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">{p.fecha_inicial ?? "-"}</TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">{p.fecha_final ?? "-"}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
