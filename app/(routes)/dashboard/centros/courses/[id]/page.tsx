@@ -19,10 +19,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import SkeletonTable from "@/components/skeleton-table";
+import KPIBlock from "@/components/project/KPIBlock";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import {
     Building2, BookOpen, Clock, Hash, Pencil, Trash2, Loader2, PlusCircle,
+    Layers, Wrench, Download, Upload,
 } from "lucide-react";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL;
@@ -57,6 +59,7 @@ export default function CourseDetailPage() {
     const [deleteModuleOpen, setDeleteModuleOpen] = useState(false);
     const [deletingModule, setDeletingModule] = useState(false);
     const [moduleToDelete, setModuleToDelete] = useState<any>(null);
+    const [importing, setImporting] = useState(false);
 
     const fetchCourse = async () => {
         setLoading(true);
@@ -226,12 +229,75 @@ export default function CourseDetailPage() {
         setDeletingModule(false);
     };
 
+    /* ── Excel helpers ── */
+
+    const downloadModulesTemplate = async () => {
+        try {
+            const res = await fetch(`${apiBase}/api/centros/courses/${courseId}/excel/modules`, { headers: authHeaders });
+            if (!res.ok) { toast.error("Error al descargar plantilla"); return; }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "plantilla-modulos.xlsx";
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch {
+            toast.error("Error al descargar plantilla");
+        }
+    };
+
+    const importModulesFile = async (file: File) => {
+        setImporting(true);
+        try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const res = await fetch(`${apiBase}/api/centros/courses/${courseId}/excel/modules`, {
+                method: "POST", headers: authHeaders, body: fd,
+            });
+            const json = await res.json();
+            if (res.ok) {
+                const parts: string[] = [];
+                if (json.created > 0) parts.push(`${json.created} creados`);
+                if (json.updated > 0) parts.push(`${json.updated} actualizados`);
+                if (json.deleted > 0) parts.push(`${json.deleted} eliminados`);
+                const summary = parts.length ? parts.join(", ") : "Sin cambios";
+                if (json.errors?.length > 0) {
+                    toast.error(`${summary}. ${json.errors.length} error(es).`, { duration: 6000 });
+                } else {
+                    toast.success(summary);
+                }
+                fetchModules();
+                fetchCourse();
+            } else {
+                toast.error(json.message ?? "Error al importar");
+            }
+        } catch {
+            toast.error("Error al importar archivo");
+        }
+        setImporting(false);
+    };
+
+    const triggerImportModules = () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".xlsx";
+        input.onchange = (e: any) => {
+            const file = e.target.files?.[0];
+            if (file) importModulesFile(file);
+        };
+        input.click();
+    };
+
     /* ── Field helpers ── */
 
-    const fieldView = (label: string, value: any) => (
-        <div>
-            <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-            <p className="text-sm text-foreground">{value || "-"}</p>
+    const fieldView = (label: string, value: any, icon?: React.ReactNode) => (
+        <div className="flex items-start gap-3">
+            {icon && <div className="mt-0.5 text-muted-foreground">{icon}</div>}
+            <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
+                <p className="text-sm text-foreground font-medium">{value || "-"}</p>
+            </div>
         </div>
     );
 
@@ -308,37 +374,57 @@ export default function CourseDetailPage() {
                 <BreadcrumbItem className="text-primary">{course.nombre}</BreadcrumbItem>
             </Breadcrumbs>
 
-            {/* Header */}
-            <Card className="mt-5">
-                <CardContent className="p-6">
+            {/* ── Professional Header ── */}
+            <Card className="mt-5 overflow-hidden">
+                <div className="p-6 pb-4">
                     <div className="flex items-start justify-between gap-4">
-                        <div className="flex items-start gap-4">
-                            <div className="rounded-full bg-primary/10 p-3">
-                                <BookOpen className="h-6 w-6 text-primary" />
+                        <div>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-primary">
+                                    {course.nombre}
+                                </h1>
+                                {course.codigo && (
+                                    <Badge variant="outline" className="text-xs shrink-0">Código: {course.codigo}</Badge>
+                                )}
                             </div>
-                            <div>
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <h2 className="text-lg font-semibold">{course.nombre}</h2>
-                                    {course.codigo && <Badge color="secondary">Código: {course.codigo}</Badge>}
-                                </div>
-                                <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-sm text-muted-foreground">
-                                    {course.centro_nombre && <span className="flex items-center gap-1.5"><Building2 className="h-4 w-4" />{course.centro_nombre}</span>}
-                                    {course.codigo_programa && <span className="flex items-center gap-1.5"><Hash className="h-4 w-4" />{course.codigo_programa}</span>}
-                                    <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" />{course.total_horas ?? 0} horas</span>
-                                    <span className="flex items-center gap-1.5">Taller: {course.taller === 1 ? "Sí" : "No"}</span>
-                                </div>
+                            {course.objetivo && (
+                                <p className="text-sm text-muted-foreground mt-2 break-words max-w-3xl leading-relaxed line-clamp-2">
+                                    {course.objetivo}
+                                </p>
+                            )}
+                            <div className="flex flex-wrap gap-x-6 gap-y-1 mt-3 text-sm text-muted-foreground">
+                                {course.centro_nombre && (
+                                    <span className="flex items-center gap-2">
+                                        <Building2 className="h-4 w-4 shrink-0" />{course.centro_nombre}
+                                    </span>
+                                )}
+                                {course.codigo_programa && (
+                                    <span className="flex items-center gap-2">
+                                        <Hash className="h-4 w-4 shrink-0" />Programa: {course.codigo_programa}
+                                    </span>
+                                )}
                             </div>
                         </div>
                         {isSupervisor && (
-                            <Button color="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+                            <Button color="destructive" size="sm" className="shrink-0" onClick={() => setDeleteOpen(true)}>
                                 <Trash2 className="h-4 w-4 mr-1.5" />Eliminar
                             </Button>
                         )}
                     </div>
-                </CardContent>
+                </div>
+
+                {/* KPI Grid */}
+                <div className="px-6 pb-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <KPIBlock icon={Clock} label="Total Horas" value={course.total_horas ?? "0"} iconColor="text-primary" index={0} />
+                        <KPIBlock icon={Layers} label="Módulos" value={String(modules.length)} iconColor="text-success" index={1} />
+                        <KPIBlock icon={Wrench} label="Taller" value={course.taller === 1 ? "Sí" : "No"} iconColor="text-warning" index={2} />
+                        <KPIBlock icon={BookOpen} label="Cód. Programa" value={course.codigo_programa ?? "-"} iconColor="text-muted-foreground" index={3} />
+                    </div>
+                </div>
             </Card>
 
-            {/* Tabs */}
+            {/* ── Tabs ── */}
             <Card className="mt-4">
                 <Tabs defaultValue="general" className="w-full">
                     <TabsList className="w-full justify-start gap-8 border-b border-default-200 rounded-none bg-transparent p-0 h-auto min-h-0 px-6 pt-4 pb-0">
@@ -348,8 +434,8 @@ export default function CourseDetailPage() {
 
                     {/* Tab: General */}
                     <TabsContent value="general" className="mt-0 px-6 pt-6 pb-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-base font-semibold">Información General</h3>
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-lg font-semibold">Información General</h3>
                             {editingTab === "general" ? saveButtons() : editButton()}
                         </div>
                         {editingTab === "general" ? (
@@ -365,14 +451,18 @@ export default function CourseDetailPage() {
                                 </div>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
-                                {fieldView("Código", course.codigo)}
-                                {fieldView("Nombre", course.nombre)}
-                                {fieldView("Código de programa", course.codigo_programa)}
-                                {fieldView("Total horas", course.total_horas)}
-                                {fieldView("Taller", course.taller === 1 ? "Sí" : "No")}
-                                <div className="md:col-span-3">
-                                    {fieldView("Objetivo", course.objetivo)}
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                    {fieldView("Código", course.codigo, <Hash className="h-4 w-4" />)}
+                                    {fieldView("Nombre", course.nombre, <BookOpen className="h-4 w-4" />)}
+                                    {fieldView("Código de Programa", course.codigo_programa, <Layers className="h-4 w-4" />)}
+                                    {fieldView("Total Horas", course.total_horas, <Clock className="h-4 w-4" />)}
+                                    {fieldView("Taller", course.taller === 1 ? "Sí" : "No", <Wrench className="h-4 w-4" />)}
+                                    {fieldView("Centro", course.centro_nombre, <Building2 className="h-4 w-4" />)}
+                                </div>
+                                <div className="border-t pt-5">
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Objetivo</p>
+                                    <p className="text-sm text-foreground leading-relaxed">{course.objetivo || "-"}</p>
                                 </div>
                             </div>
                         )}
@@ -380,13 +470,29 @@ export default function CourseDetailPage() {
 
                     {/* Tab: Módulos */}
                     <TabsContent value="modules" className="mt-0 px-6 pt-6 pb-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-base font-semibold">Módulos del Curso</h3>
-                            {isSupervisor && (
-                                <Button size="sm" onClick={() => openModuleDialog()}>
-                                    <PlusCircle className="h-3.5 w-3.5 mr-1.5" />Crear Módulo
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-6">
+                            <div className="flex items-center gap-4">
+                                <h3 className="text-lg font-semibold">Módulos del Curso</h3>
+                                <span className="text-sm text-muted-foreground">
+                                    {modules.length} módulo{modules.length !== 1 ? "s" : ""}
+                                </span>
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                                <Button variant="outline" size="sm" onClick={downloadModulesTemplate}>
+                                    <Download className="h-4 w-4 mr-2" />Descargar Formato
                                 </Button>
-                            )}
+                                {isSupervisor && (
+                                    <>
+                                        <Button variant="outline" size="sm" onClick={triggerImportModules} disabled={importing}>
+                                            {importing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                                            Importar Excel
+                                        </Button>
+                                        <Button size="sm" onClick={() => openModuleDialog()}>
+                                            <PlusCircle className="h-3.5 w-3.5 mr-1.5" />Crear Módulo
+                                        </Button>
+                                    </>
+                                )}
+                            </div>
                         </div>
                         {modulesLoading ? (
                             <SkeletonTable />
@@ -402,25 +508,33 @@ export default function CourseDetailPage() {
                                             <TableHead>Horas Teóricas</TableHead>
                                             <TableHead>Horas Prácticas</TableHead>
                                             <TableHead>Total</TableHead>
-                                            <TableHead className="text-right">Acciones</TableHead>
+                                            <TableHead>Evaluación</TableHead>
+                                            {isSupervisor && <TableHead className="text-right">Acciones</TableHead>}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {modules.map((m: any) => (
                                             <TableRow key={m.id}>
-                                                <TableCell>{m.codigo}</TableCell>
+                                                <TableCell className="font-medium">{m.codigo}</TableCell>
                                                 <TableCell>{m.nombre}</TableCell>
                                                 <TableCell>{m.horas_teoricas}</TableCell>
                                                 <TableCell>{m.horas_practicas}</TableCell>
-                                                <TableCell>{parseFloat(m.horas_teoricas) + parseFloat(m.horas_practicas)}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button variant="ghost" size="icon" onClick={() => openModuleDialog(m)}>
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => confirmDeleteModule(m)}>
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
+                                                <TableCell className="font-medium">{parseFloat(m.horas_teoricas) + parseFloat(m.horas_practicas)}</TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className="text-xs">
+                                                        {EVAL_LABELS[m.tipo_evaluacion] ?? "-"}
+                                                    </Badge>
                                                 </TableCell>
+                                                {isSupervisor && (
+                                                    <TableCell className="text-right">
+                                                        <Button variant="ghost" size="icon" onClick={() => openModuleDialog(m)}>
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => confirmDeleteModule(m)}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </TableCell>
+                                                )}
                                             </TableRow>
                                         ))}
                                     </TableBody>

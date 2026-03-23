@@ -297,8 +297,8 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                             <Label className="mb-1 font-medium text-default-600">Centro *</Label>
                             <Popover open={centroOpen} onOpenChange={(o) => { setCentroOpen(o); if (!o) setCentroSearch(""); }}>
                                 <PopoverTrigger asChild>
-                                    <Button type="button" variant="outline" disabled={submitting || isEdit} className="w-full justify-between font-normal">
-                                        <span className={cn("truncate", !selectedCentro && "text-muted-foreground")}>
+                                    <Button type="button" variant="outline" disabled={submitting || isEdit} className="group w-full justify-between font-normal">
+                                        <span className={cn("truncate transition-colors", !selectedCentro && "text-muted-foreground group-hover:text-primary-foreground")}>
                                             {selectedCentro ? selectedCentro.nombre : "Buscar o seleccionar centro..."}
                                         </span>
                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

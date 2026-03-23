@@ -238,9 +238,9 @@ const InstructorModal = ({
                                             type="button"
                                             variant="outline"
                                             disabled={isSubmitting || isEdit}
-                                            className="w-full justify-between font-normal"
+                                            className="group w-full justify-between font-normal"
                                         >
-                                            <span className={cn("truncate", !selectedCentro && "text-muted-foreground")}>
+                                            <span className={cn("truncate transition-colors", !selectedCentro && "text-muted-foreground group-hover:text-primary-foreground")}>
                                                 {selectedCentro ? selectedCentro.nombre : "Buscar o seleccionar centro..."}
                                             </span>
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />

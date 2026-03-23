@@ -22,7 +22,7 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
       } as React.CSSProperties
       }
     >
-      <SessionProvider>
+      <SessionProvider refetchOnWindowFocus={false}>
         <ThemeProvider
           attribute="class"
           enableSystem={false}
