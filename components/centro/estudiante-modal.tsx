@@ -23,7 +23,7 @@ const schema = z.object({
     telefono: z.string().optional(),
     celular: z.string().optional(),
     sexo: z.string().min(1, "Requerido"),
-    estado_civil: z.string().min(1, "Requerido"),
+    estado_civil: z.string().optional(),
     fecha_nacimiento: z.string().optional(),
     sangre: z.string().min(1, "Requerido"),
     vive: z.string().min(1, "Requerido"),
@@ -179,7 +179,7 @@ const EstudianteModal = ({
                             {errors.sexo && <p className="text-destructive text-xs mt-1">{errors.sexo.message}</p>}
                         </div>
                         <div>
-                            <Label className="mb-1 font-medium text-default-600">Estado civil *</Label>
+                            <Label className="mb-1 font-medium text-default-600">Estado civil</Label>
                             <Select value={watch("estado_civil")} onValueChange={(v) => setValue("estado_civil", v)} disabled={isSubmitting}>
                                 <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                                 <SelectContent>

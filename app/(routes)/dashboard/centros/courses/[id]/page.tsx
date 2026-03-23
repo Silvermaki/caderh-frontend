@@ -61,6 +61,9 @@ export default function CourseDetailPage() {
     const [moduleToDelete, setModuleToDelete] = useState<any>(null);
     const [importing, setImporting] = useState(false);
 
+    const [courseProcesses, setCourseProcesses] = useState<any[]>([]);
+    const [processesLoading, setProcessesLoading] = useState(false);
+
     const fetchCourse = async () => {
         setLoading(true);
         try {
@@ -81,8 +84,17 @@ export default function CourseDetailPage() {
         setModulesLoading(false);
     };
 
+    const fetchCourseProcesses = async () => {
+        setProcessesLoading(true);
+        try {
+            const res = await fetch(`${apiBase}/api/centros/processes?limit=100&offset=0&curso_id=${courseId}`, { headers: authHeaders });
+            if (res.ok) { const d = await res.json(); setCourseProcesses(d.data ?? []); }
+        } catch { /* silent */ }
+        setProcessesLoading(false);
+    };
+
     useEffect(() => {
-        if (session && courseId) { fetchCourse(); fetchModules(); }
+        if (session && courseId) { fetchCourse(); fetchModules(); fetchCourseProcesses(); }
     }, [session, courseId]);
 
     const set = (key: string, value: any) => {
@@ -430,6 +442,7 @@ export default function CourseDetailPage() {
                     <TabsList className="w-full justify-start gap-8 border-b border-default-200 rounded-none bg-transparent p-0 h-auto min-h-0 px-6 pt-4 pb-0">
                         <TabsTrigger value="general" className={TAB_CLASS}>General</TabsTrigger>
                         <TabsTrigger value="modules" className={TAB_CLASS}>Módulos</TabsTrigger>
+                        <TabsTrigger value="processes" className={TAB_CLASS}>Procesos{courseProcesses.length > 0 ? ` (${courseProcesses.length})` : ""}</TabsTrigger>
                     </TabsList>
 
                     {/* Tab: General */}
@@ -540,6 +553,55 @@ export default function CourseDetailPage() {
                                     </TableBody>
                                 </Table>
                             </div>
+                        )}
+                    </TabsContent>
+
+                    {/* Tab: Procesos Educativos */}
+                    <TabsContent value="processes" className="mt-0 px-6 pt-6 pb-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-4">
+                                <h3 className="text-base font-semibold">Procesos Educativos</h3>
+                                {courseProcesses.length > 0 && (
+                                    <span className="text-sm text-muted-foreground">{courseProcesses.length} proceso{courseProcesses.length !== 1 ? "s" : ""}</span>
+                                )}
+                            </div>
+                        </div>
+                        {processesLoading ? (
+                            <SkeletonTable />
+                        ) : courseProcesses.length === 0 ? (
+                            <div className="py-12 text-center">
+                                <BookOpen className="h-8 w-8 mx-auto text-muted-foreground/50 mb-3" />
+                                <p className="text-muted-foreground">No hay procesos educativos asociados a este curso.</p>
+                            </div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Nombre</TableHead>
+                                        <TableHead>Código</TableHead>
+                                        <TableHead>Centro</TableHead>
+                                        <TableHead>Instructor</TableHead>
+                                        <TableHead>Fecha Inicio</TableHead>
+                                        <TableHead>Fecha Fin</TableHead>
+                                        <TableHead>Matriculados</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {courseProcesses.map((proc: any) => (
+                                        <TableRow key={proc.id} className="cursor-pointer" onClick={() => router.push(`/dashboard/centros/processes/${proc.id}`)}>
+                                            <TableCell className="font-medium text-primary">{proc.nombre}</TableCell>
+                                            <TableCell className="text-sm">{proc.codigo}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.centro_nombre}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.instructor_nombre}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.fecha_inicial ?? "-"}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.fecha_final ?? "-"}</TableCell>
+                                            <TableCell className="text-sm">
+                                                <Badge variant="outline">{proc.enrolled_count ?? 0}</Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         )}
                     </TabsContent>
                 </Tabs>

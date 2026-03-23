@@ -24,13 +24,19 @@ import { useSession } from "next-auth/react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
-    Building2, BookOpen, Calendar, Check, Clock, ChevronsUpDown, ExternalLink, GraduationCap, Loader2,
-    Pencil, PlusCircle, Trash2, User, Search, DollarSign, Users, Target, Phone, Mail,
+    Building2, BookOpen, Bookmark, Calendar, CalendarClock, Check, Clock, ChevronsUpDown, Download,
+    ExternalLink, GraduationCap, Hash, Layers, Loader2, MapPin, Pencil, PlusCircle, SunMedium, Trash2,
+    Upload, User, Search, DollarSign, Users, Target, Phone, Mail,
 } from "lucide-react";
+import KPIBlock from "@/components/project/KPIBlock";
+import InfoSection from "@/components/project/InfoSection";
+import { Progress } from "@/components/ui/progress";
+import { motion } from "framer-motion";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL;
 
 const TAB_CLASS = "rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none";
+const EVAL_LABELS: Record<number, string> = { 1: "Teórica", 2: "Práctica", 3: "Mixta" };
 
 export default function ProcessDetailPage() {
     const params = useParams();
@@ -69,6 +75,7 @@ export default function ProcessDetailPage() {
 
     const [unenrollOpen, setUnenrollOpen] = useState<any>(null);
     const [unenrolling, setUnenrolling] = useState(false);
+    const [enrollmentFilter, setEnrollmentFilter] = useState("");
 
     const [courseDetail, setCourseDetail] = useState<any>(null);
     const [courseModules, setCourseModules] = useState<any[]>([]);
@@ -436,10 +443,76 @@ export default function ProcessDetailPage() {
         setUnenrolling(false);
     };
 
-    const fieldView = (label: string, value: any) => (
-        <div>
-            <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-            <p className="text-sm text-foreground">{value || "-"}</p>
+    const filteredEnrollments = useMemo(() => {
+        if (!enrollmentFilter.trim()) return enrollments;
+        const q = enrollmentFilter.toLowerCase();
+        return enrollments.filter((en) =>
+            (en.estudiante_nombre ?? "").toLowerCase().includes(q) ||
+            (en.estudiante_identidad ?? "").toLowerCase().includes(q)
+        );
+    }, [enrollments, enrollmentFilter]);
+
+    const downloadEnrollmentsExcel = async () => {
+        try {
+            const res = await fetch(`${apiBase}/api/centros/processes/${processId}/enrollments/excel`, { headers: authHeaders });
+            if (!res.ok) { toast.error("Error al descargar"); return; }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `matricula-${process_?.codigo || processId}.xlsx`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch { toast.error("Error al descargar"); }
+    };
+
+    const [importingEnrollments, setImportingEnrollments] = useState(false);
+
+    const importEnrollmentsFile = async (file: File) => {
+        setImportingEnrollments(true);
+        try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const res = await fetch(`${apiBase}/api/centros/processes/${processId}/enrollments/excel`, {
+                method: "POST",
+                headers: authHeaders,
+                body: fd,
+            });
+            const data = await res.json();
+            if (res.ok) {
+                const parts = [`Matriculados: ${data.enrolled}`];
+                if (data.warnings?.length) parts.push(`Advertencias: ${data.warnings.length}`);
+                if (data.errors?.length) parts.push(`Errores: ${data.errors.length}`);
+                toast.success(parts.join(" · "), { duration: 5000 });
+                if (data.warnings?.length) {
+                    toast(data.warnings.slice(0, 3).join("\n"), { duration: 6000, icon: "⚠️" });
+                }
+                fetchEnrollments();
+            } else {
+                toast.error(data.message ?? "Error al importar");
+            }
+        } catch { toast.error("Error al importar"); }
+        setImportingEnrollments(false);
+    };
+
+    const triggerImportEnrollments = () => {
+        const input = document.createElement("input");
+        input.type = "file";
+        input.accept = ".xlsx";
+        input.onchange = (e) => {
+            const file = (e.target as HTMLInputElement).files?.[0];
+            if (file) importEnrollmentsFile(file);
+        };
+        input.click();
+    };
+
+    const fieldView = (label: string, value: any, icon?: React.ReactNode) => (
+        <div className="flex items-start gap-3">
+            {icon && <div className="mt-0.5 text-muted-foreground">{icon}</div>}
+            <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
+                <p className="text-sm text-foreground font-medium">{value || "-"}</p>
+            </div>
         </div>
     );
 
@@ -516,7 +589,7 @@ export default function ProcessDetailPage() {
 
             {/* Header */}
             <Card className="mt-5">
-                <CardContent className="p-6">
+                <CardContent className="p-6 pb-2">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-4">
                             <div className="rounded-full bg-primary/10 p-3">
@@ -524,7 +597,7 @@ export default function ProcessDetailPage() {
                             </div>
                             <div>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <h2 className="text-lg font-semibold">{p.nombre}</h2>
+                                    <h2 className="text-2xl font-bold tracking-tight text-primary">{p.nombre}</h2>
                                     <Badge color="secondary">Código: {p.codigo}</Badge>
                                 </div>
                                 <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-sm text-muted-foreground">
@@ -544,6 +617,35 @@ export default function ProcessDetailPage() {
                             </Button>
                         )}
                     </div>
+
+                    {/* KPI Grid */}
+                    <div className="mt-5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <KPIBlock icon={Clock} label="Duración" value={`${p.duracion_horas ?? 0} hrs`} iconColor="text-primary" index={0} />
+                            <KPIBlock icon={Users} label="Matriculados" value={String(p.enrolled_count ?? enrollments.length)} iconColor="text-success" index={1} />
+                            <KPIBlock icon={Layers} label="Módulos" value={String(p.module_count ?? courseModules.length)} iconColor="text-warning" index={2} />
+                            <KPIBlock icon={Target} label="Proyectos" value={String(p.project_count ?? linkedProjects.length)} iconColor="text-info" index={3} />
+                        </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    {p.fecha_inicial && p.fecha_final && (() => {
+                        const start = new Date(p.fecha_inicial).getTime();
+                        const end = new Date(p.fecha_final).getTime();
+                        const now = Date.now();
+                        const pct = start >= end ? 100 : Math.min(100, Math.max(0, Math.round(((now - start) / (end - start)) * 100)));
+                        const status = now < start ? "Próximamente" : now > end ? "Finalizado" : `En progreso: ${pct}%`;
+                        const color: "dark" | "success" | "primary" = now < start ? "dark" : now > end ? "success" : "primary";
+                        return (
+                            <div className="mt-4 pb-2">
+                                <p className="text-xs text-muted-foreground mb-2">{status}</p>
+                                <motion.div initial={{ opacity: 0, scaleX: 0 }} animate={{ opacity: 1, scaleX: 1 }}
+                                    transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" }} style={{ transformOrigin: "left" }}>
+                                    <Progress value={pct} color={color} size="sm" />
+                                </motion.div>
+                            </div>
+                        );
+                    })()}
                 </CardContent>
             </Card>
 
@@ -553,8 +655,8 @@ export default function ProcessDetailPage() {
                     <TabsList className="w-full justify-start gap-8 border-b border-default-200 rounded-none bg-transparent p-0 h-auto min-h-0 px-6 pt-4 pb-0">
                         <TabsTrigger value="general" className={TAB_CLASS}>General</TabsTrigger>
                         <TabsTrigger value="course" className={TAB_CLASS}>Detalle del curso</TabsTrigger>
-                        <TabsTrigger value="enrollment" className={TAB_CLASS}>Matrícula</TabsTrigger>
-                        <TabsTrigger value="projects" className={TAB_CLASS}>Proyectos Relacionados</TabsTrigger>
+                        <TabsTrigger value="enrollment" className={TAB_CLASS}>Matrícula{enrollments.length > 0 ? ` (${enrollments.length})` : ""}</TabsTrigger>
+                        <TabsTrigger value="projects" className={TAB_CLASS}>Proyectos{linkedProjects.length > 0 ? ` (${linkedProjects.length})` : ""}</TabsTrigger>
                     </TabsList>
 
                     {/* Tab: General */}
@@ -610,22 +712,34 @@ export default function ProcessDetailPage() {
                                 {fieldInput("lugar", "Lugar")}
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
-                                {fieldView("Código", p.codigo)}
-                                {fieldView("Nombre", p.nombre)}
-                                {fieldView("Centro", p.centro_nombre)}
-                                {fieldView("Curso", p.curso_nombre)}
-                                {fieldView("Instructor", p.instructor_nombre)}
-                                {fieldView("Metodología", p.metodologia_nombre)}
-                                {fieldView("Otra metodología", p.otra_metodologia)}
-                                {fieldView("Fecha inicial", p.fecha_inicial)}
-                                {fieldView("Fecha final", p.fecha_final)}
-                                {fieldView("Duración horas", p.duracion_horas)}
-                                {fieldView("Tipo de jornada", p.tipo_jornada_nombre)}
-                                {fieldView("Horario", p.horario)}
-                                {fieldView("Días", resolveDiasNames(p.dias))}
-                                {fieldView("Sede", Number(p.sede) ? "Sí" : "No")}
-                                {fieldView("Lugar", p.lugar)}
+                            <div className="space-y-6">
+                                <InfoSection title="Información Básica">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        {fieldView("Código", p.codigo, <Hash className="h-4 w-4" />)}
+                                        {fieldView("Nombre", p.nombre, <BookOpen className="h-4 w-4" />)}
+                                        {fieldView("Centro", p.centro_nombre, <Building2 className="h-4 w-4" />)}
+                                        {fieldView("Curso", p.curso_nombre, <GraduationCap className="h-4 w-4" />)}
+                                        {fieldView("Instructor", p.instructor_nombre, <User className="h-4 w-4" />)}
+                                        {fieldView("Metodología", p.metodologia_nombre, <Bookmark className="h-4 w-4" />)}
+                                        {fieldView("Otra metodología", p.otra_metodologia, <Bookmark className="h-4 w-4" />)}
+                                    </div>
+                                </InfoSection>
+                                <InfoSection title="Programación">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        {fieldView("Fecha inicial", p.fecha_inicial, <Calendar className="h-4 w-4" />)}
+                                        {fieldView("Fecha final", p.fecha_final, <Calendar className="h-4 w-4" />)}
+                                        {fieldView("Duración horas", p.duracion_horas, <Clock className="h-4 w-4" />)}
+                                        {fieldView("Tipo de jornada", p.tipo_jornada_nombre, <SunMedium className="h-4 w-4" />)}
+                                        {fieldView("Horario", p.horario, <CalendarClock className="h-4 w-4" />)}
+                                        {fieldView("Días", resolveDiasNames(p.dias), <Calendar className="h-4 w-4" />)}
+                                    </div>
+                                </InfoSection>
+                                <InfoSection title="Ubicación">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        {fieldView("Sede", Number(p.sede) ? "Sí" : "No", <Building2 className="h-4 w-4" />)}
+                                        {fieldView("Lugar", p.lugar, <MapPin className="h-4 w-4" />)}
+                                    </div>
+                                </InfoSection>
                             </div>
                         )}
                     </TabsContent>
@@ -646,21 +760,24 @@ export default function ProcessDetailPage() {
                                         </Button>
                                     </Link>
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
-                                    {fieldView("Código", courseDetail.codigo)}
-                                    {fieldView("Nombre", courseDetail.nombre)}
-                                    {fieldView("Código de programa", courseDetail.codigo_programa)}
-                                    {fieldView("Total horas", courseDetail.total_horas)}
-                                    {fieldView("Taller", Number(courseDetail.taller) ? "Sí" : "No")}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                    {fieldView("Código", courseDetail.codigo, <Hash className="h-4 w-4" />)}
+                                    {fieldView("Nombre", courseDetail.nombre, <BookOpen className="h-4 w-4" />)}
+                                    {fieldView("Código de programa", courseDetail.codigo_programa, <Layers className="h-4 w-4" />)}
+                                    {fieldView("Total horas", courseDetail.total_horas, <Clock className="h-4 w-4" />)}
+                                    {fieldView("Taller", Number(courseDetail.taller) ? "Sí" : "No", <GraduationCap className="h-4 w-4" />)}
                                     <div className="md:col-span-3">
-                                        {fieldView("Objetivo", courseDetail.objetivo)}
+                                        {fieldView("Objetivo", courseDetail.objetivo, <Target className="h-4 w-4" />)}
                                     </div>
                                 </div>
 
                                 <div className="mt-8 pt-6 border-t">
                                     <h3 className="text-base font-semibold mb-4">Módulos</h3>
                                     {courseModules.length === 0 ? (
-                                        <div className="py-8 text-center text-muted-foreground">Este curso no tiene módulos registrados.</div>
+                                        <div className="py-12 text-center">
+                                            <Layers className="h-8 w-8 mx-auto text-muted-foreground/50 mb-3" />
+                                            <p className="text-muted-foreground">Este curso no tiene módulos registrados.</p>
+                                        </div>
                                     ) : (
                                         <Table>
                                             <TableHeader>
@@ -670,6 +787,7 @@ export default function ProcessDetailPage() {
                                                     <TableHead>Horas Teóricas</TableHead>
                                                     <TableHead>Horas Prácticas</TableHead>
                                                     <TableHead>Total</TableHead>
+                                                    <TableHead>Evaluación</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
@@ -681,6 +799,11 @@ export default function ProcessDetailPage() {
                                                         <TableCell className="text-sm">{m.horas_practicas ?? "-"}</TableCell>
                                                         <TableCell className="text-sm font-medium">
                                                             {(Number(m.horas_teoricas) || 0) + (Number(m.horas_practicas) || 0)}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            {m.tipo_evaluacion ? (
+                                                                <Badge variant="outline" className="text-xs">{EVAL_LABELS[m.tipo_evaluacion] ?? "-"}</Badge>
+                                                            ) : "-"}
                                                         </TableCell>
                                                     </TableRow>
                                                 ))}
@@ -694,20 +817,54 @@ export default function ProcessDetailPage() {
 
                     {/* Tab: Matrícula */}
                     <TabsContent value="enrollment" className="mt-0 px-6 pt-6 pb-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-base font-semibold">Estudiantes Matriculados</h3>
-                            {isSupervisor && (
-                                <Button size="sm" onClick={openEnrollDialog}>
-                                    <PlusCircle className="h-3.5 w-3.5 mr-1.5" />Matricular Estudiante
-                                </Button>
-                            )}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-4">
+                                <h3 className="text-base font-semibold">Estudiantes Matriculados</h3>
+                                {enrollments.length > 0 && (
+                                    <span className="text-sm text-muted-foreground">{enrollments.length} estudiante{enrollments.length !== 1 ? "s" : ""}</span>
+                                )}
+                            </div>
+                            <div className="flex gap-2 flex-wrap">
+                                {enrollments.length > 0 && (
+                                    <Button variant="outline" size="sm" onClick={downloadEnrollmentsExcel}>
+                                        <Download className="h-4 w-4 mr-2" />Descargar Excel
+                                    </Button>
+                                )}
+                                {isSupervisor && (
+                                    <Button variant="outline" size="sm" onClick={triggerImportEnrollments} disabled={importingEnrollments}>
+                                        {importingEnrollments ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                                        Importar Excel
+                                    </Button>
+                                )}
+                                {isSupervisor && (
+                                    <Button size="sm" onClick={openEnrollDialog}>
+                                        <PlusCircle className="h-3.5 w-3.5 mr-1.5" />Matricular Estudiante
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                         {enrollmentsLoading ? (
                             <SkeletonTable />
                         ) : enrollments.length === 0 ? (
-                            <div className="py-12 text-center text-muted-foreground">No hay estudiantes matriculados.</div>
+                            <div className="py-12 text-center">
+                                <Users className="h-8 w-8 mx-auto text-muted-foreground/50 mb-3" />
+                                <p className="text-muted-foreground">No hay estudiantes matriculados.</p>
+                                {isSupervisor && <p className="text-xs text-muted-foreground mt-1">Haz clic en &quot;Matricular Estudiante&quot; para agregar.</p>}
+                            </div>
                         ) : (
                             <div>
+                                {enrollments.length > 5 && (
+                                    <div className="flex items-center gap-2 rounded-md border bg-background px-3 mb-4">
+                                        <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                        <input
+                                            type="text"
+                                            placeholder="Buscar por nombre o identidad..."
+                                            value={enrollmentFilter}
+                                            onChange={(e) => setEnrollmentFilter(e.target.value)}
+                                            className="flex h-9 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+                                        />
+                                    </div>
+                                )}
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -717,7 +874,7 @@ export default function ProcessDetailPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {enrollments.map((en) => (
+                                        {filteredEnrollments.map((en) => (
                                             <TableRow key={en.id}>
                                                 <TableCell>{en.estudiante_nombre}</TableCell>
                                                 <TableCell>{en.estudiante_identidad}</TableCell>
@@ -732,6 +889,9 @@ export default function ProcessDetailPage() {
                                         ))}
                                     </TableBody>
                                 </Table>
+                                {filteredEnrollments.length === 0 && enrollmentFilter && (
+                                    <div className="py-8 text-center text-muted-foreground text-sm">No se encontraron resultados para &quot;{enrollmentFilter}&quot;</div>
+                                )}
                             </div>
                         )}
                     </TabsContent>
@@ -749,7 +909,11 @@ export default function ProcessDetailPage() {
                         {projectsLoading ? (
                             <SkeletonTable />
                         ) : linkedProjects.length === 0 ? (
-                            <div className="py-12 text-center text-muted-foreground">No hay proyectos vinculados a este proceso.</div>
+                            <div className="py-12 text-center">
+                                <Target className="h-8 w-8 mx-auto text-muted-foreground/50 mb-3" />
+                                <p className="text-muted-foreground">No hay proyectos vinculados a este proceso.</p>
+                                {isSupervisor && <p className="text-xs text-muted-foreground mt-1">Haz clic en &quot;Vincular Proyecto&quot; para agregar.</p>}
+                            </div>
                         ) : (
                             <Table>
                                 <TableHeader>

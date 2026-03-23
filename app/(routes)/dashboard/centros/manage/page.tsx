@@ -215,7 +215,7 @@ function PageContent() {
                                     href={`/dashboard/centros/manage/${c.id}`}
                                     className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded-md"
                                 >
-                                    <Card className="hover:border-primary/50 transition-colors cursor-pointer">
+                                    <Card className="hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer">
                                         <CardContent className="p-4">
                                             <div className="flex flex-col gap-2">
                                                 <div className="flex flex-row items-start justify-between gap-2">

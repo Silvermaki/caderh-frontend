@@ -1,20 +1,27 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Breadcrumbs, BreadcrumbItem } from "@/components/ui/breadcrumbs";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import SkeletonTable from "@/components/skeleton-table";
+import KPIBlock from "@/components/project/KPIBlock";
+import InfoSection from "@/components/project/InfoSection";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
-import { Building2, FileText, Pencil, Trash2, Loader2 } from "lucide-react";
+import {
+    Award, BookOpen, Building2, Calendar, FileText, GraduationCap, Loader2, Pencil,
+    Trash2, User, Users,
+} from "lucide-react";
 import InstructorModal from "@/components/centro/instructor-modal";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL;
@@ -36,6 +43,9 @@ export default function InstructorDetailPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
+
+    const [processes, setProcesses] = useState<any[]>([]);
+    const [processesLoading, setProcessesLoading] = useState(false);
 
     const fetchInstructor = async () => {
         setLoading(true);
@@ -63,12 +73,29 @@ export default function InstructorDetailPage() {
         } catch { /* silent */ }
     };
 
+    const fetchProcesses = useCallback(async () => {
+        if (!instructor?.id) return;
+        setProcessesLoading(true);
+        try {
+            const res = await fetch(`${apiBase}/api/centros/processes?limit=100&offset=0&instructor_id=${instructor.id}`, { headers: authHeaders });
+            if (res.ok) {
+                const d = await res.json();
+                setProcesses(d.data ?? []);
+            }
+        } catch { /* silent */ }
+        setProcessesLoading(false);
+    }, [instructor?.id, session?.user?.session]);
+
     useEffect(() => {
         if (session && instructorId) {
             fetchInstructor();
             fetchCentros();
         }
     }, [session, instructorId]);
+
+    useEffect(() => {
+        if (instructor?.id) fetchProcesses();
+    }, [instructor?.id]);
 
     const openPdfInNewTab = async () => {
         if (!instructor?.pdf) return;
@@ -104,6 +131,16 @@ export default function InstructorDetailPage() {
 
     const reloadList = () => fetchInstructor();
 
+    const fieldView = (label: string, value: any, icon?: React.ReactNode) => (
+        <div className="flex items-start gap-3">
+            {icon && <div className="mt-0.5 text-muted-foreground">{icon}</div>}
+            <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
+                <p className="text-sm text-foreground font-medium">{value || "-"}</p>
+            </div>
+        </div>
+    );
+
     if (loading) {
         return (
             <div className="mb-4">
@@ -113,9 +150,7 @@ export default function InstructorDetailPage() {
                     <BreadcrumbItem asChild><Link href="/dashboard/centros/instructores">Instructores</Link></BreadcrumbItem>
                     <BreadcrumbItem className="text-primary">Instructor</BreadcrumbItem>
                 </Breadcrumbs>
-                <div className="mt-4">
-                    <SkeletonTable />
-                </div>
+                <div className="mt-4"><SkeletonTable /></div>
             </div>
         );
     }
@@ -140,6 +175,7 @@ export default function InstructorDetailPage() {
     }
 
     const fullName = [instructor.nombres, instructor.apellidos].filter(Boolean).join(" ");
+    const i = instructor;
 
     return (
         <div className="mb-4">
@@ -150,73 +186,139 @@ export default function InstructorDetailPage() {
                 <BreadcrumbItem className="text-primary">{fullName || "Instructor"}</BreadcrumbItem>
             </Breadcrumbs>
 
-            <Card className="mt-4 shadow-sm">
-                <CardContent className="p-0">
-                    <div className="p-6 border-b">
-                        <div className="flex flex-wrap items-start justify-between gap-4">
-                            <div>
-                                <h1 className="text-xl font-semibold text-foreground">{fullName || "Sin nombre"}</h1>
-                                {instructor.centro_nombre && (
-                                    <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground">
-                                        <Building2 className="h-4 w-4" />
-                                        {instructor.centro_nombre}
-                                    </div>
-                                )}
+            {/* Header */}
+            <Card className="mt-5">
+                <CardContent className="p-6 pb-2">
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                            <div className="rounded-full bg-primary/10 p-3">
+                                <User className="h-6 w-6 text-primary" />
                             </div>
-                            {isSupervisor && (
-                                <div className="flex items-center gap-2">
-                                    <Button size="sm" variant="outline" onClick={() => setModalOpen(true)}>
-                                        <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
-                                    </Button>
-                                    <Button size="sm" variant="outline" color="destructive" onClick={() => setDeleteOpen(true)}>
-                                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />Eliminar
-                                    </Button>
+                            <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <h2 className="text-2xl font-bold tracking-tight text-primary">{fullName || "Sin nombre"}</h2>
                                 </div>
-                            )}
+                                <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-sm text-muted-foreground">
+                                    {i.centro_nombre && <span className="flex items-center gap-1.5"><Building2 className="h-4 w-4" />{i.centro_nombre}</span>}
+                                    {i.titulo_obtenido && <span className="flex items-center gap-1.5"><GraduationCap className="h-4 w-4" />{i.titulo_obtenido}</span>}
+                                </div>
+                            </div>
                         </div>
+                        {isSupervisor && (
+                            <div className="flex items-center gap-2">
+                                <Button size="sm" variant="outline" onClick={() => setModalOpen(true)}>
+                                    <Pencil className="h-3.5 w-3.5 mr-1.5" />Editar
+                                </Button>
+                                <Button color="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+                                    <Trash2 className="h-4 w-4 mr-1.5" />Eliminar
+                                </Button>
+                            </div>
+                        )}
                     </div>
 
-                    <Tabs defaultValue="general" className="w-full">
-                        <TabsList className="w-full justify-start rounded-none border-b bg-transparent p-0 h-auto gap-6 pl-6">
-                            <TabsTrigger value="general" className={TAB_CLASS}>General</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="general" id="content-general" className="p-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-                                <div>
-                                    <p className="text-xs text-muted-foreground mb-0.5">Nombre completo</p>
-                                    <p className="text-sm text-foreground">{fullName || "-"}</p>
+                    {/* KPI Grid */}
+                    <div className="mt-5 pb-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <KPIBlock icon={GraduationCap} label="Título" value={i.titulo_obtenido || "Sin título"} iconColor="text-primary" index={0} />
+                            <KPIBlock icon={BookOpen} label="Procesos Asignados" value={String(i.process_count ?? processes.length)} iconColor="text-success" index={1} />
+                            <KPIBlock icon={FileText} label="Hoja de Vida" value={i.pdf ? "Disponible" : "No cargada"} iconColor={i.pdf ? "text-info" : "text-muted-foreground"} index={2} />
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Tabs */}
+            <Card className="mt-4">
+                <Tabs defaultValue="general" className="w-full">
+                    <TabsList className="w-full justify-start gap-8 border-b border-default-200 rounded-none bg-transparent p-0 h-auto min-h-0 px-6 pt-4 pb-0">
+                        <TabsTrigger value="general" className={TAB_CLASS}>General</TabsTrigger>
+                        <TabsTrigger value="processes" className={TAB_CLASS}>Procesos{processes.length > 0 ? ` (${processes.length})` : ""}</TabsTrigger>
+                    </TabsList>
+
+                    {/* Tab: General */}
+                    <TabsContent value="general" className="mt-0 px-6 pt-6 pb-6">
+                        <div className="space-y-6">
+                            <InfoSection title="Información Personal">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
+                                    {fieldView("Nombres", i.nombres, <User className="h-4 w-4" />)}
+                                    {fieldView("Apellidos", i.apellidos, <User className="h-4 w-4" />)}
+                                    {fieldView("Centro", i.centro_nombre, <Building2 className="h-4 w-4" />)}
                                 </div>
-                                <div>
-                                    <p className="text-xs text-muted-foreground mb-0.5">Centro</p>
-                                    <p className="text-sm text-foreground">{instructor.centro_nombre ?? "-"}</p>
+                            </InfoSection>
+                            <InfoSection title="Formación Académica">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
+                                    {fieldView("Título obtenido", i.titulo_obtenido, <GraduationCap className="h-4 w-4" />)}
+                                    {fieldView("Otros títulos", i.otros_titulos, <Award className="h-4 w-4" />)}
                                 </div>
+                            </InfoSection>
+                            <InfoSection title="Documentos">
                                 <div>
-                                    <p className="text-xs text-muted-foreground mb-0.5">Título obtenido</p>
-                                    <p className="text-sm text-foreground">{instructor.titulo_obtenido || "-"}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-muted-foreground mb-0.5">Otros títulos</p>
-                                    <p className="text-sm text-foreground">{instructor.otros_titulos || "-"}</p>
-                                </div>
-                                <div className="md:col-span-2">
-                                    <p className="text-xs text-muted-foreground mb-0.5">Hoja de vida</p>
-                                    {instructor.pdf ? (
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Hoja de vida</p>
+                                    {i.pdf ? (
                                         <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             size="sm"
-                                            className="h-8 bg-transparent text-primary hover:bg-primary/80 hover:text-primary-foreground rounded-md px-3 font-semibold"
                                             onClick={openPdfInNewTab}
                                         >
-                                            <FileText className="h-4 w-4 mr-2" />Ver
+                                            <FileText className="h-4 w-4 mr-2" />Ver hoja de vida
                                         </Button>
                                     ) : (
-                                        <p className="text-sm text-muted-foreground">-</p>
+                                        <p className="text-sm text-muted-foreground">No se ha cargado hoja de vida.</p>
                                     )}
                                 </div>
+                            </InfoSection>
+                        </div>
+                    </TabsContent>
+
+                    {/* Tab: Procesos */}
+                    <TabsContent value="processes" className="mt-0 px-6 pt-6 pb-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-4">
+                                <h3 className="text-base font-semibold">Procesos Educativos</h3>
+                                {processes.length > 0 && (
+                                    <span className="text-sm text-muted-foreground">{processes.length} proceso{processes.length !== 1 ? "s" : ""}</span>
+                                )}
                             </div>
-                        </TabsContent>
-                    </Tabs>
-                </CardContent>
+                        </div>
+                        {processesLoading ? (
+                            <SkeletonTable />
+                        ) : processes.length === 0 ? (
+                            <div className="py-12 text-center">
+                                <BookOpen className="h-8 w-8 mx-auto text-muted-foreground/50 mb-3" />
+                                <p className="text-muted-foreground">Este instructor no tiene procesos educativos asignados.</p>
+                            </div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Nombre</TableHead>
+                                        <TableHead>Código</TableHead>
+                                        <TableHead>Centro</TableHead>
+                                        <TableHead>Curso</TableHead>
+                                        <TableHead>Fecha Inicio</TableHead>
+                                        <TableHead>Fecha Fin</TableHead>
+                                        <TableHead>Matriculados</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {processes.map((proc: any) => (
+                                        <TableRow key={proc.id} className="cursor-pointer" onClick={() => router.push(`/dashboard/centros/processes/${proc.id}`)}>
+                                            <TableCell className="font-medium text-primary">{proc.nombre}</TableCell>
+                                            <TableCell className="text-sm">{proc.codigo}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.centro_nombre}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.curso_nombre}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.fecha_inicial ?? "-"}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.fecha_final ?? "-"}</TableCell>
+                                            <TableCell className="text-sm">
+                                                <Badge variant="outline">{proc.enrolled_count ?? 0}</Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </TabsContent>
+                </Tabs>
             </Card>
 
             <InstructorModal
@@ -238,7 +340,7 @@ export default function InstructorDetailPage() {
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction onClick={deleteInstructor} disabled={deleting} color="destructive">
-                            {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                            {deleting ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
                             {deleting ? "Eliminando..." : "Eliminar"}
                         </AlertDialogAction>
                     </AlertDialogFooter>

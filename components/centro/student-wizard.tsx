@@ -182,7 +182,6 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
             if (!form.nombres.trim()) e.nombres = "Requerido";
             if (!form.apellidos.trim()) e.apellidos = "Requerido";
             if (!form.sexo) e.sexo = "Requerido";
-            if (!form.estado_civil) e.estado_civil = "Requerido";
         } else if (step === 1) {
             if (!form.departamento_id) e.departamento_id = "Requerido";
             if (!form.municipio_id) e.municipio_id = "Requerido";
@@ -345,7 +344,7 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                         { value: "Soltero(a)", label: "Soltero(a)" }, { value: "Casado(a)", label: "Casado(a)" },
                         { value: "Divorciado(a)", label: "Divorciado(a)" }, { value: "Viudo(a)", label: "Viudo(a)" },
                         { value: "Unión libre", label: "Unión libre" },
-                    ], { required: true })}
+                    ])}
                 </div>
             );
             case 1: return (

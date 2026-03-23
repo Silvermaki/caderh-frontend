@@ -4,7 +4,8 @@ import React, { useState, useEffect, Suspense, useMemo, useRef } from "react";
 import { Breadcrumbs, BreadcrumbItem } from "@/components/ui/breadcrumbs";
 import DataTable from "@/components/ui/service-datatable";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, Loader2, Search, ChevronsUpDown, Check } from "lucide-react";
+import { ArrowUpDown, ChevronLeft, ChevronRight, Loader2, Search, ChevronsUpDown, Check } from "lucide-react";
+import { Stepper, Step, StepLabel } from "@/components/ui/steps";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -71,6 +72,7 @@ function PageContent() {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [form, setForm] = useState({ ...emptyForm });
     const [submitting, setSubmitting] = useState(false);
+    const [wizardStep, setWizardStep] = useState(0);
 
     // Centro popover in dialog
     const [centroOpen, setCentroOpen] = useState(false);
@@ -248,7 +250,22 @@ function PageContent() {
         setForm({ ...emptyForm });
         setCourses([]);
         setInstructors([]);
+        setWizardStep(0);
         setDialogOpen(true);
+    };
+
+    const validateStep1 = (): boolean => {
+        const step1Required: (keyof typeof emptyForm)[] = [
+            "centro_id", "nombre", "codigo", "curso_id", "instructor_id", "metodologia_id",
+        ];
+        for (const key of step1Required) {
+            if (!form[key]) { toast.error("Complete todos los campos requeridos del paso 1"); return false; }
+        }
+        return true;
+    };
+
+    const goToStep2 = () => {
+        if (validateStep1()) setWizardStep(1);
     };
 
     const setField = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
@@ -444,188 +461,213 @@ function PageContent() {
                 </CardContent>
             </Card>
 
-            {/* Create process dialog */}
-            <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) setDialogOpen(false); }}>
-                <DialogContent size="5xl" className="max-h-[90vh] overflow-y-auto">
+            {/* Create process wizard */}
+            <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); setWizardStep(0); } }}>
+                <DialogContent size="3xl" className="max-h-[90vh] overflow-y-auto">
                     <DialogTitle>Crear Proceso Educativo</DialogTitle>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                        {/* Centro (searchable popover) */}
-                        <div className="md:col-span-2">
-                            <Label className="mb-1 text-xs">Centro *</Label>
-                            <Popover open={centroOpen} onOpenChange={(o) => { setCentroOpen(o); if (!o) setCentroSearch(""); }}>
-                                <PopoverTrigger asChild>
-                                    <Button type="button" variant="outline" disabled={submitting} className="group w-full justify-between font-normal">
-                                        <span className={cn("truncate transition-colors", !selectedCentro && "text-muted-foreground group-hover:text-primary-foreground")}>
-                                            {selectedCentro ? selectedCentro.nombre : "Buscar o seleccionar centro..."}
-                                        </span>
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
-                                    <div className="p-2 border-b">
-                                        <div className="flex items-center gap-2 rounded-md border bg-background px-2">
-                                            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-                                            <input
-                                                type="text" placeholder="Buscar centro..." value={centroSearch}
-                                                onChange={(e) => setCentroSearch(e.target.value)}
-                                                className="flex h-9 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
-                                            />
+                    <Stepper activeStep={wizardStep} direction="horizontal" className="mb-6 mt-2">
+                        <Step><StepLabel>Información General</StepLabel></Step>
+                        <Step><StepLabel>Programación</StepLabel></Step>
+                    </Stepper>
+
+                    {/* Step 1: Info General */}
+                    {wizardStep === 0 && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="md:col-span-2">
+                                <Label className="mb-1 text-xs">Centro *</Label>
+                                <Popover open={centroOpen} onOpenChange={(o) => { setCentroOpen(o); if (!o) setCentroSearch(""); }}>
+                                    <PopoverTrigger asChild>
+                                        <Button type="button" variant="outline" disabled={submitting} className="group w-full justify-between font-normal">
+                                            <span className={cn("truncate transition-colors", !selectedCentro && "text-muted-foreground group-hover:text-primary-foreground")}>
+                                                {selectedCentro ? selectedCentro.nombre : "Buscar o seleccionar centro..."}
+                                            </span>
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                                        <div className="p-2 border-b">
+                                            <div className="flex items-center gap-2 rounded-md border bg-background px-2">
+                                                <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                                <input
+                                                    type="text" placeholder="Buscar centro..." value={centroSearch}
+                                                    onChange={(e) => setCentroSearch(e.target.value)}
+                                                    className="flex h-9 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+                                                />
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div className="max-h-[260px] overflow-y-auto p-1">
-                                        {filteredCentros.length === 0 && (
-                                            <p className="p-2 text-sm text-muted-foreground text-center">Sin resultados</p>
-                                        )}
-                                        {filteredCentros.map((c) => (
+                                        <div className="max-h-[260px] overflow-y-auto p-1">
+                                            {filteredCentros.length === 0 && (
+                                                <p className="p-2 text-sm text-muted-foreground text-center">Sin resultados</p>
+                                            )}
+                                            {filteredCentros.map((c) => (
+                                                <button
+                                                    key={c.id} type="button"
+                                                    className={cn(
+                                                        "w-full text-left rounded-sm px-2 py-1.5 text-sm hover:bg-accent cursor-pointer",
+                                                        form.centro_id === c.id.toString() && "bg-accent font-medium",
+                                                    )}
+                                                    onClick={() => {
+                                                        setField("centro_id", c.id.toString());
+                                                        setField("curso_id", "");
+                                                        setField("instructor_id", "");
+                                                        setCentroOpen(false);
+                                                        setCentroSearch("");
+                                                    }}
+                                                >
+                                                    {c.nombre}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+
+                            <div>
+                                <Label className="mb-1 text-xs">Nombre *</Label>
+                                <Input value={form.nombre} onChange={(e) => setField("nombre", e.target.value)} disabled={submitting} />
+                            </div>
+                            <div>
+                                <Label className="mb-1 text-xs">Código *</Label>
+                                <Input value={form.codigo} onChange={(e) => setField("codigo", e.target.value)} disabled={submitting} />
+                            </div>
+
+                            <div>
+                                <Label className="mb-1 text-xs">Curso *</Label>
+                                <Select value={form.curso_id || undefined} onValueChange={(v) => setField("curso_id", v)} disabled={submitting || !form.centro_id}>
+                                    <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar curso" /></SelectTrigger>
+                                    <SelectContent>
+                                        {courses.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.nombre}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label className="mb-1 text-xs">Instructor *</Label>
+                                <Select value={form.instructor_id || undefined} onValueChange={(v) => setField("instructor_id", v)} disabled={submitting || !form.centro_id}>
+                                    <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar instructor" /></SelectTrigger>
+                                    <SelectContent>
+                                        {instructors.map((i: any) => (
+                                            <SelectItem key={i.id} value={i.id.toString()}>
+                                                {[i.nombres, i.apellidos].filter(Boolean).join(" ") || i.nombre || `#${i.id}`}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div>
+                                <Label className="mb-1 text-xs">Metodología *</Label>
+                                <Select value={form.metodologia_id || undefined} onValueChange={(v) => setField("metodologia_id", v)} disabled={submitting}>
+                                    <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar metodología" /></SelectTrigger>
+                                    <SelectContent>
+                                        {metodologias.map((m: any) => <SelectItem key={m.id} value={m.id.toString()}>{m.nombre}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label className="mb-1 text-xs">Otra metodología</Label>
+                                <Input value={form.otra_metodologia} onChange={(e) => setField("otra_metodologia", e.target.value)} disabled={submitting} />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 2: Programación */}
+                    {wizardStep === 1 && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <Label className="mb-1 text-xs">Fecha Inicio *</Label>
+                                <Input type="date" value={form.fecha_inicial} onChange={(e) => setField("fecha_inicial", e.target.value)} disabled={submitting} />
+                            </div>
+                            <div>
+                                <Label className="mb-1 text-xs">Fecha Fin *</Label>
+                                <Input type="date" value={form.fecha_final} onChange={(e) => setField("fecha_final", e.target.value)} disabled={submitting} />
+                            </div>
+
+                            <div>
+                                <Label className="mb-1 text-xs">Duración (horas) *</Label>
+                                <Input type="number" value={form.duracion_horas} onChange={(e) => setField("duracion_horas", e.target.value)} disabled={submitting} />
+                            </div>
+                            <div>
+                                <Label className="mb-1 text-xs">Tipo de Jornada *</Label>
+                                <Select value={form.tipo_jornada_id || undefined} onValueChange={(v) => setField("tipo_jornada_id", v)} disabled={submitting}>
+                                    <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar jornada" /></SelectTrigger>
+                                    <SelectContent>
+                                        {tipoJornadas.map((t: any) => <SelectItem key={t.id} value={t.id.toString()}>{t.nombre}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div>
+                                <Label className="mb-1 text-xs">Horario *</Label>
+                                <Input value={form.horario} onChange={(e) => setField("horario", e.target.value)} disabled={submitting} />
+                            </div>
+                            <div>
+                                <Label className="mb-1 text-xs">Días *</Label>
+                                <Popover open={diasOpen} onOpenChange={setDiasOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button type="button" variant="outline" disabled={submitting} className="group w-full justify-between font-normal h-9">
+                                            <span className={cn("truncate transition-colors", !form.dias && "text-muted-foreground group-hover:text-primary-foreground")}>
+                                                {diasDisplayLabel || "Seleccionar días..."}
+                                            </span>
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1" align="start">
+                                        {diasCatalogo.map((d) => (
                                             <button
-                                                key={c.id} type="button"
-                                                className={cn(
-                                                    "w-full text-left rounded-sm px-2 py-1.5 text-sm hover:bg-accent cursor-pointer",
-                                                    form.centro_id === c.id.toString() && "bg-accent font-medium",
-                                                )}
-                                                onClick={() => {
-                                                    setField("centro_id", c.id.toString());
-                                                    setField("curso_id", "");
-                                                    setField("instructor_id", "");
-                                                    setCentroOpen(false);
-                                                    setCentroSearch("");
-                                                }}
+                                                key={d.value} type="button"
+                                                className="w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent cursor-pointer"
+                                                onClick={() => toggleDia(d.value)}
                                             >
-                                                {c.nombre}
+                                                <div className={cn(
+                                                    "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border",
+                                                    selectedDias.includes(d.value) ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/40",
+                                                )}>
+                                                    {selectedDias.includes(d.value) && <Check className="h-3 w-3" />}
+                                                </div>
+                                                {d.label}
                                             </button>
                                         ))}
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
 
-                        <div>
-                            <Label className="mb-1 text-xs">Nombre *</Label>
-                            <Input value={form.nombre} onChange={(e) => setField("nombre", e.target.value)} disabled={submitting} />
+                            <div>
+                                <Label className="mb-1 text-xs">Sede</Label>
+                                <Select value={form.sede} onValueChange={(v) => setField("sede", v)} disabled={submitting}>
+                                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="0">No</SelectItem>
+                                        <SelectItem value="1">Sí</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label className="mb-1 text-xs">Lugar</Label>
+                                <Input value={form.lugar} onChange={(e) => setField("lugar", e.target.value)} disabled={submitting} />
+                            </div>
                         </div>
-                        <div>
-                            <Label className="mb-1 text-xs">Código *</Label>
-                            <Input value={form.codigo} onChange={(e) => setField("codigo", e.target.value)} disabled={submitting} />
-                        </div>
-
-                        <div>
-                            <Label className="mb-1 text-xs">Curso *</Label>
-                            <Select value={form.curso_id || undefined} onValueChange={(v) => setField("curso_id", v)} disabled={submitting || !form.centro_id}>
-                                <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar curso" /></SelectTrigger>
-                                <SelectContent>
-                                    {courses.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.nombre}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label className="mb-1 text-xs">Instructor *</Label>
-                            <Select value={form.instructor_id || undefined} onValueChange={(v) => setField("instructor_id", v)} disabled={submitting || !form.centro_id}>
-                                <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar instructor" /></SelectTrigger>
-                                <SelectContent>
-                                    {instructors.map((i: any) => (
-                                        <SelectItem key={i.id} value={i.id.toString()}>
-                                            {[i.nombres, i.apellidos].filter(Boolean).join(" ") || i.nombre || `#${i.id}`}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div>
-                            <Label className="mb-1 text-xs">Metodología *</Label>
-                            <Select value={form.metodologia_id || undefined} onValueChange={(v) => setField("metodologia_id", v)} disabled={submitting}>
-                                <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar metodología" /></SelectTrigger>
-                                <SelectContent>
-                                    {metodologias.map((m: any) => <SelectItem key={m.id} value={m.id.toString()}>{m.nombre}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label className="mb-1 text-xs">Otra metodología</Label>
-                            <Input value={form.otra_metodologia} onChange={(e) => setField("otra_metodologia", e.target.value)} disabled={submitting} />
-                        </div>
-
-                        <div>
-                            <Label className="mb-1 text-xs">Fecha Inicio *</Label>
-                            <Input type="date" value={form.fecha_inicial} onChange={(e) => setField("fecha_inicial", e.target.value)} disabled={submitting} />
-                        </div>
-                        <div>
-                            <Label className="mb-1 text-xs">Fecha Fin *</Label>
-                            <Input type="date" value={form.fecha_final} onChange={(e) => setField("fecha_final", e.target.value)} disabled={submitting} />
-                        </div>
-
-                        <div>
-                            <Label className="mb-1 text-xs">Duración (horas) *</Label>
-                            <Input type="number" value={form.duracion_horas} onChange={(e) => setField("duracion_horas", e.target.value)} disabled={submitting} />
-                        </div>
-                        <div>
-                            <Label className="mb-1 text-xs">Tipo de Jornada *</Label>
-                            <Select value={form.tipo_jornada_id || undefined} onValueChange={(v) => setField("tipo_jornada_id", v)} disabled={submitting}>
-                                <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar jornada" /></SelectTrigger>
-                                <SelectContent>
-                                    {tipoJornadas.map((t: any) => <SelectItem key={t.id} value={t.id.toString()}>{t.nombre}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-
-                        <div>
-                            <Label className="mb-1 text-xs">Horario *</Label>
-                            <Input value={form.horario} onChange={(e) => setField("horario", e.target.value)} disabled={submitting} />
-                        </div>
-                        <div>
-                            <Label className="mb-1 text-xs">Días *</Label>
-                            <Popover open={diasOpen} onOpenChange={setDiasOpen}>
-                                <PopoverTrigger asChild>
-                                    <Button type="button" variant="outline" disabled={submitting} className="group w-full justify-between font-normal h-9">
-                                        <span className={cn("truncate transition-colors", !form.dias && "text-muted-foreground group-hover:text-primary-foreground")}>
-                                            {diasDisplayLabel || "Seleccionar días..."}
-                                        </span>
-                                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1" align="start">
-                                    {diasCatalogo.map((d) => (
-                                        <button
-                                            key={d.value} type="button"
-                                            className="w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent cursor-pointer"
-                                            onClick={() => toggleDia(d.value)}
-                                        >
-                                            <div className={cn(
-                                                "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border",
-                                                selectedDias.includes(d.value) ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/40",
-                                            )}>
-                                                {selectedDias.includes(d.value) && <Check className="h-3 w-3" />}
-                                            </div>
-                                            {d.label}
-                                        </button>
-                                    ))}
-                                </PopoverContent>
-                            </Popover>
-                        </div>
-
-                        <div>
-                            <Label className="mb-1 text-xs">Sede</Label>
-                            <Select value={form.sede} onValueChange={(v) => setField("sede", v)} disabled={submitting}>
-                                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="0">No</SelectItem>
-                                    <SelectItem value="1">Sí</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Label className="mb-1 text-xs">Lugar</Label>
-                            <Input value={form.lugar} onChange={(e) => setField("lugar", e.target.value)} disabled={submitting} />
-                        </div>
-                    </div>
+                    )}
 
                     <DialogFooter className="mt-4">
-                        <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>Cancelar</Button>
-                        <Button onClick={handleCreate} disabled={submitting}>
-                            {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Crear Proceso
-                        </Button>
+                        {wizardStep === 0 ? (
+                            <>
+                                <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>Cancelar</Button>
+                                <Button onClick={goToStep2} disabled={submitting}>
+                                    Siguiente <ChevronRight className="ml-1.5 h-4 w-4" />
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button variant="outline" onClick={() => setWizardStep(0)} disabled={submitting}>
+                                    <ChevronLeft className="mr-1.5 h-4 w-4" /> Anterior
+                                </Button>
+                                <Button onClick={handleCreate} disabled={submitting}>
+                                    {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Crear Proceso
+                                </Button>
+                            </>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
