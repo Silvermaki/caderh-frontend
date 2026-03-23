@@ -28,7 +28,7 @@ const NestedSubMenu = ({
   const pathname = usePathname();
   const locationName = getDynamicPath(pathname);
   return (
-    <Collapsible open={activeSubmenu === index}>
+    <Collapsible open={true}>
       <CollapsibleContent className="CollapsibleContent">
         <ul className="sub-menu  space-y-4 relative before:absolute before:left-4 before:top-0  before:h-[calc(100%-5px)]  before:w-[3px] before:bg-primary/10 before:rounded">
           {item.child?.map((subItem: any, j: number) => (

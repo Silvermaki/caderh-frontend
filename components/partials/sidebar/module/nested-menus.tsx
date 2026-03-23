@@ -26,7 +26,7 @@ const NestedMenus = ({
   multiIndex: number | null;
 }) => {
   return (
-    <Collapsible open={nestedIndex === index}>
+    <Collapsible open={true}>
       <CollapsibleContent className="CollapsibleContent">
         <ul className="sub-menu space-y-3 relative before:absolute before:left-4 before:top-0  before:h-[calc(100%-5px)]  before:w-[2px] before:bg-primary/10 dark:before:bg-primary/20 before:rounded">
           {nestedMenus?.map((item: any, j: number) => (

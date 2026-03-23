@@ -101,7 +101,7 @@ const Stepper = React.forwardRef<HTMLOListElement, StepperProps>(
             disabled: disabled && !isLast,
             count,
             index: index,
-            current: current,
+            current: current ?? activeStep ?? 0,
             //...child.props ,
             gap: gap,
             direction: direction,

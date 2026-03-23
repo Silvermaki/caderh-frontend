@@ -61,9 +61,8 @@ const MenuItem = ({
         >
           <div
             className={cn(
-              "flex  font-medium  text-sm capitalize  gap-3 cursor-pointer flex-1 "
+              "flex  font-medium  text-sm capitalize  gap-3 flex-1 "
             )}
-            onClick={() => toggleNested(index)}
           >
             <span className="inline-flex items-center  flex-grow-0">
               <childItem.icon className=" h-5 w-5" />
@@ -72,23 +71,6 @@ const MenuItem = ({
               {title}
             </span>
           </div>
-          {childItem.nested && (
-            <div
-              className={cn(
-                "flex-none transition-all duration-200 text-default-500 ",
-                {
-                  " transform rotate-90   text-primary-foreground":
-                    nestedIndex === index,
-                }
-              )}
-            >
-              {isRtl ? (
-                <ChevronLeft className="w-3.5 h-3.5 " />
-              ) : (
-                <ChevronRight className="w-3.5 h-3.5 " />
-              )}
-            </div>
-          )}
         </div>
       ) : (
         <div className=" flex-1">

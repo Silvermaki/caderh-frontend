@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Breadcrumbs, BreadcrumbItem } from "@/components/ui/breadcrumbs";
@@ -18,16 +18,26 @@ import {
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Stepper, Step, StepLabel } from "@/components/ui/steps";
 import SkeletonTable from "@/components/skeleton-table";
 import KPIBlock from "@/components/project/KPIBlock";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import {
     Building2, BookOpen, Clock, Hash, Pencil, Trash2, Loader2, PlusCircle,
-    Layers, Wrench, Download, Upload,
+    Layers, Wrench, Download, Upload, ChevronLeft, ChevronRight, ChevronsUpDown, Check,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL;
+
+const emptyProcessForm = {
+    centro_id: "", nombre: "", codigo: "", curso_id: "",
+    instructor_id: "", metodologia_id: "", otra_metodologia: "",
+    fecha_inicial: "", fecha_final: "", duracion_horas: "",
+    tipo_jornada_id: "", horario: "", dias: "", sede: "0", lugar: "",
+};
 
 const TAB_CLASS = "rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none";
 
@@ -64,6 +74,17 @@ export default function CourseDetailPage() {
     const [courseProcesses, setCourseProcesses] = useState<any[]>([]);
     const [processesLoading, setProcessesLoading] = useState(false);
 
+    // Process creation wizard state
+    const [processDialogOpen, setProcessDialogOpen] = useState(false);
+    const [processForm, setProcessForm] = useState({ ...emptyProcessForm });
+    const [processSubmitting, setProcessSubmitting] = useState(false);
+    const [processWizardStep, setProcessWizardStep] = useState(0);
+    const [processInstructors, setProcessInstructors] = useState<any[]>([]);
+    const [metodologias, setMetodologias] = useState<any[]>([]);
+    const [tipoJornadas, setTipoJornadas] = useState<any[]>([]);
+    const [diasCatalogo, setDiasCatalogo] = useState<{ value: string; label: string }[]>([]);
+    const [diasOpen, setDiasOpen] = useState(false);
+
     const fetchCourse = async () => {
         setLoading(true);
         try {
@@ -91,6 +112,130 @@ export default function CourseDetailPage() {
             if (res.ok) { const d = await res.json(); setCourseProcesses(d.data ?? []); }
         } catch { /* silent */ }
         setProcessesLoading(false);
+    };
+
+    /* ── Process wizard helpers ── */
+
+    const fetchMetodologias = async () => {
+        try {
+            const res = await fetch(`${apiBase}/api/centros/metodologias`, { headers: authHeaders });
+            if (res.ok) { const d = await res.json(); setMetodologias(d.data ?? []); }
+        } catch { /* silent */ }
+    };
+
+    const fetchTipoJornadas = async () => {
+        try {
+            const res = await fetch(`${apiBase}/api/centros/tipo-jornadas`, { headers: authHeaders });
+            if (res.ok) { const d = await res.json(); setTipoJornadas(d.data ?? []); }
+        } catch { /* silent */ }
+    };
+
+    const fetchDiasCatalogo = async () => {
+        try {
+            const res = await fetch(`${apiBase}/api/centros/dias-catalogo`, { headers: authHeaders });
+            if (res.ok) { const d = await res.json(); setDiasCatalogo(d.data ?? []); }
+        } catch { /* silent */ }
+    };
+
+    const fetchInstructorsForCentro = async (centroId: string) => {
+        try {
+            const res = await fetch(`${apiBase}/api/centros/centros/${centroId}/instructors?limit=100&offset=0`, { headers: authHeaders });
+            if (res.ok) { const d = await res.json(); setProcessInstructors(d.data ?? []); }
+        } catch { /* silent */ }
+    };
+
+    const setProcessField = (key: string, value: string) => setProcessForm((prev) => ({ ...prev, [key]: value }));
+
+    const parseDias = (raw: string): string[] => {
+        if (!raw) return [];
+        try { const arr = JSON.parse(raw); if (Array.isArray(arr)) return arr.map(String); } catch { /* not JSON */ }
+        return raw.split(",").filter(Boolean).map((s) => s.trim());
+    };
+
+    const selectedDias = useMemo(() => parseDias(processForm.dias), [processForm.dias]);
+
+    const toggleDia = (val: string) => {
+        const current = selectedDias.includes(val)
+            ? selectedDias.filter((d) => d !== val)
+            : [...selectedDias, val];
+        current.sort((a, b) => Number(a) - Number(b));
+        setProcessField("dias", JSON.stringify(current));
+    };
+
+    const diasDisplayLabel = useMemo(() => {
+        if (selectedDias.length === 0) return "";
+        const sorted = [...selectedDias].sort((a, b) => Number(a) - Number(b));
+        return sorted
+            .map((v) => diasCatalogo.find((d) => d.value === v)?.label ?? v)
+            .join(", ");
+    }, [selectedDias, diasCatalogo]);
+
+    const openProcessDialog = () => {
+        if (!course) return;
+        setProcessForm({
+            ...emptyProcessForm,
+            centro_id: String(course.centro_id),
+            curso_id: courseId,
+            duracion_horas: course.total_horas != null ? String(course.total_horas) : "",
+        });
+        setProcessWizardStep(0);
+        fetchMetodologias();
+        fetchTipoJornadas();
+        fetchDiasCatalogo();
+        fetchInstructorsForCentro(String(course.centro_id));
+        setProcessDialogOpen(true);
+    };
+
+    const validateProcessStep1 = (): boolean => {
+        const step1Required: (keyof typeof emptyProcessForm)[] = [
+            "centro_id", "nombre", "codigo", "curso_id", "instructor_id", "metodologia_id",
+        ];
+        for (const key of step1Required) {
+            if (!processForm[key]) { toast.error("Complete todos los campos requeridos del paso 1"); return false; }
+        }
+        return true;
+    };
+
+    const handleCreateProcess = async () => {
+        const required: (keyof typeof emptyProcessForm)[] = [
+            "centro_id", "nombre", "codigo", "curso_id", "instructor_id",
+            "metodologia_id", "fecha_inicial", "fecha_final", "duracion_horas",
+            "tipo_jornada_id", "horario", "dias",
+        ];
+        for (const key of required) {
+            if (!processForm[key]) { toast.error("Complete todos los campos requeridos"); return; }
+        }
+        if (processForm.fecha_inicial && processForm.fecha_final && processForm.fecha_inicial > processForm.fecha_final) {
+            toast.error("La fecha de inicio debe ser anterior a la fecha fin");
+            return;
+        }
+
+        setProcessSubmitting(true);
+        try {
+            const res = await fetch(`${apiBase}/api/centros/processes`, {
+                method: "POST",
+                headers: { ...authHeaders, "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    ...processForm,
+                    centro_id: Number(processForm.centro_id),
+                    curso_id: Number(processForm.curso_id),
+                    instructor_id: Number(processForm.instructor_id),
+                    metodologia_id: Number(processForm.metodologia_id),
+                    tipo_jornada_id: Number(processForm.tipo_jornada_id),
+                    duracion_horas: Number(processForm.duracion_horas),
+                    sede: Number(processForm.sede),
+                }),
+            });
+            if (res.ok) {
+                toast.success("Proceso creado");
+                setProcessDialogOpen(false);
+                fetchCourseProcesses();
+            } else {
+                const d = await res.json();
+                toast.error(d.message ?? "Error al crear proceso");
+            }
+        } catch { toast.error("Error al crear proceso"); }
+        setProcessSubmitting(false);
     };
 
     useEffect(() => {
@@ -565,6 +710,11 @@ export default function CourseDetailPage() {
                                     <span className="text-sm text-muted-foreground">{courseProcesses.length} proceso{courseProcesses.length !== 1 ? "s" : ""}</span>
                                 )}
                             </div>
+                            {isSupervisor && (
+                                <Button size="sm" onClick={openProcessDialog}>
+                                    <PlusCircle className="h-4 w-4 mr-1" /> Crear Proceso
+                                </Button>
+                            )}
                         </div>
                         {processesLoading ? (
                             <SkeletonTable />
@@ -572,6 +722,11 @@ export default function CourseDetailPage() {
                             <div className="py-12 text-center">
                                 <BookOpen className="h-8 w-8 mx-auto text-muted-foreground/50 mb-3" />
                                 <p className="text-muted-foreground">No hay procesos educativos asociados a este curso.</p>
+                                {isSupervisor && (
+                                    <Button size="sm" variant="outline" className="mt-3" onClick={openProcessDialog}>
+                                        <PlusCircle className="h-4 w-4 mr-1" /> Crear Proceso
+                                    </Button>
+                                )}
                             </div>
                         ) : (
                             <Table>
@@ -686,6 +841,168 @@ export default function CourseDetailPage() {
                             {moduleSaving && <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />}
                             {editingModule ? "Guardar" : "Crear"}
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Process creation wizard */}
+            <Dialog open={processDialogOpen} onOpenChange={(open) => { if (!open) { setProcessDialogOpen(false); setProcessWizardStep(0); } }}>
+                <DialogContent size="3xl" className="max-h-[90vh] overflow-y-auto">
+                    <DialogTitle>Crear Proceso Educativo</DialogTitle>
+
+                    <Stepper direction="horizontal" current={processWizardStep} gap alternativeLabel>
+                        <Step><StepLabel>Información General</StepLabel></Step>
+                        <Step><StepLabel>Programación</StepLabel></Step>
+                    </Stepper>
+
+                    {/* Step 1: Info General */}
+                    {processWizardStep === 0 && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="md:col-span-2">
+                                <Label className="mb-1 text-xs">Centro *</Label>
+                                <Input value={course?.centro_nombre ?? ""} disabled />
+                            </div>
+
+                            <div>
+                                <Label className="mb-1 text-xs">Nombre *</Label>
+                                <Input value={processForm.nombre} onChange={(e) => setProcessField("nombre", e.target.value)} disabled={processSubmitting} />
+                            </div>
+                            <div>
+                                <Label className="mb-1 text-xs">Código *</Label>
+                                <Input value={processForm.codigo} onChange={(e) => setProcessField("codigo", e.target.value)} disabled={processSubmitting} />
+                            </div>
+
+                            <div>
+                                <Label className="mb-1 text-xs">Curso *</Label>
+                                <Input value={course?.nombre ?? ""} disabled />
+                            </div>
+                            <div>
+                                <Label className="mb-1 text-xs">Instructor *</Label>
+                                <Select value={processForm.instructor_id || undefined} onValueChange={(v) => setProcessField("instructor_id", v)} disabled={processSubmitting}>
+                                    <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar instructor" /></SelectTrigger>
+                                    <SelectContent>
+                                        {processInstructors.map((i: any) => (
+                                            <SelectItem key={i.id} value={i.id.toString()}>
+                                                {[i.nombres, i.apellidos].filter(Boolean).join(" ") || i.nombre || `#${i.id}`}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div>
+                                <Label className="mb-1 text-xs">Metodología *</Label>
+                                <Select value={processForm.metodologia_id || undefined} onValueChange={(v) => setProcessField("metodologia_id", v)} disabled={processSubmitting}>
+                                    <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar metodología" /></SelectTrigger>
+                                    <SelectContent>
+                                        {metodologias.map((m: any) => <SelectItem key={m.id} value={m.id.toString()}>{m.nombre}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label className="mb-1 text-xs">Otra metodología</Label>
+                                <Input value={processForm.otra_metodologia} onChange={(e) => setProcessField("otra_metodologia", e.target.value)} disabled={processSubmitting} />
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Step 2: Programación */}
+                    {processWizardStep === 1 && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <Label className="mb-1 text-xs">Fecha Inicio *</Label>
+                                <Input type="date" value={processForm.fecha_inicial} onChange={(e) => setProcessField("fecha_inicial", e.target.value)} disabled={processSubmitting} />
+                            </div>
+                            <div>
+                                <Label className="mb-1 text-xs">Fecha Fin *</Label>
+                                <Input type="date" value={processForm.fecha_final} onChange={(e) => setProcessField("fecha_final", e.target.value)} disabled={processSubmitting} />
+                            </div>
+
+                            <div>
+                                <Label className="mb-1 text-xs">Duración (horas) *</Label>
+                                <Input type="number" value={processForm.duracion_horas} onChange={(e) => setProcessField("duracion_horas", e.target.value)} disabled={processSubmitting} />
+                            </div>
+                            <div>
+                                <Label className="mb-1 text-xs">Tipo de Jornada *</Label>
+                                <Select value={processForm.tipo_jornada_id || undefined} onValueChange={(v) => setProcessField("tipo_jornada_id", v)} disabled={processSubmitting}>
+                                    <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar jornada" /></SelectTrigger>
+                                    <SelectContent>
+                                        {tipoJornadas.map((t: any) => <SelectItem key={t.id} value={t.id.toString()}>{t.nombre}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div>
+                                <Label className="mb-1 text-xs">Horario *</Label>
+                                <Input value={processForm.horario} onChange={(e) => setProcessField("horario", e.target.value)} disabled={processSubmitting} />
+                            </div>
+                            <div>
+                                <Label className="mb-1 text-xs">Días *</Label>
+                                <Popover open={diasOpen} onOpenChange={setDiasOpen}>
+                                    <PopoverTrigger asChild>
+                                        <Button type="button" variant="outline" disabled={processSubmitting} className="group w-full justify-between font-normal h-9">
+                                            <span className={cn("truncate transition-colors", !processForm.dias && "text-muted-foreground group-hover:text-primary-foreground")}>
+                                                {diasDisplayLabel || "Seleccionar días..."}
+                                            </span>
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-1" align="start">
+                                        {diasCatalogo.map((d) => (
+                                            <button
+                                                key={d.value} type="button"
+                                                className="w-full flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent cursor-pointer"
+                                                onClick={() => toggleDia(d.value)}
+                                            >
+                                                <div className={cn(
+                                                    "flex h-4 w-4 shrink-0 items-center justify-center rounded-sm border",
+                                                    selectedDias.includes(d.value) ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/40",
+                                                )}>
+                                                    {selectedDias.includes(d.value) && <Check className="h-3 w-3" />}
+                                                </div>
+                                                {d.label}
+                                            </button>
+                                        ))}
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+
+                            <div>
+                                <Label className="mb-1 text-xs">Sede</Label>
+                                <Select value={processForm.sede} onValueChange={(v) => setProcessField("sede", v)} disabled={processSubmitting}>
+                                    <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="0">No</SelectItem>
+                                        <SelectItem value="1">Sí</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label className="mb-1 text-xs">Lugar</Label>
+                                <Input value={processForm.lugar} onChange={(e) => setProcessField("lugar", e.target.value)} disabled={processSubmitting} />
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter className="mt-4">
+                        {processWizardStep === 0 ? (
+                            <>
+                                <Button variant="outline" onClick={() => setProcessDialogOpen(false)} disabled={processSubmitting}>Cancelar</Button>
+                                <Button onClick={() => { if (validateProcessStep1()) setProcessWizardStep(1); }} disabled={processSubmitting}>
+                                    Siguiente <ChevronRight className="ml-1.5 h-4 w-4" />
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                <Button variant="outline" onClick={() => setProcessWizardStep(0)} disabled={processSubmitting}>
+                                    <ChevronLeft className="mr-1.5 h-4 w-4" /> Anterior
+                                </Button>
+                                <Button onClick={handleCreateProcess} disabled={processSubmitting}>
+                                    {processSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Crear Proceso
+                                </Button>
+                            </>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

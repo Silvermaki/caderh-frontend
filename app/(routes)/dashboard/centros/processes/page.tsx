@@ -279,6 +279,10 @@ function PageContent() {
         for (const key of required) {
             if (!form[key]) { toast.error("Complete todos los campos requeridos"); return; }
         }
+        if (form.fecha_inicial && form.fecha_final && form.fecha_inicial > form.fecha_final) {
+            toast.error("La fecha de inicio debe ser anterior a la fecha fin");
+            return;
+        }
 
         setSubmitting(true);
         try {
@@ -466,7 +470,7 @@ function PageContent() {
                 <DialogContent size="3xl" className="max-h-[90vh] overflow-y-auto">
                     <DialogTitle>Crear Proceso Educativo</DialogTitle>
 
-                    <Stepper activeStep={wizardStep} direction="horizontal" className="mb-6 mt-2">
+                    <Stepper direction="horizontal" current={wizardStep} gap alternativeLabel>
                         <Step><StepLabel>Información General</StepLabel></Step>
                         <Step><StepLabel>Programación</StepLabel></Step>
                     </Stepper>

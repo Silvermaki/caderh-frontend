@@ -527,7 +527,10 @@ export default function ProcessDetailPage() {
             });
             const data = await res.json();
             if (res.ok) {
-                const parts = [`Matriculados: ${data.enrolled}`];
+                const parts = [];
+                if (data.enrolled > 0) parts.push(`Agregados: ${data.enrolled}`);
+                if (data.removed > 0) parts.push(`Removidos: ${data.removed}`);
+                if (!data.enrolled && !data.removed) parts.push("Sin cambios");
                 if (data.warnings?.length) parts.push(`Advertencias: ${data.warnings.length}`);
                 if (data.errors?.length) parts.push(`Errores: ${data.errors.length}`);
                 toast.success(parts.join(" · "), { duration: 5000 });
@@ -872,7 +875,7 @@ export default function ProcessDetailPage() {
                                 )}
                             </div>
                             <div className="flex gap-2 flex-wrap">
-                                {enrollments.length > 0 && (
+                                {isSupervisor && (
                                     <Button variant="outline" size="sm" onClick={downloadEnrollmentsExcel}>
                                         <Download className="h-4 w-4 mr-2" />Descargar Excel
                                     </Button>
