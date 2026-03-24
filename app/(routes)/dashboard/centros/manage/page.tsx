@@ -18,6 +18,7 @@ import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { PlusCircle, RefreshCcw, MapPin, Phone, Mail, User } from "lucide-react";
+import CentroWizard from "@/components/centro/centro-wizard";
 import { Icon } from "@iconify/react";
 import { prettifyNumber } from "@/app/libs/utils";
 import { Suspense } from "react";
@@ -38,6 +39,7 @@ function PageContent() {
     const [searchInput, setSearchInput] = useState<string>(searchInit);
     const [loading, setLoading] = useState<boolean>(true);
     const [statusFilter, setStatusFilter] = useState<string>("1");
+    const [wizardOpen, setWizardOpen] = useState(false);
     const userRole = session?.user?.role;
 
     const getCentros = async (params: string) => {
@@ -196,10 +198,7 @@ function PageContent() {
                         {userRole !== "USER" && (
                             <Button
                                 color="success"
-                                onClick={() => {
-                                    // TODO: Phase 2 - create centro modal
-                                    toast("Crear centro se habilitará en la siguiente fase");
-                                }}
+                                onClick={() => setWizardOpen(true)}
                             >
                                 Crear Centro
                                 <PlusCircle className="h-4 w-4 ml-2" />
@@ -373,6 +372,7 @@ function PageContent() {
                     )}
                 </CardContent>
             </Card>
+            <CentroWizard isOpen={wizardOpen} setIsOpen={setWizardOpen} reloadList={() => getDataInit(search)} />
         </div>
     );
 }
