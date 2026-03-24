@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -21,9 +22,13 @@ import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import {
     Building2, Phone, Mail, Pencil, Trash2, User, FileText, Loader2, Upload, X, CreditCard,
+    Calendar, Briefcase, Heart, MapPin, Globe, GraduationCap, Home, Users, DollarSign,
+    Clock, FileCheck, Shield, AlertTriangle, UserCheck, BookOpen,
 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
+import KPIBlock from "@/components/project/KPIBlock";
+import InfoSection from "@/components/project/InfoSection";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL;
 
@@ -35,6 +40,7 @@ const TABS = [
     { key: "education", label: "Educación y Hogar" },
     { key: "employment", label: "Situación Laboral" },
     { key: "additional", label: "Información Adicional" },
+    { key: "processes", label: "Procesos" },
 ];
 
 const NUM_KEYS = ["estudia", "tiene_hijos", "cuantos_hijos", "cantidad_viven", "cantidad_trabajan_viven",
@@ -68,6 +74,9 @@ export default function StudentDetailPage() {
     const [pdfUploading, setPdfUploading] = useState(false);
     const [pdfDeleting, setPdfDeleting] = useState(false);
 
+    const [processes, setProcesses] = useState<any[]>([]);
+    const [processesLoading, setProcessesLoading] = useState(false);
+
     const fetchStudent = async () => {
         setLoading(true);
         try {
@@ -78,7 +87,17 @@ export default function StudentDetailPage() {
         setLoading(false);
     };
 
-    useEffect(() => { if (session && studentId) fetchStudent(); }, [session, studentId]);
+    const fetchProcesses = useCallback(async () => {
+        if (!studentId || !session) return;
+        setProcessesLoading(true);
+        try {
+            const res = await fetch(`${apiBase}/api/centros/students/${studentId}/enrollments?all=true`, { headers: authHeaders });
+            if (res.ok) { const d = await res.json(); setProcesses(d.data ?? []); }
+        } catch { /* silent */ }
+        setProcessesLoading(false);
+    }, [studentId, session?.user?.session]);
+
+    useEffect(() => { if (session && studentId) { fetchStudent(); fetchProcesses(); } }, [session, studentId]);
 
     const startEditing = (tabKey: string) => {
         if (!student) return;
@@ -215,17 +234,23 @@ export default function StudentDetailPage() {
         onDropRejected: (r) => { const err = r[0]?.errors[0]; toast.error(err?.code === "file-too-large" ? "El archivo excede 10MB" : err?.message ?? "Archivo rechazado"); },
     });
 
-    const fieldView = (label: string, value: any) => (
-        <div>
-            <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-            <p className="text-sm text-foreground">{value || "-"}</p>
+    const fieldView = (label: string, value: any, icon?: React.ReactNode) => (
+        <div className="flex items-start gap-3">
+            {icon && <div className="mt-0.5 text-muted-foreground">{icon}</div>}
+            <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
+                <p className="text-sm text-foreground font-medium">{value || "-"}</p>
+            </div>
         </div>
     );
 
-    const boolView = (label: string, value: any) => (
-        <div>
-            <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-            <p className="text-sm text-foreground">{Number(value) ? "Sí" : "No"}</p>
+    const boolView = (label: string, value: any, icon?: React.ReactNode) => (
+        <div className="flex items-start gap-3">
+            {icon && <div className="mt-0.5 text-muted-foreground">{icon}</div>}
+            <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
+                <p className="text-sm text-foreground font-medium">{Number(value) ? "Sí" : "No"}</p>
+            </div>
         </div>
     );
 
@@ -310,7 +335,7 @@ export default function StudentDetailPage() {
 
             {/* Header */}
             <Card className="mt-5">
-                <CardContent className="p-6">
+                <CardContent className="p-6 pb-2">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-4">
                             <div className="rounded-full bg-primary/10 p-3">
@@ -318,7 +343,7 @@ export default function StudentDetailPage() {
                             </div>
                             <div>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <h2 className="text-lg font-semibold">{fullName}</h2>
+                                    <h2 className="text-2xl font-bold tracking-tight text-primary">{fullName}</h2>
                                     <Badge color="secondary">{s.sexo === "M" ? "Masculino" : s.sexo === "F" ? "Femenino" : s.sexo}</Badge>
                                 </div>
                                 <div className="flex flex-wrap gap-x-5 gap-y-1 mt-2 text-sm text-muted-foreground">
@@ -335,7 +360,16 @@ export default function StudentDetailPage() {
                             </Button>
                         )}
                     </div>
-                    {/* Reserved for future metrics */}
+
+                    {/* KPI Grid */}
+                    <div className="mt-5 pb-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            <KPIBlock icon={Calendar} label="Edad" value={s.fecha_nacimiento ? `${Math.floor((Date.now() - new Date(s.fecha_nacimiento).getTime()) / 31557600000)} años` : "-"} iconColor="text-primary" index={0} />
+                            <KPIBlock icon={Briefcase} label="Situación Laboral" value={Number(s.trabajo_actual) ? "Empleado" : Number(s.autoempleo) ? "Autoempleo" : "No trabaja"} iconColor="text-success" index={1} />
+                            <KPIBlock icon={BookOpen} label="Procesos" value={String(processes.length)} iconColor="text-info" index={2} />
+                            <KPIBlock icon={GraduationCap} label="Escolaridad" value={s.nivel_escolaridad_nombre || "-"} iconColor="text-warning" index={3} />
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -343,7 +377,7 @@ export default function StudentDetailPage() {
             <Card className="mt-4">
                 <Tabs defaultValue="personal" className="w-full">
                     <TabsList className="w-full justify-start gap-8 border-b border-default-200 rounded-none bg-transparent p-0 h-auto min-h-0 px-6 pt-4 pb-0">
-                        {TABS.map((t) => <TabsTrigger key={t.key} value={t.key} className={TAB_CLASS}>{t.label}</TabsTrigger>)}
+                        {TABS.map((t) => <TabsTrigger key={t.key} value={t.key} className={TAB_CLASS}>{t.label}{t.key === "processes" && processes.length > 0 ? ` (${processes.length})` : ""}</TabsTrigger>)}
                     </TabsList>
 
                     {/* Tab: Datos Personales */}
@@ -366,13 +400,17 @@ export default function StudentDetailPage() {
                                 ])}
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
-                                {fieldView("Identidad", s.identidad)}
-                                {fieldView("Nombres", s.nombres)}
-                                {fieldView("Apellidos", s.apellidos)}
-                                {fieldView("Fecha de nacimiento", s.fecha_nacimiento)}
-                                {fieldView("Sexo", s.sexo === "M" ? "Masculino" : s.sexo === "F" ? "Femenino" : s.sexo)}
-                                {fieldView("Estado civil", s.estado_civil)}
+                            <div className="space-y-6">
+                                <InfoSection title="Datos Personales">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        {fieldView("Identidad", s.identidad, <CreditCard className="h-4 w-4" />)}
+                                        {fieldView("Nombres", s.nombres, <User className="h-4 w-4" />)}
+                                        {fieldView("Apellidos", s.apellidos, <User className="h-4 w-4" />)}
+                                        {fieldView("Fecha de nacimiento", s.fecha_nacimiento, <Calendar className="h-4 w-4" />)}
+                                        {fieldView("Sexo", s.sexo === "M" ? "Masculino" : s.sexo === "F" ? "Femenino" : s.sexo, <Users className="h-4 w-4" />)}
+                                        {fieldView("Estado civil", s.estado_civil, <Heart className="h-4 w-4" />)}
+                                    </div>
+                                </InfoSection>
                             </div>
                         )}
                     </TabsContent>
@@ -396,16 +434,28 @@ export default function StudentDetailPage() {
                                 {fieldInput("instagram", "Instagram")}
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
-                                {fieldView("Departamento", s.departamento_nombre)}
-                                {fieldView("Municipio", s.municipio_nombre)}
-                                {fieldView("Dirección", s.direccion)}
-                                {fieldView("Email", s.email)}
-                                {fieldView("Teléfono", s.telefono)}
-                                {fieldView("Celular", s.celular)}
-                                {fieldView("Facebook", s.facebook)}
-                                {fieldView("Twitter", s.twitter)}
-                                {fieldView("Instagram", s.instagram)}
+                            <div className="space-y-6">
+                                <InfoSection title="Ubicación">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        {fieldView("Departamento", s.departamento_nombre, <MapPin className="h-4 w-4" />)}
+                                        {fieldView("Municipio", s.municipio_nombre, <MapPin className="h-4 w-4" />)}
+                                        {fieldView("Dirección", s.direccion, <Home className="h-4 w-4" />)}
+                                    </div>
+                                </InfoSection>
+                                <InfoSection title="Contacto">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        {fieldView("Email", s.email, <Mail className="h-4 w-4" />)}
+                                        {fieldView("Teléfono", s.telefono, <Phone className="h-4 w-4" />)}
+                                        {fieldView("Celular", s.celular, <Phone className="h-4 w-4" />)}
+                                    </div>
+                                </InfoSection>
+                                <InfoSection title="Redes Sociales">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        {fieldView("Facebook", s.facebook, <Globe className="h-4 w-4" />)}
+                                        {fieldView("Twitter", s.twitter, <Globe className="h-4 w-4" />)}
+                                        {fieldView("Instagram", s.instagram, <Globe className="h-4 w-4" />)}
+                                    </div>
+                                </InfoSection>
                             </div>
                         )}
                     </TabsContent>
@@ -457,25 +507,37 @@ export default function StudentDetailPage() {
                                 {fieldInput("ingreso_promedio", "Ingreso promedio", { type: "number" })}
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
-                                {boolView("¿Estudia actualmente?", s.estudia)}
-                                {fieldView("Nivel de escolaridad", s.nivel_escolaridad_nombre)}
-                                <div>
-                                    <p className="text-xs text-muted-foreground mb-0.5">Hoja de vida</p>
-                                    {s.pdf ? (
-                                        <Button variant="ghost" size="sm" className="h-8 bg-transparent text-primary hover:bg-primary/80 hover:text-primary-foreground rounded-md px-3 font-semibold -ml-3"
-                                            onClick={openPdf}>Ver</Button>
-                                    ) : <p className="text-sm text-foreground">-</p>}
-                                </div>
-                                {fieldView("¿Con quién vive?", s.vive)}
-                                {fieldView("No. de dependientes", s.numero_dep)}
-                                {boolView("¿Tiene hijos?", s.tiene_hijos)}
-                                {Number(s.tiene_hijos) ? fieldView("¿Cuántos hijos?", s.cuantos_hijos) : null}
-                                {fieldView("Tipo de vivienda", s.vivienda)}
-                                {fieldView("Cantidad que viven en el hogar", s.cantidad_viven)}
-                                {fieldView("Cantidad que trabajan", s.cantidad_trabajan_viven)}
-                                {fieldView("Cantidad que no trabajan", s.cantidad_notrabajan_viven)}
-                                {fieldView("Ingreso promedio", s.ingreso_promedio)}
+                            <div className="space-y-6">
+                                <InfoSection title="Educación">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        {boolView("¿Estudia actualmente?", s.estudia, <BookOpen className="h-4 w-4" />)}
+                                        {fieldView("Nivel de escolaridad", s.nivel_escolaridad_nombre, <GraduationCap className="h-4 w-4" />)}
+                                        <div className="flex items-start gap-3">
+                                            <div className="mt-0.5 text-muted-foreground"><FileText className="h-4 w-4" /></div>
+                                            <div>
+                                                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Hoja de vida</p>
+                                                {s.pdf ? (
+                                                    <Button variant="outline" size="sm" onClick={openPdf}>
+                                                        <FileText className="h-4 w-4 mr-2" />Ver hoja de vida
+                                                    </Button>
+                                                ) : <p className="text-sm text-muted-foreground">No se ha cargado hoja de vida.</p>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </InfoSection>
+                                <InfoSection title="Hogar">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        {fieldView("¿Con quién vive?", s.vive, <Users className="h-4 w-4" />)}
+                                        {fieldView("No. de dependientes", s.numero_dep, <Users className="h-4 w-4" />)}
+                                        {boolView("¿Tiene hijos?", s.tiene_hijos, <Users className="h-4 w-4" />)}
+                                        {Number(s.tiene_hijos) ? fieldView("¿Cuántos hijos?", s.cuantos_hijos, <Users className="h-4 w-4" />) : null}
+                                        {fieldView("Tipo de vivienda", s.vivienda, <Home className="h-4 w-4" />)}
+                                        {fieldView("Cantidad que viven en el hogar", s.cantidad_viven, <Home className="h-4 w-4" />)}
+                                        {fieldView("Cantidad que trabajan", s.cantidad_trabajan_viven, <Briefcase className="h-4 w-4" />)}
+                                        {fieldView("Cantidad que no trabajan", s.cantidad_notrabajan_viven, <Users className="h-4 w-4" />)}
+                                        {fieldView("Ingreso promedio", s.ingreso_promedio, <DollarSign className="h-4 w-4" />)}
+                                    </div>
+                                </InfoSection>
                             </div>
                         )}
                     </TabsContent>
@@ -503,20 +565,32 @@ export default function StudentDetailPage() {
                                 {!!form.socios && fieldInput("socios_cantidad", "Cantidad de socios", { type: "number" })}
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
-                                {boolView("¿Trabaja actualmente?", s.trabajo_actual)}
-                                {Number(s.trabajo_actual) ? <>{fieldView("¿Dónde trabaja?", s.donde_trabaja)}{fieldView("Puesto", s.puesto)}</> : null}
-                                {boolView("¿Ha trabajado antes?", s.trabajado_ant)}
-                                {Number(s.trabajado_ant) ? fieldView("Tiempo trabajado", s.tiempo_ant) : null}
-                                {fieldView("Tipo de contrato", s.tipo_contrato_ant)}
-                                {fieldView("Beneficios del empleo", s.beneficios_empleo)}
-                                {fieldView("Otros beneficios", s.beneficios_empleo_otro)}
-                                {boolView("¿Autoempleo?", s.autoempleo)}
-                                {Number(s.autoempleo) ? <>{fieldView("Dedicación", s.autoempleo_dedicacion)}{fieldView("Otro autoempleo", s.autoempleo_otro)}{fieldView("Tiempo en autoempleo", s.autoempleo_tiempo)}</> : null}
-                                {fieldView("Días por semana", s.dias_semana_trabajo)}
-                                {fieldView("Horas por día", s.horas_dia_trabajo)}
-                                {boolView("¿Tiene socios?", s.socios)}
-                                {Number(s.socios) ? fieldView("Cantidad de socios", s.socios_cantidad) : null}
+                            <div className="space-y-6">
+                                <InfoSection title="Empleo Actual">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        {boolView("¿Trabaja actualmente?", s.trabajo_actual, <Briefcase className="h-4 w-4" />)}
+                                        {Number(s.trabajo_actual) ? <>{fieldView("¿Dónde trabaja?", s.donde_trabaja, <Building2 className="h-4 w-4" />)}{fieldView("Puesto", s.puesto, <UserCheck className="h-4 w-4" />)}</> : null}
+                                        {fieldView("Tipo de contrato", s.tipo_contrato_ant, <FileCheck className="h-4 w-4" />)}
+                                        {fieldView("Beneficios del empleo", s.beneficios_empleo, <Shield className="h-4 w-4" />)}
+                                        {fieldView("Otros beneficios", s.beneficios_empleo_otro, <Shield className="h-4 w-4" />)}
+                                        {fieldView("Días por semana", s.dias_semana_trabajo, <Calendar className="h-4 w-4" />)}
+                                        {fieldView("Horas por día", s.horas_dia_trabajo, <Clock className="h-4 w-4" />)}
+                                    </div>
+                                </InfoSection>
+                                <InfoSection title="Experiencia Previa">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        {boolView("¿Ha trabajado antes?", s.trabajado_ant, <Briefcase className="h-4 w-4" />)}
+                                        {Number(s.trabajado_ant) ? fieldView("Tiempo trabajado", s.tiempo_ant, <Clock className="h-4 w-4" />) : null}
+                                    </div>
+                                </InfoSection>
+                                <InfoSection title="Autoempleo">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        {boolView("¿Autoempleo?", s.autoempleo, <Briefcase className="h-4 w-4" />)}
+                                        {Number(s.autoempleo) ? <>{fieldView("Dedicación", s.autoempleo_dedicacion, <Clock className="h-4 w-4" />)}{fieldView("Otro autoempleo", s.autoempleo_otro, <Briefcase className="h-4 w-4" />)}{fieldView("Tiempo en autoempleo", s.autoempleo_tiempo, <Clock className="h-4 w-4" />)}</> : null}
+                                        {boolView("¿Tiene socios?", s.socios, <Users className="h-4 w-4" />)}
+                                        {Number(s.socios) ? fieldView("Cantidad de socios", s.socios_cantidad, <Users className="h-4 w-4" />) : null}
+                                    </div>
+                                </InfoSection>
                             </div>
                         )}
                     </TabsContent>
@@ -544,25 +618,75 @@ export default function StudentDetailPage() {
                                 <div className="md:col-span-2">{fieldInput("adicional_r", "Información adicional")}</div>
                             </div>
                         ) : (
-                            <>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
-                                    {boolView("¿Necesidades especiales?", s.especial)}
-                                    {Number(s.especial) ? fieldView("Discapacidad", s.discapacidad_id) : null}
-                                    {boolView("¿Riesgo social?", s.riesgo_social)}
-                                    {fieldView("Etnia", s.etnia_id)}
-                                    {boolView("¿Interno?", s.interno)}
-                                </div>
-                                <div className="mt-6 border-t pt-4">
-                                    <h4 className="text-sm font-semibold text-foreground mb-3">Contacto de referencia</h4>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4">
-                                        {fieldView("Nombre", s.nombre_r)}
-                                        {fieldView("Teléfono", s.telefono_r)}
-                                        {fieldView("Datos adicionales", s.datos_r)}
-                                        {fieldView("Parentesco", s.parentesco_r)}
-                                        {fieldView("Información adicional", s.adicional_r)}
+                            <div className="space-y-6">
+                                <InfoSection title="Información Adicional">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        {boolView("¿Necesidades especiales?", s.especial, <AlertTriangle className="h-4 w-4" />)}
+                                        {Number(s.especial) ? fieldView("Discapacidad", s.discapacidad_id, <AlertTriangle className="h-4 w-4" />) : null}
+                                        {boolView("¿Riesgo social?", s.riesgo_social, <Shield className="h-4 w-4" />)}
+                                        {fieldView("Etnia", s.etnia_id, <Users className="h-4 w-4" />)}
+                                        {boolView("¿Interno?", s.interno, <Home className="h-4 w-4" />)}
                                     </div>
-                                </div>
-                            </>
+                                </InfoSection>
+                                <InfoSection title="Contacto de Referencia">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
+                                        {fieldView("Nombre", s.nombre_r, <User className="h-4 w-4" />)}
+                                        {fieldView("Teléfono", s.telefono_r, <Phone className="h-4 w-4" />)}
+                                        {fieldView("Datos adicionales", s.datos_r, <FileText className="h-4 w-4" />)}
+                                        {fieldView("Parentesco", s.parentesco_r, <Users className="h-4 w-4" />)}
+                                        {fieldView("Información adicional", s.adicional_r, <FileText className="h-4 w-4" />)}
+                                    </div>
+                                </InfoSection>
+                            </div>
+                        )}
+                    </TabsContent>
+
+                    {/* Tab: Procesos */}
+                    <TabsContent value="processes" className="mt-0 px-6 pt-6 pb-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-4">
+                                <h3 className="text-base font-semibold">Procesos Educativos</h3>
+                                {processes.length > 0 && (
+                                    <span className="text-sm text-muted-foreground">{processes.length} proceso{processes.length !== 1 ? "s" : ""}</span>
+                                )}
+                            </div>
+                        </div>
+                        {processesLoading ? (
+                            <SkeletonTable />
+                        ) : processes.length === 0 ? (
+                            <div className="py-12 text-center">
+                                <BookOpen className="h-8 w-8 mx-auto text-muted-foreground/50 mb-3" />
+                                <p className="text-muted-foreground">Este estudiante no tiene procesos educativos.</p>
+                            </div>
+                        ) : (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Nombre</TableHead>
+                                        <TableHead>Código</TableHead>
+                                        <TableHead>Centro</TableHead>
+                                        <TableHead>Curso</TableHead>
+                                        <TableHead>Fecha Inicio</TableHead>
+                                        <TableHead>Fecha Fin</TableHead>
+                                        <TableHead>Matriculados</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {processes.map((proc: any) => (
+                                        <TableRow key={proc.id} className="cursor-pointer" onClick={() => router.push(`/dashboard/centros/processes/${proc.proceso_id}`)}>
+                                            <TableCell className="font-medium text-primary">{proc.proceso_nombre}</TableCell>
+                                            <TableCell className="text-sm">{proc.proceso_codigo}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.centro_nombre}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.curso_nombre ?? "-"}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.fecha_inicial ?? "-"}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.fecha_final ?? "-"}</TableCell>
+                                            <TableCell className="text-sm">
+                                                <Badge variant="outline">{proc.enrolled_count ?? 0}</Badge>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
                         )}
                     </TabsContent>
                 </Tabs>

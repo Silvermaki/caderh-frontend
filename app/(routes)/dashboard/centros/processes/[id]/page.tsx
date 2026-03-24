@@ -939,7 +939,7 @@ export default function ProcessDetailPage() {
                                                         </button>
                                                     ) : null}
                                                 </TableCell>
-                                                <TableCell>{en.estudiante_nombre}</TableCell>
+                                                <TableCell className="font-medium text-primary cursor-pointer hover:underline" onClick={() => router.push(`/dashboard/centros/students/${en.estudiante_id}`)}>{en.estudiante_nombre}</TableCell>
                                                 <TableCell>{en.estudiante_identidad}</TableCell>
                                                 {isSupervisor && (
                                                     <TableCell>

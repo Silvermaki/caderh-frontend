@@ -57,14 +57,14 @@ const SubMenuHandler = ({
       ) : (
         <div
           className={cn(
-            "flex font-medium text-sm capitalize px-[10px] py-3 rounded bg-primary text-primary-foreground"
+            "flex font-medium text-xs uppercase tracking-wider px-[10px] py-2 mt-4 mb-1 text-muted-foreground"
           )}
         >
-          <div className="flex-1  gap-3 flex items-start">
-            <span className="inline-flex items-center  text-lg ">
-              <item.icon className="w-5 h-5" />
+          <div className="flex-1 gap-2 flex items-center">
+            <span className="inline-flex items-center">
+              <item.icon className="w-4 h-4" />
             </span>
-            <div className=" ">{title}</div>
+            <div>{title}</div>
           </div>
         </div>
       )}
