@@ -21,7 +21,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import ExcelActions from "@/components/centro/excel-actions";
 import { cn } from "@/lib/utils";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL;
+const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
 const emptyForm = {
     centro_id: "",
@@ -119,7 +119,7 @@ function PageContent() {
 
     const fetchCentros = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/centros?all=true`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/centros?all=true`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setCentros(d.data ?? []); }
         } catch { /* silent */ }
     };
@@ -127,7 +127,7 @@ function PageContent() {
     const fetchProcesses = async (params: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/processes?${params}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/processes?${params}`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setProcesses(d.data ?? []); setCount(d.count ?? 0); }
             else toast.error("Error al cargar procesos");
         } catch { toast.error("Error al cargar procesos"); }
@@ -178,13 +178,13 @@ function PageContent() {
         const centroId = form.centro_id;
         (async () => {
             try {
-                const res = await fetch(`${apiBase}/api/centros/centros/${centroId}/cursos?limit=100&offset=0`, { headers: authHeaders });
+                const res = await fetch(`${apiBase}/centros/centros/${centroId}/cursos?limit=100&offset=0`, { headers: authHeaders });
                 if (res.ok) { const d = await res.json(); setCourses(d.data ?? []); }
             } catch { /* silent */ }
         })();
         (async () => {
             try {
-                const res = await fetch(`${apiBase}/api/centros/centros/${centroId}/instructors?limit=100&offset=0`, { headers: authHeaders });
+                const res = await fetch(`${apiBase}/centros/centros/${centroId}/instructors?limit=100&offset=0`, { headers: authHeaders });
                 if (res.ok) { const d = await res.json(); setInstructors(d.data ?? []); }
             } catch { /* silent */ }
         })();
@@ -192,21 +192,21 @@ function PageContent() {
 
     const fetchMetodologias = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/metodologias`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/metodologias`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setMetodologias(d.data ?? []); }
         } catch { /* silent */ }
     };
 
     const fetchTipoJornadas = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/tipo-jornadas`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/tipo-jornadas`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setTipoJornadas(d.data ?? []); }
         } catch { /* silent */ }
     };
 
     const fetchDiasCatalogo = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/dias-catalogo`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/dias-catalogo`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setDiasCatalogo(d.data ?? []); }
         } catch { /* silent */ }
     };
@@ -286,7 +286,7 @@ function PageContent() {
 
         setSubmitting(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/processes`, {
+            const res = await fetch(`${apiBase}/centros/processes`, {
                 method: "POST",
                 headers: { ...authHeaders, "Content-Type": "application/json" },
                 body: JSON.stringify({

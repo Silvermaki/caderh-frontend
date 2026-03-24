@@ -98,13 +98,13 @@ export default function CentroDetailPage() {
     const [municipios, setMunicipios] = useState<any[]>([]);
 
     const authHeaders = { Authorization: `Bearer ${session?.user?.session}` };
-    const apiBase = process.env.NEXT_PUBLIC_API_URL;
+    const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
     // ─── Fetch Centro ────────────────────────────────────────────────────────
     const fetchCentro = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/centros/${centroId}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/centros/${centroId}`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setCentro(d.data ?? null); }
             else { const d = await res.json(); toast.error(d.message ?? "Error al cargar centro"); }
         } catch { toast.error("Error al cargar centro"); }
@@ -113,21 +113,21 @@ export default function CentroDetailPage() {
 
     const fetchSummary = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/centros/${centroId}/summary`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/centros/${centroId}/summary`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setSummary(d); }
         } catch { /* silent */ }
     };
 
     const fetchDepartamentos = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/departamentos`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/departamentos`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setDepartamentos(d.data ?? []); }
         } catch { /* silent */ }
     };
 
     const fetchMunicipios = async (depId: number) => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/municipios?departamento_id=${depId}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/municipios?departamento_id=${depId}`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setMunicipios(d.data ?? []); }
         } catch { /* silent */ }
     };
@@ -158,7 +158,7 @@ export default function CentroDetailPage() {
         }
         setEditSaving(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/centros/${centroId}`, {
+            const res = await fetch(`${apiBase}/centros/centros/${centroId}`, {
                 method: "PUT",
                 headers: { ...authHeaders, "Content-Type": "application/json" },
                 body: JSON.stringify(editForm),
@@ -182,7 +182,7 @@ export default function CentroDetailPage() {
         setInstLoading(true);
         try {
             const p = new URLSearchParams({ limit: limit + "", offset: (offset * limit) + "", search });
-            const res = await fetch(`${apiBase}/api/centros/centros/${centroId}/instructors?${p}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/centros/${centroId}/instructors?${p}`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setInstructors(d.data ?? []); setInstCount(d.count ?? 0); }
             else { toast.error("Error al cargar instructores"); }
         } catch { toast.error("Error al cargar instructores"); }
@@ -193,7 +193,7 @@ export default function CentroDetailPage() {
 
     const downloadInstructorPdf = async (inst: any) => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/instructors/${inst.id}/pdf`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/instructors/${inst.id}/pdf`, { headers: authHeaders });
             if (!res.ok) { toast.error("Error al descargar"); return; }
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);
@@ -209,7 +209,7 @@ export default function CentroDetailPage() {
         if (!instDelete) return;
         setInstDeleting(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/centros/${centroId}/instructors/${instDelete.id}`, { method: "DELETE", headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/centros/${centroId}/instructors/${instDelete.id}`, { method: "DELETE", headers: authHeaders });
             if (res.ok) { toast.success("Instructor eliminado"); setInstDelete(null); reloadInstructors(); }
             else { const d = await res.json(); toast.error(d.message ?? "Error al eliminar"); }
         } catch { toast.error("Error al eliminar"); }
@@ -218,7 +218,7 @@ export default function CentroDetailPage() {
 
     const openStudentPdf = async (est: any) => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/students/${est.id}/pdf`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/students/${est.id}/pdf`, { headers: authHeaders });
             if (!res.ok) { toast.error("Error al abrir"); return; }
             const blob = await res.blob();
             window.open(URL.createObjectURL(blob), "_blank", "noopener,noreferrer");
@@ -230,7 +230,7 @@ export default function CentroDetailPage() {
         setEstLoading(true);
         try {
             const p = new URLSearchParams({ limit: limit + "", offset: (offset * limit) + "", search });
-            const res = await fetch(`${apiBase}/api/centros/centros/${centroId}/estudiantes?${p}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/centros/${centroId}/estudiantes?${p}`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setEstudiantes(d.data ?? []); setEstCount(d.count ?? 0); }
             else { toast.error("Error al cargar estudiantes"); }
         } catch { toast.error("Error al cargar estudiantes"); }
@@ -243,7 +243,7 @@ export default function CentroDetailPage() {
         if (!estDelete) return;
         setEstDeleting(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/centros/${centroId}/estudiantes/${estDelete.id}`, { method: "DELETE", headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/centros/${centroId}/estudiantes/${estDelete.id}`, { method: "DELETE", headers: authHeaders });
             if (res.ok) { toast.success("Estudiante eliminado"); setEstDelete(null); reloadEstudiantes(); }
             else { const d = await res.json(); toast.error(d.message ?? "Error al eliminar"); }
         } catch { toast.error("Error al eliminar"); }
@@ -255,7 +255,7 @@ export default function CentroDetailPage() {
         setCurLoading(true);
         try {
             const p = new URLSearchParams({ limit: limit + "", offset: (offset * limit) + "", search });
-            const res = await fetch(`${apiBase}/api/centros/centros/${centroId}/cursos?${p}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/centros/${centroId}/cursos?${p}`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setCursos(d.data ?? []); setCurCount(d.count ?? 0); }
             else { toast.error("Error al cargar cursos"); }
         } catch { toast.error("Error al cargar cursos"); }
@@ -268,7 +268,7 @@ export default function CentroDetailPage() {
         if (!curDelete) return;
         setCurDeleting(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/centros/${centroId}/cursos/${curDelete.id}`, { method: "DELETE", headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/centros/${centroId}/cursos/${curDelete.id}`, { method: "DELETE", headers: authHeaders });
             if (res.ok) { toast.success("Curso eliminado"); setCurDelete(null); reloadCursos(); }
             else { const d = await res.json(); toast.error(d.message ?? "Error al eliminar"); }
         } catch { toast.error("Error al eliminar"); }

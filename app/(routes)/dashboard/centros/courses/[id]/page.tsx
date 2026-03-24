@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL;
+const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
 const emptyProcessForm = {
     centro_id: "", nombre: "", codigo: "", curso_id: "",
@@ -88,7 +88,7 @@ export default function CourseDetailPage() {
     const fetchCourse = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/courses/${courseId}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/courses/${courseId}`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setCourse(d.data ?? null); }
             else toast.error("Error al cargar curso");
         } catch { toast.error("Error al cargar curso"); }
@@ -98,7 +98,7 @@ export default function CourseDetailPage() {
     const fetchModules = async () => {
         setModulesLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/courses/${courseId}/modules`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/courses/${courseId}/modules`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setModules(d.data ?? []); }
             else toast.error("Error al cargar módulos");
         } catch { toast.error("Error al cargar módulos"); }
@@ -108,7 +108,7 @@ export default function CourseDetailPage() {
     const fetchCourseProcesses = async () => {
         setProcessesLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/processes?limit=100&offset=0&curso_id=${courseId}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/processes?limit=100&offset=0&curso_id=${courseId}`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setCourseProcesses(d.data ?? []); }
         } catch { /* silent */ }
         setProcessesLoading(false);
@@ -118,28 +118,28 @@ export default function CourseDetailPage() {
 
     const fetchMetodologias = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/metodologias`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/metodologias`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setMetodologias(d.data ?? []); }
         } catch { /* silent */ }
     };
 
     const fetchTipoJornadas = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/tipo-jornadas`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/tipo-jornadas`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setTipoJornadas(d.data ?? []); }
         } catch { /* silent */ }
     };
 
     const fetchDiasCatalogo = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/dias-catalogo`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/dias-catalogo`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setDiasCatalogo(d.data ?? []); }
         } catch { /* silent */ }
     };
 
     const fetchInstructorsForCentro = async (centroId: string) => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/centros/${centroId}/instructors?limit=100&offset=0`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/centros/${centroId}/instructors?limit=100&offset=0`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setProcessInstructors(d.data ?? []); }
         } catch { /* silent */ }
     };
@@ -212,7 +212,7 @@ export default function CourseDetailPage() {
 
         setProcessSubmitting(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/processes`, {
+            const res = await fetch(`${apiBase}/centros/processes`, {
                 method: "POST",
                 headers: { ...authHeaders, "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -281,7 +281,7 @@ export default function CourseDetailPage() {
                 taller: Number(form.taller) || 0,
                 objetivo: form.objetivo,
             };
-            const res = await fetch(`${apiBase}/api/centros/courses`, {
+            const res = await fetch(`${apiBase}/centros/courses`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json", ...authHeaders },
                 body: JSON.stringify(body),
@@ -301,7 +301,7 @@ export default function CourseDetailPage() {
     const deleteCourse = async () => {
         setDeleting(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/courses/${courseId}`, { method: "DELETE", headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/courses/${courseId}`, { method: "DELETE", headers: authHeaders });
             if (res.ok) { toast.success("Curso eliminado"); router.push("/dashboard/centros/courses"); }
             else { const d = await res.json(); toast.error(d.message ?? "Error al eliminar"); }
         } catch { toast.error("Error al eliminar"); }
@@ -355,7 +355,7 @@ export default function CourseDetailPage() {
             };
             if (editingModule) body.id = editingModule.id;
 
-            const res = await fetch(`${apiBase}/api/centros/courses/${courseId}/modules`, {
+            const res = await fetch(`${apiBase}/centros/courses/${courseId}/modules`, {
                 method: editingModule ? "PUT" : "POST",
                 headers: { "Content-Type": "application/json", ...authHeaders },
                 body: JSON.stringify(body),
@@ -379,7 +379,7 @@ export default function CourseDetailPage() {
         if (!moduleToDelete) return;
         setDeletingModule(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/courses/${courseId}/modules/${moduleToDelete.id}`, { method: "DELETE", headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/courses/${courseId}/modules/${moduleToDelete.id}`, { method: "DELETE", headers: authHeaders });
             if (res.ok) { toast.success("Módulo eliminado"); setDeleteModuleOpen(false); fetchModules(); fetchCourse(); }
             else { const d = await res.json(); toast.error(d.message ?? "Error al eliminar módulo"); }
         } catch { toast.error("Error al eliminar módulo"); }
@@ -390,7 +390,7 @@ export default function CourseDetailPage() {
 
     const downloadModulesTemplate = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/courses/${courseId}/excel/modules`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/courses/${courseId}/excel/modules`, { headers: authHeaders });
             if (!res.ok) { toast.error("Error al descargar plantilla"); return; }
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);
@@ -409,7 +409,7 @@ export default function CourseDetailPage() {
         try {
             const fd = new FormData();
             fd.append("file", file);
-            const res = await fetch(`${apiBase}/api/centros/courses/${courseId}/excel/modules`, {
+            const res = await fetch(`${apiBase}/centros/courses/${courseId}/excel/modules`, {
                 method: "POST", headers: authHeaders, body: fd,
             });
             const json = await res.json();

@@ -54,7 +54,7 @@ const NewUserModal = ({ isOpen, setIsOpen, reloadList }: { isOpen: boolean, setI
         try {
             setIsSubmitting(true);
             console.log(data);
-            const request = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/user`, {
+            const request = await fetch(`${process.env.NEXT_PUBLIC_API_PROXY}/admin/user`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

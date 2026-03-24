@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import KPIBlock from "@/components/project/KPIBlock";
 import InfoSection from "@/components/project/InfoSection";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL;
+const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
 const TAB_CLASS = "rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none";
 
@@ -80,7 +80,7 @@ export default function StudentDetailPage() {
     const fetchStudent = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/students/${studentId}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/students/${studentId}`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setStudent(d.data ?? null); }
             else toast.error("Error al cargar estudiante");
         } catch { toast.error("Error al cargar estudiante"); }
@@ -91,7 +91,7 @@ export default function StudentDetailPage() {
         if (!studentId || !session) return;
         setProcessesLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/students/${studentId}/enrollments?all=true`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/students/${studentId}/enrollments?all=true`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setProcesses(d.data ?? []); }
         } catch { /* silent */ }
         setProcessesLoading(false);
@@ -129,19 +129,19 @@ export default function StudentDetailPage() {
         setEditingTab(tabKey);
 
         if (!departamentos.length) {
-            fetch(`${apiBase}/api/centros/departamentos`, { headers: authHeaders }).then(r => r.json()).then(d => setDepartamentos(d.data ?? []));
+            fetch(`${apiBase}/centros/departamentos`, { headers: authHeaders }).then(r => r.json()).then(d => setDepartamentos(d.data ?? []));
         }
         if (!nivelEscolaridades.length) {
-            fetch(`${apiBase}/api/centros/nivel-escolaridades`, { headers: authHeaders }).then(r => r.json()).then(d => setNivelEscolaridades(d.data ?? []));
+            fetch(`${apiBase}/centros/nivel-escolaridades`, { headers: authHeaders }).then(r => r.json()).then(d => setNivelEscolaridades(d.data ?? []));
         }
         if (!viveOptions.length) {
-            fetch(`${apiBase}/api/centros/vive-catalogo`, { headers: authHeaders }).then(r => r.json()).then(d => setViveOptions(d.data ?? []));
+            fetch(`${apiBase}/centros/vive-catalogo`, { headers: authHeaders }).then(r => r.json()).then(d => setViveOptions(d.data ?? []));
         }
     };
 
     useEffect(() => {
         if (!form.departamento_id || !session) { setMunicipios([]); return; }
-        fetch(`${apiBase}/api/centros/municipios?departamento_id=${form.departamento_id}`, { headers: authHeaders })
+        fetch(`${apiBase}/centros/municipios?departamento_id=${form.departamento_id}`, { headers: authHeaders })
             .then(r => r.json()).then(d => setMunicipios(d.data ?? []));
     }, [form.departamento_id, session?.user?.session]);
 
@@ -175,7 +175,7 @@ export default function StudentDetailPage() {
             for (const k of NUM_KEYS) body[k] = Number(body[k]) || 0;
             body.tipo_contrato_ant = Number(body.tipo_contrato_ant) || 0;
 
-            const res = await fetch(`${apiBase}/api/centros/students`, {
+            const res = await fetch(`${apiBase}/centros/students`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json", ...authHeaders },
                 body: JSON.stringify(body),
@@ -185,7 +185,7 @@ export default function StudentDetailPage() {
                 if (pendingFile) {
                     setPdfUploading(true);
                     const fd = new FormData(); fd.append("file", pendingFile);
-                    await fetch(`${apiBase}/api/centros/students/${student.id}/pdf`, { method: "POST", headers: authHeaders, body: fd });
+                    await fetch(`${apiBase}/centros/students/${student.id}/pdf`, { method: "POST", headers: authHeaders, body: fd });
                     setPdfUploading(false);
                 }
                 toast.success("Información guardada");
@@ -202,7 +202,7 @@ export default function StudentDetailPage() {
     const deleteStudent = async () => {
         setDeleting(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/students/${studentId}`, { method: "DELETE", headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/students/${studentId}`, { method: "DELETE", headers: authHeaders });
             if (res.ok) { toast.success("Estudiante eliminado"); router.push("/dashboard/centros/students"); }
             else { const d = await res.json(); toast.error(d.message ?? "Error al eliminar"); }
         } catch { toast.error("Error al eliminar"); }
@@ -211,7 +211,7 @@ export default function StudentDetailPage() {
 
     const openPdf = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/students/${studentId}/pdf`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/students/${studentId}/pdf`, { headers: authHeaders });
             if (!res.ok) { toast.error("Error al abrir"); return; }
             const blob = await res.blob();
             window.open(URL.createObjectURL(blob), "_blank", "noopener,noreferrer");
@@ -221,7 +221,7 @@ export default function StudentDetailPage() {
     const deletePdf = async () => {
         setPdfDeleting(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/students/${studentId}/pdf`, { method: "DELETE", headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/students/${studentId}/pdf`, { method: "DELETE", headers: authHeaders });
             if (res.ok) { toast.success("Hoja de vida eliminada"); fetchStudent(); }
             else { const d = await res.json(); toast.error(d.message ?? "Error al eliminar"); }
         } catch { toast.error("Error al eliminar"); }

@@ -53,7 +53,7 @@ const AreaModal = ({
 
     const onSubmit = async (data: FormData) => {
         try {
-            const url = `${process.env.NEXT_PUBLIC_API_URL}/api/centros/areas`;
+            const url = `${process.env.NEXT_PUBLIC_API_PROXY}/centros/areas`;
             const method = isEdit ? "PUT" : "POST";
             const body = isEdit
                 ? { id: area.id, nombre: data.nombre.trim() }

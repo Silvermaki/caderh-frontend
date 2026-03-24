@@ -55,7 +55,7 @@ function PageContent() {
         setLoading(true);
         try {
             const request = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/admin/logs?${params}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/admin/logs?${params}`,
                 {
                     method: "GET",
                     headers: {
@@ -86,7 +86,7 @@ function PageContent() {
                 desc: "asc",
             });
             const request = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?${params}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/admin/users?${params}`,
                 {
                     method: "GET",
                     headers: {

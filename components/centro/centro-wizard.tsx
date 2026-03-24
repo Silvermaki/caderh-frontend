@@ -19,7 +19,7 @@ import * as XLSX from "xlsx";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL;
+const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -118,12 +118,12 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
     // ─── Fetch catalogs ───
     useEffect(() => {
         if (!isOpen || !session) return;
-        fetch(`${apiBase}/api/centros/departamentos`, { headers: authHeadersRaw }).then(r => r.json()).then(d => setDepartamentos(d.data ?? [])).catch(() => {});
+        fetch(`${apiBase}/centros/departamentos`, { headers: authHeadersRaw }).then(r => r.json()).then(d => setDepartamentos(d.data ?? [])).catch(() => {});
     }, [isOpen, session?.user?.session]);
 
     useEffect(() => {
         if (!centroForm.departamento_id) { setMunicipios([]); return; }
-        fetch(`${apiBase}/api/centros/municipios?departamento_id=${centroForm.departamento_id}`, { headers: authHeadersRaw })
+        fetch(`${apiBase}/centros/municipios?departamento_id=${centroForm.departamento_id}`, { headers: authHeadersRaw })
             .then(r => r.json()).then(d => setMunicipios(d.data ?? [])).catch(() => {});
     }, [centroForm.departamento_id, session?.user?.session]);
 
@@ -168,7 +168,7 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
     // ─── Excel download ───
     const downloadTemplate = async (entity: string) => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/centros/excel/template/${entity}`, { headers: authHeadersRaw });
+            const res = await fetch(`${apiBase}/centros/centros/excel/template/${entity}`, { headers: authHeadersRaw });
             if (!res.ok) { toast.error("Error al descargar plantilla"); return; }
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);
@@ -303,7 +303,7 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
                 }),
             };
 
-            const res = await fetch(`${apiBase}/api/centros/centros/wizard`, {
+            const res = await fetch(`${apiBase}/centros/centros/wizard`, {
                 method: "POST", headers: authHeaders, body: JSON.stringify(payload),
             });
             const data = await res.json();

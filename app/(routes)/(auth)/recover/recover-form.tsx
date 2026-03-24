@@ -36,7 +36,7 @@ const ForgotForm = ({ setView, setRecoveryEmail }: any) => {
 
     const onEmailSubmit = (data: any) => {
         startTransition(async () => {
-            const auth = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/recover`, {
+            const auth = await fetch(`${process.env.NEXT_PUBLIC_API_PROXY}/auth/recover`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

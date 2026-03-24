@@ -233,7 +233,7 @@ const NewProjectModal = ({
     const fetchFinancingSources = async () => {
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/financing-sources?limit=100&offset=0`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/financing-sources?limit=100&offset=0`,
                 {
                     headers: { Authorization: `Bearer ${session?.user?.session}` },
                 }
@@ -256,7 +256,7 @@ const NewProjectModal = ({
     const fetchWizardExpenseCategories = async () => {
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/expense-categories`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/expense-categories`,
                 { headers: { Authorization: `Bearer ${session?.user?.session}` } }
             );
             if (res.ok) {
@@ -271,7 +271,7 @@ const NewProjectModal = ({
         setWizardCreatingCategory(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/expense-categories`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/expense-categories`,
                 {
                     method: "POST",
                     headers: {
@@ -322,7 +322,7 @@ const NewProjectModal = ({
         setIsSubmitting(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/wizard/step1`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/wizard/step1`,
                 {
                     method: "POST",
                     headers: {
@@ -370,7 +370,7 @@ const NewProjectModal = ({
         setIsSubmitting(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/wizard/step2/${projectId}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/wizard/step2/${projectId}`,
                 {
                     method: "PUT",
                     headers: {
@@ -409,7 +409,7 @@ const NewProjectModal = ({
         setIsSubmitting(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/wizard/step3/${projectId}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/wizard/step3/${projectId}`,
                 {
                     method: "PUT",
                     headers: {
@@ -448,7 +448,7 @@ const NewProjectModal = ({
         setIsSubmitting(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/wizard/step4/${projectId}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/wizard/step4/${projectId}`,
                 {
                     method: "PUT",
                     headers: {
@@ -486,7 +486,7 @@ const NewProjectModal = ({
                 fd.append("filename", fileFilename.trim());
             }
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/wizard/step5/${projectId}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/wizard/step5/${projectId}`,
                 {
                     method: "POST",
                     headers: { Authorization: `Bearer ${session?.user?.session}` },
@@ -525,7 +525,7 @@ const NewProjectModal = ({
         setIsSubmitting(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/wizard/step5/${projectId}/${fileId}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/wizard/step5/${projectId}/${fileId}`,
                 {
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${session?.user?.session}` },
@@ -650,7 +650,7 @@ const NewProjectModal = ({
         if (!projectId || !session) return;
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${projectId}/excel/${type}?includeIds=0`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/${projectId}/excel/${type}?includeIds=0`,
                 { headers: { Authorization: `Bearer ${session?.user?.session}` } }
             );
             if (!res.ok) { toast.error("Error al descargar plantilla"); return; }

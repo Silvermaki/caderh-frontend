@@ -33,7 +33,7 @@ import InfoSection from "@/components/project/InfoSection";
 import { Progress } from "@/components/ui/progress";
 import { motion } from "framer-motion";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL;
+const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
 const TAB_CLASS = "rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none";
 const EVAL_LABELS: Record<number, string> = { 1: "Teórica", 2: "Práctica", 3: "Mixta" };
@@ -99,7 +99,7 @@ export default function ProcessDetailPage() {
     const fetchProcess = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/processes/${processId}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/processes/${processId}`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setProcess(d.data ?? null); }
             else toast.error("Error al cargar proceso");
         } catch { toast.error("Error al cargar proceso"); }
@@ -109,7 +109,7 @@ export default function ProcessDetailPage() {
     const fetchEnrollments = useCallback(async () => {
         setEnrollmentsLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/processes/${processId}/enrollments`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/processes/${processId}/enrollments`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setEnrollments(d.data ?? []); }
         } catch { /* silent */ }
         setEnrollmentsLoading(false);
@@ -119,7 +119,7 @@ export default function ProcessDetailPage() {
         if (session && processId) {
             fetchProcess();
             fetchEnrollments();
-            fetch(`${apiBase}/api/centros/dias-catalogo`, { headers: authHeaders }).then(r => r.json()).then(d => setDiasCatalogo(d.data ?? [])).catch(() => {});
+            fetch(`${apiBase}/centros/dias-catalogo`, { headers: authHeaders }).then(r => r.json()).then(d => setDiasCatalogo(d.data ?? [])).catch(() => {});
         }
     }, [session, processId]);
 
@@ -127,8 +127,8 @@ export default function ProcessDetailPage() {
         setCourseLoading(true);
         try {
             const [courseRes, modulesRes] = await Promise.all([
-                fetch(`${apiBase}/api/centros/courses/${cursoId}`, { headers: authHeaders }),
-                fetch(`${apiBase}/api/centros/courses/${cursoId}/modules`, { headers: authHeaders }),
+                fetch(`${apiBase}/centros/courses/${cursoId}`, { headers: authHeaders }),
+                fetch(`${apiBase}/centros/courses/${cursoId}/modules`, { headers: authHeaders }),
             ]);
             if (courseRes.ok) { const d = await courseRes.json(); setCourseDetail(d.data ?? null); }
             if (modulesRes.ok) { const d = await modulesRes.json(); setCourseModules(d.data ?? []); }
@@ -144,7 +144,7 @@ export default function ProcessDetailPage() {
         if (!processId || !session) return;
         setProjectsLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/processes/${processId}/projects`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/processes/${processId}/projects`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setLinkedProjects(d.data ?? []); }
         } catch { /* silent */ }
         setProjectsLoading(false);
@@ -160,7 +160,7 @@ export default function ProcessDetailPage() {
         setSelectedProjectIds([]);
         setAvailableProjectsLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/supervisor/projects?limit=100&offset=0&status=ACTIVE`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/supervisor/projects?limit=100&offset=0&status=ACTIVE`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setAvailableProjects(d.data ?? []); }
         } catch { /* silent */ }
         setAvailableProjectsLoading(false);
@@ -170,7 +170,7 @@ export default function ProcessDetailPage() {
         if (!selectedProjectIds.length) return;
         setLinkingProject(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/processes/${processId}/projects`, {
+            const res = await fetch(`${apiBase}/centros/processes/${processId}/projects`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", ...authHeaders },
                 body: JSON.stringify({ project_ids: selectedProjectIds }),
@@ -188,7 +188,7 @@ export default function ProcessDetailPage() {
         if (!unlinkProjectTarget) return;
         setUnlinkingProject(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/processes/${processId}/projects/${unlinkProjectTarget.id}`, {
+            const res = await fetch(`${apiBase}/centros/processes/${processId}/projects/${unlinkProjectTarget.id}`, {
                 method: "DELETE",
                 headers: authHeaders,
             });
@@ -233,12 +233,12 @@ export default function ProcessDetailPage() {
         setEditing(true);
 
         const centroId = p.centro_id;
-        fetch(`${apiBase}/api/centros/metodologias`, { headers: authHeaders }).then(r => r.json()).then(d => setMetodologias(d.data ?? []));
-        fetch(`${apiBase}/api/centros/tipo-jornadas`, { headers: authHeaders }).then(r => r.json()).then(d => setTipoJornadas(d.data ?? []));
-        fetch(`${apiBase}/api/centros/dias-catalogo`, { headers: authHeaders }).then(r => r.json()).then(d => setDiasCatalogo(d.data ?? []));
+        fetch(`${apiBase}/centros/metodologias`, { headers: authHeaders }).then(r => r.json()).then(d => setMetodologias(d.data ?? []));
+        fetch(`${apiBase}/centros/tipo-jornadas`, { headers: authHeaders }).then(r => r.json()).then(d => setTipoJornadas(d.data ?? []));
+        fetch(`${apiBase}/centros/dias-catalogo`, { headers: authHeaders }).then(r => r.json()).then(d => setDiasCatalogo(d.data ?? []));
         if (centroId) {
-            fetch(`${apiBase}/api/centros/centros/${centroId}/cursos?limit=100&offset=0`, { headers: authHeaders }).then(r => r.json()).then(d => setCourses(d.data ?? []));
-            fetch(`${apiBase}/api/centros/centros/${centroId}/instructors?limit=100&offset=0`, { headers: authHeaders }).then(r => r.json()).then(d => setInstructors(d.data ?? []));
+            fetch(`${apiBase}/centros/centros/${centroId}/cursos?limit=100&offset=0`, { headers: authHeaders }).then(r => r.json()).then(d => setCourses(d.data ?? []));
+            fetch(`${apiBase}/centros/centros/${centroId}/instructors?limit=100&offset=0`, { headers: authHeaders }).then(r => r.json()).then(d => setInstructors(d.data ?? []));
         }
     };
 
@@ -350,7 +350,7 @@ export default function ProcessDetailPage() {
                 sede: Number(form.sede) || 0,
             };
 
-            const res = await fetch(`${apiBase}/api/centros/processes`, {
+            const res = await fetch(`${apiBase}/centros/processes`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json", ...authHeaders },
                 body: JSON.stringify(body),
@@ -371,7 +371,7 @@ export default function ProcessDetailPage() {
     const deleteProcess = async () => {
         setDeleting(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/processes/${processId}`, { method: "DELETE", headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/processes/${processId}`, { method: "DELETE", headers: authHeaders });
             if (res.ok) { toast.success("Proceso eliminado"); router.push("/dashboard/centros/processes"); }
             else { const d = await res.json(); toast.error(d.message ?? "Error al eliminar"); }
         } catch { toast.error("Error al eliminar"); }
@@ -384,7 +384,7 @@ export default function ProcessDetailPage() {
         setEnrollSelected([]);
         setStudentsLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/students?limit=100&offset=0&centro_id=${process_.centro_id}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/students?limit=100&offset=0&centro_id=${process_.centro_id}`, { headers: authHeaders });
             if (res.ok) {
                 const d = await res.json();
                 const students = d.data ?? [];
@@ -393,7 +393,7 @@ export default function ProcessDetailPage() {
                 const studentIds = students.map((s: any) => s.id);
                 if (studentIds.length > 0) {
                     try {
-                        const enrollRes = await fetch(`${apiBase}/api/centros/students/batch-enrollment-check`, {
+                        const enrollRes = await fetch(`${apiBase}/centros/students/batch-enrollment-check`, {
                             method: "POST",
                             headers: { "Content-Type": "application/json", ...authHeaders },
                             body: JSON.stringify({ student_ids: studentIds, exclude_process_id: Number(processId) }),
@@ -433,7 +433,7 @@ export default function ProcessDetailPage() {
         if (!enrollSelected.length) return;
         setEnrolling(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/processes/${processId}/enrollments`, {
+            const res = await fetch(`${apiBase}/centros/processes/${processId}/enrollments`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", ...authHeaders },
                 body: JSON.stringify({ student_ids: enrollSelected }),
@@ -462,7 +462,7 @@ export default function ProcessDetailPage() {
         setAlertLoading(true);
         setAlertProcesses([]);
         try {
-            const res = await fetch(`${apiBase}/api/centros/students/${en.estudiante_id}/enrollments`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/students/${en.estudiante_id}/enrollments`, { headers: authHeaders });
             if (res.ok) {
                 const d = await res.json();
                 setAlertProcesses((d.data ?? []).filter((p: any) => p.proceso_id !== Number(processId)));
@@ -475,7 +475,7 @@ export default function ProcessDetailPage() {
         if (!unenrollOpen) return;
         setUnenrolling(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/processes/${processId}/enrollments/${unenrollOpen.estudiante_id}`, {
+            const res = await fetch(`${apiBase}/centros/processes/${processId}/enrollments/${unenrollOpen.estudiante_id}`, {
                 method: "DELETE", headers: authHeaders,
             });
             if (res.ok) {
@@ -501,7 +501,7 @@ export default function ProcessDetailPage() {
 
     const downloadEnrollmentsExcel = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/processes/${processId}/enrollments/excel`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/processes/${processId}/enrollments/excel`, { headers: authHeaders });
             if (!res.ok) { toast.error("Error al descargar"); return; }
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);
@@ -520,7 +520,7 @@ export default function ProcessDetailPage() {
         try {
             const fd = new FormData();
             fd.append("file", file);
-            const res = await fetch(`${apiBase}/api/centros/processes/${processId}/enrollments/excel`, {
+            const res = await fetch(`${apiBase}/centros/processes/${processId}/enrollments/excel`, {
                 method: "POST",
                 headers: authHeaders,
                 body: fd,

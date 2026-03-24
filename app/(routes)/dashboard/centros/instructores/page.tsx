@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL;
+const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
 function PageContent() {
     const searchParams: any = useSearchParams();
@@ -52,7 +52,7 @@ function PageContent() {
 
     const fetchCentros = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/centros?all=true`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/centros?all=true`, { headers: authHeaders });
             if (res.ok) {
                 const d = await res.json();
                 setCentros(d.data ?? []);
@@ -63,7 +63,7 @@ function PageContent() {
     const fetchInstructors = async (params: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/instructors?${params}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/instructors?${params}`, { headers: authHeaders });
             if (res.ok) {
                 const d = await res.json();
                 setInstructors(d.data ?? []);
@@ -128,7 +128,7 @@ function PageContent() {
 
     const openPdfInNewTab = async (inst: any) => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/instructors/${inst.id}/pdf`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/instructors/${inst.id}/pdf`, { headers: authHeaders });
             if (!res.ok) { toast.error("Error al abrir"); return; }
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);

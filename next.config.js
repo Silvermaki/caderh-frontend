@@ -3,6 +3,14 @@
 
 const nextConfig = {
   reactStrictMode: false,
+  async rewrites() {
+    return [
+      {
+        source: '/backend-api/:path*',
+        destination: `${process.env.NEXT_PUBLIC_API_URL}/api/:path*`,
+      },
+    ];
+  },
   webpack(config) {
     // Grab the existing rule that handles SVG imports
     const fileLoaderRule = config.module.rules.find((rule) =>

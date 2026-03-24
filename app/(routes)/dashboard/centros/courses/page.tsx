@@ -17,7 +17,7 @@ import ExcelActions from "@/components/centro/excel-actions";
 import CourseWizardModal from "@/components/centro/course-wizard-modal";
 import { cn } from "@/lib/utils";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL;
+const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
 function PageContent() {
     const searchParams: any = useSearchParams();
@@ -50,7 +50,7 @@ function PageContent() {
 
     const fetchCentros = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/centros?all=true`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/centros?all=true`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setCentros(d.data ?? []); }
         } catch { /* silent */ }
     };
@@ -58,7 +58,7 @@ function PageContent() {
     const fetchCourses = async (params: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/courses?${params}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/courses?${params}`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setCourses(d.data ?? []); setCount(d.count ?? 0); }
             else toast.error("Error al cargar cursos");
         } catch { toast.error("Error al cargar cursos"); }

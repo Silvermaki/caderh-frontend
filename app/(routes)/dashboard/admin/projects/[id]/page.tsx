@@ -228,7 +228,7 @@ const Page = () => {
         if (!id || !session) return;
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/projects/${id}`,
                 { headers: { Authorization: `Bearer ${session?.user?.session}` } }
             );
             if (res.ok) {
@@ -268,7 +268,7 @@ const Page = () => {
     const fetchStep2 = async () => {
         if (!id || !session) return;
         const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/wizard/step2/${id}`,
+            `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/wizard/step2/${id}`,
             { headers: { Authorization: `Bearer ${session?.user?.session}` } }
         );
         if (res.ok) {
@@ -280,7 +280,7 @@ const Page = () => {
     const fetchStep3 = async () => {
         if (!id || !session) return;
         const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/wizard/step3/${id}`,
+            `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/wizard/step3/${id}`,
             { headers: { Authorization: `Bearer ${session?.user?.session}` } }
         );
         if (res.ok) {
@@ -292,7 +292,7 @@ const Page = () => {
     const fetchStep4 = async () => {
         if (!id || !session) return;
         const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/wizard/step4/${id}`,
+            `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/wizard/step4/${id}`,
             { headers: { Authorization: `Bearer ${session?.user?.session}` } }
         );
         if (res.ok) {
@@ -304,7 +304,7 @@ const Page = () => {
     const fetchStep5 = async () => {
         if (!id || !session) return;
         const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/wizard/step5/${id}`,
+            `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/wizard/step5/${id}`,
             { headers: { Authorization: `Bearer ${session?.user?.session}` } }
         );
         if (res.ok) {
@@ -316,7 +316,7 @@ const Page = () => {
     const fetchFinancingSourcesList = async () => {
         if (!session) return;
         const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/financing-sources?limit=100&offset=0`,
+            `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/financing-sources?limit=100&offset=0`,
             { headers: { Authorization: `Bearer ${session?.user?.session}` } }
         );
         if (res.ok) {
@@ -328,7 +328,7 @@ const Page = () => {
     const fetchExpenseCategories = async () => {
         if (!session) return;
         const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/expense-categories`,
+            `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/expense-categories`,
             { headers: { Authorization: `Bearer ${session?.user?.session}` } }
         );
         if (res.ok) {
@@ -342,7 +342,7 @@ const Page = () => {
         setCreatingCategory(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/expense-categories`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/expense-categories`,
                 {
                     method: "POST",
                     headers: {
@@ -371,7 +371,7 @@ const Page = () => {
         if (!session || userRole === 'USER') return;
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/agents`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/agents`,
                 { headers: { Authorization: `Bearer ${session?.user?.session}` } }
             );
             if (res.ok) {
@@ -390,7 +390,7 @@ const Page = () => {
                 offset: String(offsetVal),
             });
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/logs?${params}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/projects/${id}/logs?${params}`,
                 { headers: { Authorization: `Bearer ${session?.user?.session}` } }
             );
             if (res.ok) {
@@ -406,7 +406,7 @@ const Page = () => {
         setAssigningAgent(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/assign`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/projects/${id}/assign`,
                 {
                     method: "PATCH",
                     headers: {
@@ -434,7 +434,7 @@ const Page = () => {
         setProcessesLoading(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/processes`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/projects/${id}/processes`,
                 { headers: { Authorization: `Bearer ${session?.user?.session}` } }
             );
             if (res.ok) { const json = await res.json(); setLinkedProcesses(json.data ?? []); }
@@ -447,7 +447,7 @@ const Page = () => {
         setBeneficiaryStatsLoading(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/processes/stats`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/projects/${id}/processes/stats`,
                 { headers: { Authorization: `Bearer ${session?.user?.session}` } }
             );
             if (res.ok) { const json = await res.json(); setBeneficiaryStats(json.data ?? null); }
@@ -462,7 +462,7 @@ const Page = () => {
         setAvailableProcessesLoading(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/centros/processes?limit=100&offset=0`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/centros/processes?limit=100&offset=0`,
                 { headers: { Authorization: `Bearer ${session?.user?.session}` } }
             );
             if (res.ok) { const json = await res.json(); setAvailableProcesses(json.data ?? []); }
@@ -475,7 +475,7 @@ const Page = () => {
         setLinkingProcess(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/processes`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/projects/${id}/processes`,
                 {
                     method: "POST",
                     headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.user?.session}` },
@@ -497,7 +497,7 @@ const Page = () => {
         setUnlinkingProcess(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/processes/${unlinkProcessTarget.id}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/projects/${id}/processes/${unlinkProcessTarget.id}`,
                 { method: "DELETE", headers: { Authorization: `Bearer ${session?.user?.session}` } }
             );
             if (res.ok) {
@@ -552,7 +552,7 @@ const Page = () => {
         setDeleting(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/projects/${id}`,
                 {
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${session?.user?.session}` },
@@ -581,7 +581,7 @@ const Page = () => {
         if (!id || !session) return;
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${id}/excel/${type}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/${id}/excel/${type}`,
                 { headers: { Authorization: `Bearer ${(session as any)?.user?.session}` } }
             );
             if (!res.ok) { toast.error("Error al descargar plantilla"); return; }
@@ -609,7 +609,7 @@ const Page = () => {
             const fd = new FormData();
             fd.append("file", file);
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${id}/excel/${type}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/${id}/excel/${type}`,
                 {
                     method: "POST",
                     headers: { Authorization: `Bearer ${(session as any)?.user?.session}` },
@@ -638,7 +638,7 @@ const Page = () => {
         setArchiving(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/archive`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/projects/${id}/archive`,
                 {
                     method: "PATCH",
                     headers: { Authorization: `Bearer ${session?.user?.session}` },
@@ -662,7 +662,7 @@ const Page = () => {
         setInfoSaving(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/wizard/step1`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/wizard/step1`,
                 {
                     method: "POST",
                     headers: {
@@ -702,7 +702,7 @@ const Page = () => {
         setAccomplishmentsPatching(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects/${id}/accomplishments`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/projects/${id}/accomplishments`,
                 {
                     method: "PATCH",
                     headers: {
@@ -733,7 +733,7 @@ const Page = () => {
         setAddSourceSaving(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${id}/financing-source`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/${id}/financing-source`,
                 {
                     method: "POST",
                     headers: {
@@ -766,7 +766,7 @@ const Page = () => {
     const onDeleteSource = async (sourceId: string) => {
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${id}/financing-source/${sourceId}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/${id}/financing-source/${sourceId}`,
                 {
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${session?.user?.session}` },
@@ -793,7 +793,7 @@ const Page = () => {
         setAddDonationSaving(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${id}/donation`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/${id}/donation`,
                 {
                     method: "POST",
                     headers: {
@@ -826,7 +826,7 @@ const Page = () => {
     const onDeleteDonation = async (donationId: string) => {
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${id}/donation/${donationId}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/${id}/donation/${donationId}`,
                 {
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${session?.user?.session}` },
@@ -853,7 +853,7 @@ const Page = () => {
         setAddExpenseSaving(true);
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${id}/expense`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/${id}/expense`,
                 {
                     method: "POST",
                     headers: {
@@ -886,7 +886,7 @@ const Page = () => {
     const onDeleteExpense = async (expenseId: string) => {
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${id}/expense/${expenseId}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/${id}/expense/${expenseId}`,
                 {
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${session?.user?.session}` },
@@ -913,7 +913,7 @@ const Page = () => {
             fd.append("description", fileDescription || file.name);
             if (fileFilename.trim()) fd.append("filename", fileFilename.trim());
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/wizard/step5/${id}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/wizard/step5/${id}`,
                 {
                     method: "POST",
                     headers: { Authorization: `Bearer ${session?.user?.session}` },
@@ -939,7 +939,7 @@ const Page = () => {
     const deleteFile = async (fileId: string) => {
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/wizard/step5/${id}/${fileId}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/wizard/step5/${id}/${fileId}`,
                 {
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${session?.user?.session}` },
@@ -961,7 +961,7 @@ const Page = () => {
     const downloadFile = async (fileId: string, filename: string) => {
         try {
             const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/project/${id}/file/${fileId}/download`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/${id}/file/${fileId}/download`,
                 { headers: { Authorization: `Bearer ${session?.user?.session}` } }
             );
             if (!res.ok) {

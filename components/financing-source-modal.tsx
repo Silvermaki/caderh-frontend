@@ -67,7 +67,7 @@ const FinancingSourceModal = ({
 
     const onSubmit = async (data: FormData) => {
         try {
-            const url = `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/financing-source`;
+            const url = `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/financing-source`;
             const method = isEdit ? "PUT" : "POST";
             const body = isEdit
                 ? { id: source.id, name: data.name.trim(), description: data.description.trim() }

@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import InstructorModal from "@/components/centro/instructor-modal";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL;
+const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
 const TAB_CLASS = "rounded-none border-b-2 border-transparent bg-transparent px-0 pb-3 -mb-px shadow-none data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none";
 
@@ -50,7 +50,7 @@ export default function InstructorDetailPage() {
     const fetchInstructor = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/instructors/${instructorId}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/instructors/${instructorId}`, { headers: authHeaders });
             if (res.ok) {
                 const d = await res.json();
                 setInstructor(d.data ?? null);
@@ -65,7 +65,7 @@ export default function InstructorDetailPage() {
 
     const fetchCentros = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/centros?all=true`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/centros?all=true`, { headers: authHeaders });
             if (res.ok) {
                 const d = await res.json();
                 setCentros(d.data ?? []);
@@ -77,7 +77,7 @@ export default function InstructorDetailPage() {
         if (!instructor?.id) return;
         setProcessesLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/processes?limit=100&offset=0&instructor_id=${instructor.id}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/processes?limit=100&offset=0&instructor_id=${instructor.id}`, { headers: authHeaders });
             if (res.ok) {
                 const d = await res.json();
                 setProcesses(d.data ?? []);
@@ -100,7 +100,7 @@ export default function InstructorDetailPage() {
     const openPdfInNewTab = async () => {
         if (!instructor?.pdf) return;
         try {
-            const res = await fetch(`${apiBase}/api/centros/instructors/${instructorId}/pdf`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/instructors/${instructorId}/pdf`, { headers: authHeaders });
             if (!res.ok) {
                 toast.error("Error al abrir");
                 return;
@@ -115,7 +115,7 @@ export default function InstructorDetailPage() {
     const deleteInstructor = async () => {
         setDeleting(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/instructors/${instructorId}`, { method: "DELETE", headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/instructors/${instructorId}`, { method: "DELETE", headers: authHeaders });
             if (res.ok) {
                 toast.success("Instructor eliminado");
                 router.push("/dashboard/centros/instructores");

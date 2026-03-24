@@ -7,7 +7,7 @@ import { Download, Upload, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL;
+const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
 type EntityType = "instructors" | "students" | "courses" | "processes";
 
@@ -37,7 +37,7 @@ export default function ExcelActions({ centroId, entity, onSuccess, disabled }: 
         if (!centroId || !session) return;
         try {
             const res = await fetch(
-                `${apiBase}/api/centros/centros/${centroId}/excel/${entity}`,
+                `${apiBase}/centros/centros/${centroId}/excel/${entity}`,
                 { headers: authHeaders },
             );
             if (!res.ok) { toast.error("Error al descargar plantilla"); return; }
@@ -60,7 +60,7 @@ export default function ExcelActions({ centroId, entity, onSuccess, disabled }: 
             const fd = new FormData();
             fd.append("file", file);
             const res = await fetch(
-                `${apiBase}/api/centros/centros/${centroId}/excel/${entity}`,
+                `${apiBase}/centros/centros/${centroId}/excel/${entity}`,
                 { method: "POST", headers: authHeaders, body: fd },
             );
             const json = await res.json();

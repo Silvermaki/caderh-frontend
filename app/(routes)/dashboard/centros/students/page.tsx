@@ -18,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL;
+const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
 function PageContent() {
     const searchParams: any = useSearchParams();
@@ -52,7 +52,7 @@ function PageContent() {
 
     const fetchCentros = async () => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/centros?all=true`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/centros?all=true`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setCentros(d.data ?? []); }
         } catch { /* silent */ }
     };
@@ -60,7 +60,7 @@ function PageContent() {
     const fetchStudents = async (params: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/students?${params}`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/students?${params}`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setStudents(d.data ?? []); setCount(d.count ?? 0); }
             else toast.error("Error al cargar estudiantes");
         } catch { toast.error("Error al cargar estudiantes"); }
@@ -107,7 +107,7 @@ function PageContent() {
 
     const openPdfInNewTab = async (s: any) => {
         try {
-            const res = await fetch(`${apiBase}/api/centros/students/${s.id}/pdf`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/students/${s.id}/pdf`, { headers: authHeaders });
             if (!res.ok) { toast.error("Error al abrir"); return; }
             const blob = await res.blob();
             window.open(URL.createObjectURL(blob), "_blank", "noopener,noreferrer");

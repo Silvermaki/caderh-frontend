@@ -72,14 +72,14 @@ const EstudianteModal = ({
 
     useEffect(() => {
         if (!isOpen || !session) return;
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/centros/departamentos`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_PROXY}/centros/departamentos`, {
             headers: { Authorization: `Bearer ${session?.user?.session}` },
         }).then(r => r.json()).then(d => setDepartamentos(d.data ?? []));
     }, [isOpen, session]);
 
     useEffect(() => {
         if (!watchDepartamento || !session) { setMunicipios([]); return; }
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/centros/municipios?departamento_id=${watchDepartamento}`, {
+        fetch(`${process.env.NEXT_PUBLIC_API_PROXY}/centros/municipios?departamento_id=${watchDepartamento}`, {
             headers: { Authorization: `Bearer ${session?.user?.session}` },
         }).then(r => r.json()).then(d => setMunicipios(d.data ?? []));
     }, [watchDepartamento, session]);
@@ -114,7 +114,7 @@ const EstudianteModal = ({
 
     const onSubmit = async (data: FormData) => {
         try {
-            const url = `${process.env.NEXT_PUBLIC_API_URL}/api/centros/centros/${centroId}/estudiantes`;
+            const url = `${process.env.NEXT_PUBLIC_API_PROXY}/centros/centros/${centroId}/estudiantes`;
             const method = isEdit ? "PUT" : "POST";
             const body: any = {
                 ...data,

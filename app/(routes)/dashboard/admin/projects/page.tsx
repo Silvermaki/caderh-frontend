@@ -47,7 +47,7 @@ function PageContent() {
         setLoading(true);
         try {
             const request = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/projects?${params}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/projects?${params}`,
                 {
                     method: "GET",
                     headers: {

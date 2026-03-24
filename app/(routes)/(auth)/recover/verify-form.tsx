@@ -71,7 +71,7 @@ const VerfiyForm = ({ setView, recoveryEmail, setRecoveryId }: any) => {
     const onCode = async (data: any) => {
         const enteredOtp = otp.join("");
         startTransition(async () => {
-            const auth = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/recover_verify`, {
+            const auth = await fetch(`${process.env.NEXT_PUBLIC_API_PROXY}/auth/recover_verify`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

@@ -17,7 +17,7 @@ import {
 import { Suspense } from "react";
 import { Layers, Pencil, PlusCircle, Search, Trash2 } from "lucide-react";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL;
+const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
 function PageContent() {
     const searchParams: any = useSearchParams();
@@ -39,7 +39,7 @@ function PageContent() {
     const fetchAreas = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/areas?offset=0&limit=100&sort=nombre&desc=asc&search=`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/areas?offset=0&limit=100&sort=nombre&desc=asc&search=`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setAreas(d.data ?? []); }
             else toast.error("Error al cargar áreas");
         } catch { toast.error("Error al cargar áreas"); }
@@ -58,7 +58,7 @@ function PageContent() {
         if (!deleteArea) return;
         setDeleting(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/areas/${deleteArea.id}`, { method: "DELETE", headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/areas/${deleteArea.id}`, { method: "DELETE", headers: authHeaders });
             if (res.ok) { toast.success("Área eliminada"); setDeleteArea(null); fetchAreas(); }
             else { const d = await res.json(); toast.error(d.message ?? "Error al eliminar"); }
         } catch { toast.error("Error al eliminar"); }

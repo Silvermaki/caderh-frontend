@@ -213,7 +213,7 @@ function PageContent() {
         setLoading(true);
         try {
             const request = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/financing-sources?${params}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/financing-sources?${params}`,
                 {
                     method: "GET",
                     headers: {
@@ -240,7 +240,7 @@ function PageContent() {
         try {
             const params = new URLSearchParams({ id });
             const request = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/financing-source?${params}`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/financing-source?${params}`,
                 {
                     method: "GET",
                     headers: {
@@ -348,7 +348,7 @@ function PageContent() {
         setDeleting(true);
         try {
             const request = await fetch(
-                `${process.env.NEXT_PUBLIC_API_URL}/api/supervisor/financing-source`,
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/financing-source`,
                 {
                     method: "DELETE",
                     headers: {

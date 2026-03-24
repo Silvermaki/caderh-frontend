@@ -24,7 +24,7 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL;
+const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
 const InstructorModal = ({
     instructor,
@@ -113,7 +113,7 @@ const InstructorModal = ({
     useEffect(() => {
         if (!isOpen || !showCentroSelect || centros?.length || !session?.user?.session) return;
         const token = (session as any)?.user?.session;
-        fetch(`${apiBase}/api/centros/centros?all=true`, { headers: { Authorization: `Bearer ${token}` } })
+        fetch(`${apiBase}/centros/centros?all=true`, { headers: { Authorization: `Bearer ${token}` } })
             .then((r) => r.json())
             .then((d) => setCentrosLocal(d.data ?? []))
             .catch(() => setCentrosLocal([]));
@@ -125,7 +125,7 @@ const InstructorModal = ({
         try {
             const fd = new FormData();
             fd.append("file", pendingFile);
-            const res = await fetch(`${apiBase}/api/centros/instructors/${instructorId}/pdf`, {
+            const res = await fetch(`${apiBase}/centros/instructors/${instructorId}/pdf`, {
                 method: "POST",
                 headers: authHeaders,
                 body: fd,
@@ -144,7 +144,7 @@ const InstructorModal = ({
         if (!instructor?.id) return;
         setPdfDeleting(true);
         try {
-            const res = await fetch(`${apiBase}/api/centros/instructors/${instructor.id}/pdf`, {
+            const res = await fetch(`${apiBase}/centros/instructors/${instructor.id}/pdf`, {
                 method: "DELETE",
                 headers: authHeaders,
             });
@@ -164,7 +164,7 @@ const InstructorModal = ({
     const downloadPdf = async () => {
         if (!instructor?.id) return;
         try {
-            const res = await fetch(`${apiBase}/api/centros/instructors/${instructor.id}/pdf`, {
+            const res = await fetch(`${apiBase}/centros/instructors/${instructor.id}/pdf`, {
                 headers: authHeaders,
             });
             if (!res.ok) { toast.error("Error al descargar"); return; }
@@ -190,8 +190,8 @@ const InstructorModal = ({
 
             const useGlobal = !centroId;
             const url = useGlobal
-                ? `${apiBase}/api/centros/instructors`
-                : `${apiBase}/api/centros/centros/${effectiveCentroId}/instructors`;
+                ? `${apiBase}/centros/instructors`
+                : `${apiBase}/centros/centros/${effectiveCentroId}/instructors`;
             const method = isEdit ? "PUT" : "POST";
             const body: any = { ...data };
             if (isEdit) body.id = instructor.id;

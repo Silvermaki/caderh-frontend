@@ -66,7 +66,7 @@ const VerfiyForm = ({ setView, recoveryId }: any) => {
     const onNewPass = async (data: any) => {
         setPasswordType("password");
         startTransition(async () => {
-            const auth = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/recover_password`, {
+            const auth = await fetch(`${process.env.NEXT_PUBLIC_API_PROXY}/auth/recover_password`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

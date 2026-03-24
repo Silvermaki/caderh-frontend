@@ -14,7 +14,7 @@ import { useSession } from "next-auth/react";
 import { Check, ChevronsUpDown, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL;
+const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
 const STEPS = [
     { key: "personal", label: "Datos Personales" },
@@ -117,7 +117,7 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
 
         if (isEdit && student?.id && session) {
             setLoading(true);
-            fetch(`${apiBase}/api/centros/students/${student.id}`, { headers: authHeaders })
+            fetch(`${apiBase}/centros/students/${student.id}`, { headers: authHeaders })
                 .then((r) => r.json())
                 .then((d) => {
                     const s = d.data ?? {};
@@ -146,20 +146,20 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
 
     useEffect(() => {
         if (!isOpen || !session) return;
-        fetch(`${apiBase}/api/centros/departamentos`, { headers: authHeaders }).then((r) => r.json()).then((d) => setDepartamentos(d.data ?? []));
-        fetch(`${apiBase}/api/centros/nivel-escolaridades`, { headers: authHeaders }).then((r) => r.json()).then((d) => setNivelEscolaridades(d.data ?? []));
-        fetch(`${apiBase}/api/centros/vive-catalogo`, { headers: authHeaders }).then((r) => r.json()).then((d) => setViveOptions(d.data ?? []));
+        fetch(`${apiBase}/centros/departamentos`, { headers: authHeaders }).then((r) => r.json()).then((d) => setDepartamentos(d.data ?? []));
+        fetch(`${apiBase}/centros/nivel-escolaridades`, { headers: authHeaders }).then((r) => r.json()).then((d) => setNivelEscolaridades(d.data ?? []));
+        fetch(`${apiBase}/centros/vive-catalogo`, { headers: authHeaders }).then((r) => r.json()).then((d) => setViveOptions(d.data ?? []));
     }, [isOpen, session?.user?.session]);
 
     useEffect(() => {
         if (!form.departamento_id || !session) { setMunicipios([]); return; }
-        fetch(`${apiBase}/api/centros/municipios?departamento_id=${form.departamento_id}`, { headers: authHeaders })
+        fetch(`${apiBase}/centros/municipios?departamento_id=${form.departamento_id}`, { headers: authHeaders })
             .then((r) => r.json()).then((d) => setMunicipios(d.data ?? []));
     }, [form.departamento_id, session?.user?.session]);
 
     useEffect(() => {
         if (!isOpen || !showCentroSelect || centros?.length || !session?.user?.session) return;
-        fetch(`${apiBase}/api/centros/centros?all=true`, { headers: authHeaders })
+        fetch(`${apiBase}/centros/centros?all=true`, { headers: authHeaders })
             .then((r) => r.json()).then((d) => setCentrosLocal(d.data ?? [])).catch(() => {});
     }, [isOpen, showCentroSelect, centros?.length, session?.user?.session]);
 
@@ -203,7 +203,7 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
         try {
             const effectiveCentroId = centroId || form.centro_id;
             const useGlobal = !centroId;
-            const url = useGlobal ? `${apiBase}/api/centros/students` : `${apiBase}/api/centros/centros/${effectiveCentroId}/estudiantes`;
+            const url = useGlobal ? `${apiBase}/centros/students` : `${apiBase}/centros/centros/${effectiveCentroId}/estudiantes`;
             const method = isEdit ? "PUT" : "POST";
 
             const body: any = { ...form, departamento_id: Number(form.departamento_id), municipio_id: Number(form.municipio_id) };

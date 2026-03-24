@@ -132,7 +132,7 @@ const LogInForm = ({ setIsLoggingIn }: { setIsLoggingIn: any }) => {
     const onNewPass = async (data: any) => {
         setPasswordType("password");
         startTransition(async () => {
-            const auth = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/new-pass`, {
+            const auth = await fetch(`${process.env.NEXT_PUBLIC_API_PROXY}/auth/new-pass`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

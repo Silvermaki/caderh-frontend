@@ -270,7 +270,7 @@ function PageContent() {
     const getUsers = async (params: string) => {
         setLoading(true);
         try {
-            const request = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/users?${params}`, {
+            const request = await fetch(`${process.env.NEXT_PUBLIC_API_PROXY}/admin/users?${params}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${session?.user?.session}`
@@ -338,7 +338,7 @@ function PageContent() {
         setIsUserModalLoading(true);
         try {
             const params = new URLSearchParams({ id });
-            const request = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/user?${params.toString()}`, {
+            const request = await fetch(`${process.env.NEXT_PUBLIC_API_PROXY}/admin/user?${params.toString()}`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${session?.user?.session}`

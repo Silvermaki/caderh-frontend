@@ -55,7 +55,7 @@ const UserModal = ({ user, users, setUsers, loading, isOpen, setIsOpen, reload }
     const onEdit = async (data: any) => {
         try {
             setIsSubmitting(true);
-            const request = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/user`, {
+            const request = await fetch(`${process.env.NEXT_PUBLIC_API_PROXY}/admin/user`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
@@ -94,7 +94,7 @@ const UserModal = ({ user, users, setUsers, loading, isOpen, setIsOpen, reload }
     const changePass = async () => {
         try {
             setIsSubmitting(true);
-            const request = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/user/reset-password`, {
+            const request = await fetch(`${process.env.NEXT_PUBLIC_API_PROXY}/admin/user/reset-password`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',

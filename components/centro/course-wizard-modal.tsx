@@ -17,7 +17,7 @@ import * as XLSX from "xlsx";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL;
+const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
 // ─── Standalone ExcelDropzone ───
 const ExcelDropzone = ({
@@ -156,7 +156,7 @@ export default function CourseWizardModal({ isOpen, setIsOpen, reloadList, centr
     const downloadModulesTemplate = async () => {
         if (!session) return;
         try {
-            const res = await fetch(`${apiBase}/api/centros/courses/excel/modules-template`, { headers: authHeaders });
+            const res = await fetch(`${apiBase}/centros/courses/excel/modules-template`, { headers: authHeaders });
             if (!res.ok) { toast.error("Error al descargar plantilla"); return; }
             const blob = await res.blob();
             const url = URL.createObjectURL(blob);
@@ -243,7 +243,7 @@ export default function CourseWizardModal({ isOpen, setIsOpen, reloadList, centr
             };
             if (codigo) body.codigo = Number(codigo);
 
-            const res = await fetch(`${apiBase}/api/centros/courses/wizard`, {
+            const res = await fetch(`${apiBase}/centros/courses/wizard`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", ...authHeaders },
                 body: JSON.stringify(body),
