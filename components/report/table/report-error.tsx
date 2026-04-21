@@ -10,7 +10,7 @@ export function ReportError({ onRetry }: { onRetry?: () => void }) {
       <p className="text-sm text-foreground mb-4">
         No se pudo cargar el reporte. Intentá de nuevo en un momento.
       </p>
-      {onRetry && <Button variant="destructive" onClick={onRetry}>Reintentar</Button>}
+      {onRetry && <Button color="destructive" onClick={onRetry}>Reintentar</Button>}
     </div>
   );
 }
