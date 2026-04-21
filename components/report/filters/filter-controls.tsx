@@ -1,79 +1,103 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Label } from '@/components/ui/label';
 import { MultiSelect } from '@/components/ui/multi-select';
-import type { DateRange } from 'react-day-picker';
+import { format } from 'date-fns';
+
+// ---------------------------------------------------------------------------
+// FilterField
+// ---------------------------------------------------------------------------
 
 export function FilterField({
-  label, children,
-}: { label: string; children: React.ReactNode }) {
+  label,
+  description,
+  children,
+}: {
+  label: string;
+  description?: string;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex flex-col gap-1">
-      <Label className="text-[11px] text-muted-foreground">{label}</Label>
+    <div className="space-y-1.5">
+      <label className="text-sm font-medium">{label}</label>
+      {description && <p className="text-xs text-muted-foreground">{description}</p>}
       {children}
     </div>
   );
 }
 
-export interface OptionItem { value: string; label: string }
+// ---------------------------------------------------------------------------
+// MultiSelectField
+// ---------------------------------------------------------------------------
 
 export function MultiSelectField({
-  label, value, onChange, options, placeholder = 'Todos',
+  label,
+  options,
+  value,
+  onChange,
+  description,
 }: {
   label: string;
+  options: { value: string; label: string }[];
   value: string[];
   onChange: (v: string[]) => void;
-  options: OptionItem[];
-  placeholder?: string;
+  description?: string;
 }) {
   return (
-    <FilterField label={label}>
+    <FilterField label={label} description={description}>
       <MultiSelect
         key={JSON.stringify(value)}
         options={options}
         defaultValue={value}
         onValueChange={onChange}
-        placeholder={placeholder}
       />
     </FilterField>
   );
 }
 
+// ---------------------------------------------------------------------------
+// DateRangeField
+// ---------------------------------------------------------------------------
+
 export function DateRangeField({
-  label, from, to, onChange,
+  label,
+  value,
+  onChange,
+  description,
 }: {
   label: string;
-  from: string;
-  to: string;
-  onChange: (from: string, to: string) => void;
+  value: { from?: Date; to?: Date };
+  onChange: (v: { from?: Date; to?: Date }) => void;
+  description?: string;
 }) {
-  const display = from && to ? `${from} — ${to}` : 'Seleccionar rango';
-  const selected: DateRange | undefined =
-    from && to ? { from: new Date(from), to: new Date(to) } : undefined;
+  const display =
+    value.from && value.to
+      ? `${format(value.from, 'PP')} — ${format(value.to, 'PP')}`
+      : value.from
+        ? format(value.from, 'PP')
+        : 'Seleccionar rango';
 
   return (
-    <FilterField label={label}>
+    <FilterField label={label} description={description}>
       <Popover>
         <PopoverTrigger asChild>
-          <button type="button" className="border rounded-md px-2 py-1.5 text-sm bg-background text-left">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-start text-left font-normal"
+          >
             {display}
-          </button>
+          </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
           <Calendar
             mode="range"
-            selected={selected}
-            onSelect={(range: DateRange | undefined) => {
-              if (range?.from && range?.to) {
-                onChange(
-                  range.from.toISOString().slice(0, 10),
-                  range.to.toISOString().slice(0, 10),
-                );
-              }
-            }}
+            selected={value.from || value.to ? { from: value.from, to: value.to } : undefined}
+            onSelect={(range) => onChange(range ?? {})}
             numberOfMonths={2}
           />
         </PopoverContent>
@@ -82,28 +106,37 @@ export function DateRangeField({
   );
 }
 
+// ---------------------------------------------------------------------------
+// NumberRangeField
+// ---------------------------------------------------------------------------
+
+const parse = (s: string) => (s === '' ? undefined : Number(s));
+
 export function NumberRangeField({
-  label, min, max, onChange,
+  label,
+  value,
+  onChange,
+  description,
 }: {
   label: string;
-  min: number | '';
-  max: number | '';
-  onChange: (min: number | '', max: number | '') => void;
+  value: { min?: number; max?: number };
+  onChange: (v: { min?: number; max?: number }) => void;
+  description?: string;
 }) {
   return (
-    <FilterField label={label}>
+    <FilterField label={label} description={description}>
       <div className="flex gap-1">
         <Input
           type="number"
           placeholder="Min"
-          value={min}
-          onChange={(e) => onChange(e.target.value === '' ? '' : Number(e.target.value), max)}
+          value={value.min ?? ''}
+          onChange={(e) => onChange({ ...value, min: parse(e.target.value) })}
         />
         <Input
           type="number"
           placeholder="Max"
-          value={max}
-          onChange={(e) => onChange(min, e.target.value === '' ? '' : Number(e.target.value))}
+          value={value.max ?? ''}
+          onChange={(e) => onChange({ ...value, max: parse(e.target.value) })}
         />
       </div>
     </FilterField>
