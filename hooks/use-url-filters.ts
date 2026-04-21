@@ -37,7 +37,7 @@ export function useUrlFilters<T extends Record<string, any>>(defaults: T) {
 
   const setFilter = useCallback(
     <K extends keyof T>(key: K, value: T[K]) => {
-      router.replace(buildUrl({ [key]: value } as Partial<T>), { scroll: false });
+      router.replace(buildUrl({ [key]: value } as unknown as Partial<T>), { scroll: false });
     },
     [router, buildUrl]
   );
