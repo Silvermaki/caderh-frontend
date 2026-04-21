@@ -58,6 +58,18 @@ let navs = [
     ]
   },
   {
+    title: "Reportes",
+    icon: Graph,
+    child: [
+      { title: 'Estudiantes y matrícula',   href: "/dashboard/reportes?cat=estudiantes" },
+      { title: 'Seguimiento y movimiento',  href: "/dashboard/reportes?cat=seguimiento" },
+      { title: 'Ingresos y financiamiento', href: "/dashboard/reportes?cat=ingresos" },
+      { title: 'Egresos y gastos',          href: "/dashboard/reportes?cat=egresos" },
+      { title: 'Catálogos operativos',      href: "/dashboard/reportes?cat=catalogos" },
+      { title: 'Institucional',             href: "/dashboard/reportes?cat=institucional" },
+    ]
+  },
+  {
     title: "Centros",
     icon: DashBoard,
     child: [
