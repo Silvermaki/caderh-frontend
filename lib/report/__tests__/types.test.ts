@@ -9,7 +9,7 @@ describe('ReportDefinition types', () => {
     const def: ReportDefinition<Filters, Row> = {
       id: 'r0-demo',
       code: 'R0',
-      category: 'catalogos',
+      category: 'directorios',
       title: 'Demo',
       subtitle: '',
       filters: ['dateRange'],

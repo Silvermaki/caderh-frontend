@@ -1,19 +1,39 @@
+import { DollarSign, TrendingDown, Users, Contact } from 'lucide-react';
 import type { ReportDefinition, ReportCategory } from './types';
 
 export interface ReportCategoryMeta {
   key: ReportCategory;
   label: string;
   description: string;
+  icon: React.ComponentType<{ className?: string }>;
   accentDestructive?: boolean;
 }
 
 export const REPORT_CATEGORIES: ReportCategoryMeta[] = [
-  { key: 'estudiantes',   label: 'Estudiantes y matrícula',   description: 'Matrícula, jerarquía, jóvenes' },
-  { key: 'seguimiento',   label: 'Seguimiento y movimiento',  description: 'Activos, deserción, avance' },
-  { key: 'ingresos',      label: 'Ingresos y financiamiento', description: 'Ejecución presupuestaria' },
-  { key: 'egresos',       label: 'Egresos y gastos',          description: 'Gasto operativo y overhead' },
-  { key: 'catalogos',     label: 'Catálogos operativos',      description: 'Cursos, instructores, CFTP' },
-  { key: 'institucional', label: 'Institucional',             description: 'AC-R-022 y plantillas oficiales', accentDestructive: true },
+  {
+    key: 'ingresos',
+    label: 'Ingresos',
+    description: 'Financiamiento, donaciones y ejecución',
+    icon: DollarSign,
+  },
+  {
+    key: 'egresos',
+    label: 'Egresos',
+    description: 'Gastos operativos, overhead y presupuesto',
+    icon: TrendingDown,
+  },
+  {
+    key: 'estudiantes',
+    label: 'Estudiantes',
+    description: 'Matrícula, retención y seguimiento post-formación',
+    icon: Users,
+  },
+  {
+    key: 'directorios',
+    label: 'Directorios',
+    description: 'Empresas, donantes y plantillas institucionales',
+    icon: Contact,
+  },
 ];
 
 const _registry = new Map<string, ReportDefinition<any, any>>();
@@ -27,9 +47,9 @@ export function getReport(id: string): ReportDefinition<any, any> | undefined {
 }
 
 export function allReports(): ReportDefinition<any, any>[] {
-  return Array.from(_registry.values());
+  return Array.from(_registry.values()).sort((a, b) => a.code.localeCompare(b.code));
 }
 
-export function reportsByCategory(cat: ReportCategory): ReportDefinition<any, any>[] {
-  return allReports().filter((r) => r.category === cat);
+export function reportsByCategory(key: ReportCategory): ReportDefinition<any, any>[] {
+  return allReports().filter((r) => r.category === key);
 }

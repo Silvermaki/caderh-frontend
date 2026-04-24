@@ -1,12 +1,10 @@
 import type { ReactNode } from 'react';
 
 export type ReportCategory =
-  | 'estudiantes'
-  | 'seguimiento'
   | 'ingresos'
   | 'egresos'
-  | 'catalogos'
-  | 'institucional';
+  | 'estudiantes'
+  | 'directorios';
 
 export type FilterKey =
   | 'dateRange' | 'year' | 'quarter'

@@ -10,7 +10,7 @@ type Row = { centro: string; total: number };
 const fakeDef: ReportDefinition<{ project: string }, Row> = {
   id: 'test-report',
   code: 'R0',
-  category: 'catalogos',
+  category: 'directorios',
   title: 'Test',
   subtitle: '',
   filters: ['project'],
