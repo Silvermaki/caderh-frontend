@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { ReportBreadcrumbs, type Crumb } from '../table/report-breadcrumbs';
 import { ReportHeader } from '../table/report-header';
 import { ReportEmpty } from '../table/report-empty';
@@ -148,7 +149,13 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
                 <CompoundHeader columns={definition.columns} />
                 <tbody>
                   {query.data!.rows.map((row, i) => (
-                    <tr key={i} className="border-b hover:bg-muted/30">
+                    <motion.tr
+                      key={i}
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: Math.min(i, 20) * 0.015, duration: 0.18 }}
+                      className="border-b hover:bg-muted/30"
+                    >
                       {flatCols.map((c) => {
                         const isRed = definition.variants?.conditionalRed?.when(row) === true
                           && definition.variants.conditionalRed.cells.includes(c.key);
@@ -170,7 +177,7 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
                           </td>
                         );
                       })}
-                    </tr>
+                    </motion.tr>
                   ))}
                 </tbody>
                 {query.data!.totalsRow && (
