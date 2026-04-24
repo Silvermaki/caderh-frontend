@@ -4,6 +4,7 @@
 // para que el registry esté poblado sin importar la ruta de entrada.
 
 import './r1-matricula-cftp';
+import './r2-listado-jovenes';
 import './r6-ingreso-proyecto';
 import './r7-ingreso-consolidado';
 import './r8-overhead';
