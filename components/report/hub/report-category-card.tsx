@@ -16,26 +16,26 @@ export function ReportCategoryCard({ meta, reports }: ReportCategoryCardProps) {
   return (
     <div
       className={cn(
-        'rounded-lg border bg-card p-5 flex flex-col gap-3',
-        'transition-shadow hover:shadow-sm',
+        'rounded-lg border border-default-200 bg-card flex flex-col',
+        'transition-all hover:border-primary-200 hover:shadow-sm',
         meta.accentDestructive && 'border-l-[3px] border-l-destructive'
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-start gap-3">
-          <div className="rounded-md bg-muted p-2 shrink-0">
-            <Icon className="h-5 w-5 text-muted-foreground" />
+      <div className="flex items-center justify-between gap-3 p-4 pb-3 border-b border-default-100">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="rounded-md bg-primary-100 text-primary-700 p-2 shrink-0">
+            <Icon className="h-[18px] w-[18px]" />
           </div>
-          <div>
-            <h3 className="text-base font-semibold leading-tight">{meta.label}</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">{meta.description}</p>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-default-900 leading-tight">{meta.label}</h3>
+            <p className="text-xs text-default-500 mt-0.5 truncate">{meta.description}</p>
           </div>
         </div>
-        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold shrink-0">
+        <span className="rounded-full bg-primary-100 text-primary-700 px-2 py-0.5 text-[11px] font-semibold shrink-0 tabular-nums">
           {reports.length}
         </span>
       </div>
-      <div className="border-t pt-2 space-y-0.5">
+      <div className="p-2 space-y-0.5">
         {reports.map((r) => (
           <ReportRow key={r.id} report={r} />
         ))}
