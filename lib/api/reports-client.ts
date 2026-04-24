@@ -28,7 +28,6 @@ export async function apiGet<T>(
   const token = await getToken();
   const res = await fetch(url.toString(), {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
-    credentials: 'include',
   });
   if (!res.ok) {
     const body = await res.text();
