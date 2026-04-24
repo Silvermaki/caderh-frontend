@@ -11,5 +11,7 @@ import './r6-ingreso-proyecto';
 import './r7-ingreso-consolidado';
 import './r8-overhead';
 import './r12-presupuesto-vs-ejecutado';
+import './r5-kits-emprendimiento';
+import './r13-empresas-donantes';
 
 export {};
