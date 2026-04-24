@@ -11,7 +11,7 @@ import { ExportMenu } from '../export/export-menu';
 import { MissingDbBanner, type MissingDbItem } from '../missing-db/missing-db-banner';
 import { CompoundHeader } from '../variants/compound-header';
 import { ConditionalRedCell } from '../variants/conditional-red-cell';
-import { Skeleton } from '@/components/ui/skeleton';
+import { ReportSkeleton } from './report-skeleton';
 import { useReportQuery } from '@/hooks/use-report-query';
 import { useReportExport } from '@/hooks/use-report-export';
 import { useUrlFilters } from '@/hooks/use-url-filters';
@@ -58,6 +58,8 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
     [flatCols]
   );
 
+  const hasData = !!query.data && query.data.rows.length > 0;
+
   const activeCount = Object.entries(filters).filter(([, v]) => v !== '' && v !== undefined && v !== null).length;
   const chips = Object.entries(filters)
     .filter(([, v]) => v !== '' && v !== undefined && v !== null)
@@ -102,76 +104,79 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
           <h3 className="text-sm font-semibold">
             Resultados{' '}
             <span className="text-muted-foreground font-normal">
-              {query.isSuccess ? `· ${query.data.total} registros` : ''}
+              {query.isSuccess ? `· ${query.data!.total} registros` : ''}
             </span>
           </h3>
           <span className="text-xs text-muted-foreground">Columnas: <b>{flatCols.length}/{flatCols.length}</b> (fijas)</span>
         </div>
 
-        {query.isLoading && (
-          <div className="p-4 space-y-2">
-            {Array.from({ length: 6 }).map((_, i) => (<Skeleton key={i} className="h-6 w-full" />))}
-          </div>
+        {query.isLoading && !hasData && (
+          <ReportSkeleton rows={10} cols={flatCols.length} />
         )}
 
         {query.isError && <ReportError onRetry={() => query.refetch()} />}
 
-        {query.isSuccess && query.data.rows.length === 0 && (
+        {!query.isLoading && !query.isError && !hasData && (
           <ReportEmpty onClear={clearAll} />
         )}
 
-        {query.isSuccess && query.data.rows.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <CompoundHeader columns={definition.columns} />
-              <tbody>
-                {query.data.rows.map((row, i) => (
-                  <tr key={i} className="border-b hover:bg-muted/30">
-                    {flatCols.map((c) => {
-                      const isRed = definition.variants?.conditionalRed?.when(row) === true
-                        && definition.variants.conditionalRed.cells.includes(c.key);
-                      if (c.missingInDb) {
+        {hasData && (
+          <div className="relative">
+            {query.isFetching && (
+              <div className="absolute inset-0 z-10 bg-background/40 pointer-events-none" />
+            )}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <CompoundHeader columns={definition.columns} />
+                <tbody>
+                  {query.data!.rows.map((row, i) => (
+                    <tr key={i} className="border-b hover:bg-muted/30">
+                      {flatCols.map((c) => {
+                        const isRed = definition.variants?.conditionalRed?.when(row) === true
+                          && definition.variants.conditionalRed.cells.includes(c.key);
+                        if (c.missingInDb) {
+                          return (
+                            <td key={c.key} className="px-2 py-1.5 text-right text-muted-foreground bg-amber-50/50">—</td>
+                          );
+                        }
+                        if (isRed) {
+                          return (
+                            <ConditionalRedCell key={c.key} isRed>
+                              {c.render ? c.render(row) : String((row as any)[c.key] ?? '')}
+                            </ConditionalRedCell>
+                          );
+                        }
                         return (
-                          <td key={c.key} className="px-2 py-1.5 text-right text-muted-foreground bg-amber-50/50">—</td>
-                        );
-                      }
-                      if (isRed) {
-                        return (
-                          <ConditionalRedCell key={c.key} isRed>
+                          <td key={c.key} className={`px-2 py-1.5 text-${c.align ?? 'left'} tabular-nums`}>
                             {c.render ? c.render(row) : String((row as any)[c.key] ?? '')}
-                          </ConditionalRedCell>
+                          </td>
                         );
-                      }
-                      return (
-                        <td key={c.key} className={`px-2 py-1.5 text-${c.align ?? 'left'} tabular-nums`}>
-                          {c.render ? c.render(row) : String((row as any)[c.key] ?? '')}
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+                {query.data!.totalsRow && (
+                  <tfoot className="sticky bottom-0">
+                    <tr className="bg-muted/40 font-bold">
+                      {flatCols.map((c) => (
+                        <td key={c.key} className={`px-2 py-2 text-${c.align ?? 'left'} tabular-nums border-t-2`}>
+                          {c.missingInDb ? '—' : query.data!.totalsRow?.[c.key] ?? ''}
                         </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-              {query.data.totalsRow && (
-                <tfoot className="sticky bottom-0">
-                  <tr className="bg-muted/40 font-bold">
-                    {flatCols.map((c) => (
-                      <td key={c.key} className={`px-2 py-2 text-${c.align ?? 'left'} tabular-nums border-t-2`}>
-                        {c.missingInDb ? '—' : query.data.totalsRow?.[c.key] ?? ''}
-                      </td>
-                    ))}
-                  </tr>
-                </tfoot>
-              )}
-            </table>
+                      ))}
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
           </div>
         )}
 
-        {query.isSuccess && query.data.total > PAGE_SIZE && (
+        {query.isSuccess && query.data!.total > PAGE_SIZE && (
           <div className="flex items-center justify-between px-3 py-2 border-t text-xs text-muted-foreground">
-            <span>Mostrando {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, query.data.total)} de {query.data.total}</span>
+            <span>Mostrando {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, query.data!.total)} de {query.data!.total}</span>
             <div className="flex gap-1">
               <button disabled={page === 0} onClick={() => setPage((p) => p - 1)} className="px-2 py-1 border rounded disabled:opacity-40">‹</button>
-              <button disabled={(page + 1) * PAGE_SIZE >= query.data.total} onClick={() => setPage((p) => p + 1)} className="px-2 py-1 border rounded disabled:opacity-40">›</button>
+              <button disabled={(page + 1) * PAGE_SIZE >= query.data!.total} onClick={() => setPage((p) => p + 1)} className="px-2 py-1 border rounded disabled:opacity-40">›</button>
             </div>
           </div>
         )}
