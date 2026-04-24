@@ -60,12 +60,7 @@ let navs = [
   {
     title: "Reportes",
     icon: Graph,
-    child: [
-      { title: 'Ingresos',     href: "/dashboard/reportes?cat=ingresos" },
-      { title: 'Egresos',      href: "/dashboard/reportes?cat=egresos" },
-      { title: 'Estudiantes',  href: "/dashboard/reportes?cat=estudiantes" },
-      { title: 'Directorios',  href: "/dashboard/reportes?cat=directorios" },
-    ]
+    href: "/dashboard/reportes",
   },
   {
     title: "Centros",
