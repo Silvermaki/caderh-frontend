@@ -3,8 +3,8 @@
 import { notFound, useParams } from 'next/navigation';
 import { getReport, REPORT_CATEGORIES } from '@/lib/report/registry';
 import { ReportTableShell } from '@/components/report/shell/report-table-shell';
-import { DateRangeField, MultiSelectField } from '@/components/report/filters/filter-controls';
-import { FilterGroup } from '@/components/report/filters/filter-group';
+import { ReportTemplateShell } from '@/components/report/shell/report-template-shell';
+import { buildReportFilters } from '@/components/report/filters/filter-renderer';
 
 export default function ReportSlugPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -12,48 +12,40 @@ export default function ReportSlugPage() {
   if (!def) return notFound();
 
   const catMeta = REPORT_CATEGORIES.find((c) => c.key === def.category);
+  const crumbs = [
+    { label: 'Reportes', href: '/dashboard/reportes' },
+    { label: catMeta?.label ?? def.category },
+    { label: `${def.code} · ${def.title}` },
+  ];
+
+  if ((def as any).variants?.template) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <ReportTemplateShell
+          reportId={def.id}
+          code={def.code}
+          title={def.title}
+          subtitle={def.subtitle}
+          breadcrumbs={crumbs}
+          renderForm={() => (
+            <div className="rounded-md border bg-muted/30 p-6 text-sm text-muted-foreground">
+              Formulario pendiente — plantilla AC-R-022 en desarrollo.
+            </div>
+          )}
+          onGenerate={async () => {
+            throw new Error('Generación pixel-perfect pendiente de implementación');
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <ReportTableShell
         definition={def as any}
-        breadcrumbs={[
-          { label: 'Reportes', href: '/dashboard/reportes' },
-          { label: catMeta?.label ?? def.category },
-          { label: `${def.code} · ${def.title}` },
-        ]}
-        renderFilters={(filters: any, setFilter: any) => (
-          <>
-            {def.filters.includes('dateRange') && (
-              <FilterGroup label="Período">
-                <DateRangeField
-                  label="Rango de fechas"
-                  value={{
-                    from: filters.from ? new Date(filters.from) : undefined,
-                    to: filters.to ? new Date(filters.to) : undefined,
-                  }}
-                  onChange={(v) => {
-                    setFilter('from', v.from ? v.from.toISOString().slice(0, 10) : '');
-                    setFilter('to', v.to ? v.to.toISOString().slice(0, 10) : '');
-                  }}
-                />
-              </FilterGroup>
-            )}
-            {def.filters.includes('project') && (
-              <FilterGroup label="Contexto">
-                <MultiSelectField
-                  label="Proyecto"
-                  value={filters.project ? [filters.project] : []}
-                  onChange={(v) => setFilter('project', v[0] ?? '')}
-                  options={[
-                    { value: 'Tegucigalpa', label: 'Tegucigalpa' },
-                    { value: 'San Pedro',   label: 'San Pedro Sula' },
-                  ]}
-                />
-              </FilterGroup>
-            )}
-          </>
-        )}
+        breadcrumbs={crumbs}
+        renderFilters={buildReportFilters(def)}
       />
     </div>
   );
