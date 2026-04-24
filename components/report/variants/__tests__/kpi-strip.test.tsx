@@ -1,10 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { KpiStrip } from '../kpi-strip';
 
 describe('<KpiStrip>', () => {
-  it('renders 4 cards with values', () => {
+  it('renders 4 cards with values', async () => {
     render(
       <KpiStrip
         cards={[
@@ -16,7 +16,8 @@ describe('<KpiStrip>', () => {
       />
     );
     expect(screen.getByText('Nuevos')).toBeInTheDocument();
-    expect(screen.getByText('50')).toBeInTheDocument();
+    // Numeric values animate from 0 via AnimatedNumber; await the final settled value.
+    await waitFor(() => expect(screen.getByText('50')).toBeInTheDocument());
   });
 
   it('fires onCardClick with key', async () => {
