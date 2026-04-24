@@ -1,4 +1,3 @@
-import '@/lib/report/demo-report';
 import { ReportHub } from '@/components/report/hub/report-hub';
 
 export default function ReportesPage() {
