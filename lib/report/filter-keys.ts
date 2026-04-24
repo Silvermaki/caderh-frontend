@@ -11,6 +11,7 @@ export interface FilterMeta {
   group: FilterGroup;
   control: 'multi-select' | 'date-range' | 'number-range' | 'select';
   dependsOn?: FilterKey;
+  formatValue?: (v: unknown) => string;
 }
 
 export const FILTER_GROUPS: FilterGroupDef[] = [
@@ -22,14 +23,22 @@ export const FILTER_GROUPS: FilterGroupDef[] = [
 ];
 
 export const FILTER_META: Record<FilterKey, FilterMeta> = {
-  dateRange:     { key: 'dateRange',     label: 'Rango de fechas',   group: 'periodo',      control: 'date-range' },
+  dateRange:     {
+    key: 'dateRange', label: 'Rango de fechas', group: 'periodo', control: 'date-range',
+    formatValue: (v: any) =>
+      v?.from && v?.to ? `${v.from} → ${v.to}` : v?.from ? String(v.from) : String(v ?? ''),
+  },
   year:          { key: 'year',          label: 'Año',               group: 'periodo',      control: 'select' },
   quarter:       { key: 'quarter',       label: 'Trimestre',         group: 'periodo',      control: 'multi-select' },
   project:       { key: 'project',       label: 'Proyecto',          group: 'contexto',     control: 'multi-select' },
   cftp:          { key: 'cftp',          label: 'CFTP',              group: 'contexto',     control: 'multi-select', dependsOn: 'project' },
   course:        { key: 'course',        label: 'Curso',             group: 'contexto',     control: 'multi-select', dependsOn: 'cftp' },
   gender:        { key: 'gender',        label: 'Género',            group: 'demografia',   control: 'multi-select' },
-  age:           { key: 'age',           label: 'Edad',              group: 'demografia',   control: 'number-range' },
+  age:           {
+    key: 'age', label: 'Edad', group: 'demografia', control: 'number-range',
+    formatValue: (v: any) =>
+      v?.min != null && v?.max != null ? `${v.min}–${v.max}` : String(v ?? ''),
+  },
   youthStatus:   { key: 'youthStatus',   label: 'Estatus del joven', group: 'demografia',   control: 'multi-select' },
   department:    { key: 'department',    label: 'Departamento',      group: 'ubicacion',    control: 'multi-select' },
   municipality:  { key: 'municipality',  label: 'Municipio',         group: 'ubicacion',    control: 'multi-select', dependsOn: 'department' },

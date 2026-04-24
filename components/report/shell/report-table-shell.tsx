@@ -15,7 +15,25 @@ import { ReportSkeleton } from './report-skeleton';
 import { useReportQuery } from '@/hooks/use-report-query';
 import { useReportExport } from '@/hooks/use-report-export';
 import { useUrlFilters } from '@/hooks/use-url-filters';
+import { FILTER_META } from '@/lib/report/filter-keys';
 import type { AnyColumn, ColumnDef, CompoundColumnDef, ReportDefinition, Pagination } from '@/lib/report/types';
+
+const EXTRA_LABELS: Record<string, string> = {
+  from:    'Desde',
+  to:      'Hasta',
+  estatus: 'Estado',
+};
+
+function chipLabel(key: string, value: unknown): string {
+  const meta = (FILTER_META as Record<string, any>)[key];
+  const label = meta?.label ?? EXTRA_LABELS[key] ?? key;
+  const formatted = meta?.formatValue
+    ? meta.formatValue(value)
+    : Array.isArray(value)
+      ? value.join(', ')
+      : String(value ?? '');
+  return `${label}: ${formatted}`;
+}
 
 function flatten<TRow>(cols: AnyColumn<TRow>[]): ColumnDef<TRow>[] {
   return cols.flatMap((c) => ('group' in c ? (c as CompoundColumnDef<TRow>).children : [c as ColumnDef<TRow>]));
@@ -63,7 +81,7 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
   const activeCount = Object.entries(filters).filter(([, v]) => v !== '' && v !== undefined && v !== null).length;
   const chips = Object.entries(filters)
     .filter(([, v]) => v !== '' && v !== undefined && v !== null)
-    .map(([k, v]) => ({ key: k, label: `${k}: ${String(v)}` }));
+    .map(([k, v]) => ({ key: k, label: chipLabel(k, v) }));
 
   const { doExport, busy } = useReportExport(definition, filters, query.data?.rows ?? [], flatCols);
 
