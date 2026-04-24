@@ -8,16 +8,14 @@ export function ReportHub() {
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
       <ReportBreadcrumbs crumbs={[{ label: 'Reportes' }]} />
-      <div className="flex items-end justify-between gap-4 mb-4 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-default-900">Centro de Reportes</h1>
-          <p className="text-sm text-default-500 mt-0.5">
-            {total} {total === 1 ? 'reporte disponible' : 'reportes disponibles'} · Click para generar
-          </p>
-        </div>
-        <div className="w-full md:w-80">
-          <ReportSearch />
-        </div>
+      <div className="mb-4">
+        <h1 className="text-2xl font-bold text-default-900">Centro de Reportes</h1>
+        <p className="text-sm text-default-500 mt-0.5">
+          {total} {total === 1 ? 'reporte disponible' : 'reportes disponibles'} · Click para generar
+        </p>
+      </div>
+      <div className="mb-4 max-w-md">
+        <ReportSearch />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
         {REPORT_CATEGORIES.map((meta) => (

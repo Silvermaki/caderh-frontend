@@ -1,5 +1,6 @@
 'use client';
 
+import '@/lib/report/definitions';
 import { notFound, useParams } from 'next/navigation';
 import { getReport, REPORT_CATEGORIES } from '@/lib/report/registry';
 import { ReportTableShell } from '@/components/report/shell/report-table-shell';
