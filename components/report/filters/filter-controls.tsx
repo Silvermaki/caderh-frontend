@@ -6,10 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { MultiSelect } from '@/components/ui/multi-select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { format } from 'date-fns';
 
 // ---------------------------------------------------------------------------
-// FilterField
+// FilterField (wrapper)
 // ---------------------------------------------------------------------------
 
 export function FilterField({
@@ -31,7 +38,44 @@ export function FilterField({
 }
 
 // ---------------------------------------------------------------------------
-// MultiSelectField
+// SingleSelectField — value: string
+// ---------------------------------------------------------------------------
+
+export function SingleSelectField({
+  label,
+  options,
+  value,
+  onChange,
+  description,
+  placeholder = 'Seleccionar…',
+}: {
+  label: string;
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+  description?: string;
+  placeholder?: string;
+}) {
+  return (
+    <FilterField label={label} description={description}>
+      <Select value={value || undefined} onValueChange={onChange}>
+        <SelectTrigger>
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </FilterField>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// MultiSelectField — value: string[]
 // ---------------------------------------------------------------------------
 
 export function MultiSelectField({
@@ -50,7 +94,6 @@ export function MultiSelectField({
   return (
     <FilterField label={label} description={description}>
       <MultiSelect
-        key={JSON.stringify(value)}
         options={options}
         defaultValue={value}
         onValueChange={onChange}
@@ -60,7 +103,7 @@ export function MultiSelectField({
 }
 
 // ---------------------------------------------------------------------------
-// DateRangeField
+// DateRangeField — value: {from?, to?}
 // ---------------------------------------------------------------------------
 
 export function DateRangeField({
@@ -107,7 +150,7 @@ export function DateRangeField({
 }
 
 // ---------------------------------------------------------------------------
-// NumberRangeField
+// NumberRangeField — value: {min?, max?}
 // ---------------------------------------------------------------------------
 
 const parse = (s: string) => (s === '' ? undefined : Number(s));
