@@ -5,6 +5,7 @@
 
 import './r1-matricula-cftp';
 import './r2-listado-jovenes';
+import './r3-retencion';
 import './r6-ingreso-proyecto';
 import './r7-ingreso-consolidado';
 import './r8-overhead';
