@@ -28,7 +28,7 @@ function variantChips(def: ReportDefinition<any, any>): Chip[] {
     chips.push({ icon: Columns, className: 'text-primary', title: 'Encabezados compuestos' });
   }
   if ((def as any).variants?.template) {
-    chips.push({ icon: FileText, className: 'text-default-500', title: 'Plantilla' });
+    chips.push({ icon: FileText, className: 'text-muted-foreground', title: 'Plantilla' });
   }
   const hasMissing = (def.columns as any[]).some((c) => c.missingInDb);
   if (hasMissing) {
@@ -43,21 +43,26 @@ export function ReportRow({ report }: ReportRowProps) {
     <Link
       href={`/dashboard/reportes/${report.id}`}
       className={cn(
-        'group flex items-center gap-3 rounded-md px-2 py-1.5 -mx-2',
-        'hover:bg-primary-100/60 transition-colors'
+        'group flex items-center gap-3 p-3 rounded-lg border border-border bg-card',
+        'hover:border-primary/30 hover:bg-primary/5 hover:shadow-sm',
+        'transition-all duration-200'
       )}
     >
-      <span className="font-mono text-[11px] font-semibold text-primary-700 w-9 shrink-0 tabular-nums">
+      <span className="font-mono text-[11px] font-bold text-primary shrink-0 tabular-nums w-10">
         {report.code}
       </span>
       <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-default-900 leading-tight">{report.title}</div>
+        <div className="text-sm font-medium text-foreground leading-tight">
+          {report.title}
+        </div>
         {report.subtitle && (
-          <div className="text-xs text-default-500 truncate leading-tight mt-0.5">{report.subtitle}</div>
+          <div className="text-xs text-muted-foreground truncate leading-tight mt-0.5">
+            {report.subtitle}
+          </div>
         )}
       </div>
       {chips.length > 0 && (
-        <div className="flex gap-1 items-center shrink-0">
+        <div className="flex gap-1.5 items-center shrink-0">
           {chips.map((c, i) => {
             const Icon = c.icon;
             return (
@@ -68,7 +73,7 @@ export function ReportRow({ report }: ReportRowProps) {
           })}
         </div>
       )}
-      <ChevronRight className="h-4 w-4 text-default-400 shrink-0 transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+      <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0 transition-all duration-200 group-hover:translate-x-1 group-hover:text-primary" />
     </Link>
   );
 }

@@ -19,21 +19,21 @@ export interface ScopeBarProps {
 export function ScopeBar({ activeCount, chips, onOpen, onRemove, onClearAll }: ScopeBarProps) {
   const hasActive = activeCount > 0;
   return (
-    <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 mb-3">
+    <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 mb-4">
       <button
         type="button"
         onClick={onOpen}
         className={cn(
           'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium border transition',
           hasActive
-            ? 'bg-foreground text-background border-foreground'
-            : 'bg-transparent text-muted-foreground border-border hover:bg-muted'
+            ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90'
+            : 'bg-transparent text-muted-foreground border-border hover:bg-primary/5 hover:border-primary/30 hover:text-primary'
         )}
       >
         <SlidersHorizontal className="h-3.5 w-3.5" />
         Filtros
         {hasActive && (
-          <span className="rounded-full bg-background text-foreground text-xs font-bold px-1.5 leading-none py-0.5">
+          <span className="rounded-full bg-primary-foreground/20 text-primary-foreground text-xs font-bold px-1.5 leading-none py-0.5">
             {activeCount}
           </span>
         )}
@@ -46,7 +46,7 @@ export function ScopeBar({ activeCount, chips, onOpen, onRemove, onClearAll }: S
       {chips.map((c) => (
         <span
           key={c.key}
-          className="inline-flex items-center gap-1 rounded-full border bg-muted px-2 py-0.5 text-xs text-foreground"
+          className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-xs text-primary font-medium"
         >
           {c.label}
           <button

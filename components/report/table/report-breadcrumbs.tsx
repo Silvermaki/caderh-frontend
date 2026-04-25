@@ -1,21 +1,24 @@
-import Link from 'next/link';
-import { ChevronRight } from 'lucide-react';
+'use client';
+
+import { Breadcrumbs, BreadcrumbItem } from '@/components/ui/breadcrumbs';
 
 export interface Crumb { label: string; href?: string }
 
 export function ReportBreadcrumbs({ crumbs }: { crumbs: Crumb[] }) {
   return (
-    <nav className="text-xs text-muted-foreground mb-2" aria-label="Breadcrumb">
-      {crumbs.map((c, i) => (
-        <span key={i} className="inline-flex items-center">
-          {c.href ? (
-            <Link href={c.href} className="hover:underline">{c.label}</Link>
-          ) : (
-            <span>{c.label}</span>
-          )}
-          {i < crumbs.length - 1 && <ChevronRight className="h-3 w-3 mx-1 text-muted-foreground/60" />}
-        </span>
-      ))}
-    </nav>
+    <Breadcrumbs>
+      {crumbs.map((c, i) => {
+        const isLast = i === crumbs.length - 1;
+        return (
+          <BreadcrumbItem
+            key={i}
+            href={c.href}
+            className={isLast ? 'text-primary' : undefined}
+          >
+            {c.label}
+          </BreadcrumbItem>
+        );
+      })}
+    </Breadcrumbs>
   );
 }

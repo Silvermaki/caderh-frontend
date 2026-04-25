@@ -12,6 +12,8 @@ function renderLabel<T>(c: ColumnDef<T>) {
   return c.label;
 }
 
+const HEADER_CELL = 'px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border';
+
 export function CompoundHeader<TRow>({ columns }: { columns: AnyColumn<TRow>[] }) {
   const hasGroups = columns.some(isCompound);
 
@@ -22,7 +24,7 @@ export function CompoundHeader<TRow>({ columns }: { columns: AnyColumn<TRow>[] }
           {columns.map((c) => {
             const col = c as ColumnDef<TRow>;
             return (
-              <th key={col.key} className="px-2 py-2 text-left text-xs uppercase tracking-wide text-muted-foreground bg-muted/40 border-b">
+              <th key={col.key} className={`${HEADER_CELL} text-left`}>
                 {renderLabel(col)}
               </th>
             );
@@ -41,7 +43,7 @@ export function CompoundHeader<TRow>({ columns }: { columns: AnyColumn<TRow>[] }
               <th
                 key={c.group + i}
                 colSpan={c.children.length}
-                className="px-2 py-2 text-center text-xs uppercase tracking-wide text-muted-foreground bg-muted/40 border-b border-r"
+                className={`${HEADER_CELL} text-center`}
               >
                 {c.group}
               </th>
@@ -51,7 +53,7 @@ export function CompoundHeader<TRow>({ columns }: { columns: AnyColumn<TRow>[] }
             <th
               key={c.key}
               rowSpan={2}
-              className="px-2 py-2 text-left text-xs uppercase tracking-wide text-muted-foreground bg-muted/40 border-b align-bottom"
+              className={`${HEADER_CELL} text-left align-bottom`}
             >
               {renderLabel(c)}
             </th>
@@ -62,7 +64,7 @@ export function CompoundHeader<TRow>({ columns }: { columns: AnyColumn<TRow>[] }
         {columns.flatMap((c) =>
           isCompound(c)
             ? c.children.map((sub) => (
-                <th key={sub.key} className={`px-2 py-1.5 text-${sub.align ?? 'left'} text-xs uppercase tracking-wide text-muted-foreground bg-muted/40 border-b`}>
+                <th key={sub.key} className={`${HEADER_CELL} text-${sub.align ?? 'left'}`}>
                   {renderLabel(sub)}
                 </th>
               ))

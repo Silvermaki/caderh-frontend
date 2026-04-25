@@ -30,7 +30,7 @@ function GroupRow<TRow>({
   const [open, setOpen] = useState(true);
   return (
     <>
-      <tr className="bg-muted/30 font-semibold">
+      <tr className="bg-primary/5 font-semibold text-primary">
         <td className="px-2 py-1.5" colSpan={1}>
           <button
             type="button"

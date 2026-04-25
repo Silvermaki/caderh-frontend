@@ -18,10 +18,11 @@ export interface KpiStripProps {
 
 export function KpiStrip({ cards, selectedKey, onCardClick }: KpiStripProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-      {cards.map((c) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      {cards.map((c, i) => (
         <KpiCard
           key={c.key}
+          index={i}
           label={c.label}
           value={c.value}
           sub={c.sub}

@@ -9,7 +9,7 @@ export function ReportSkeleton({ rows = 8, cols = 5 }: { rows?: number; cols?: n
             <div
               key={c}
               className={cn(
-                'h-4 rounded bg-muted animate-pulse',
+                'h-4 rounded bg-primary/10 animate-pulse',
                 c === 0 ? 'w-40' : 'flex-1 max-w-32'
               )}
             />

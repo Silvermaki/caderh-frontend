@@ -14,6 +14,7 @@ export default function ReportSlugPage() {
 
   const catMeta = REPORT_CATEGORIES.find((c) => c.key === def.category);
   const crumbs = [
+    { label: 'Plataforma' },
     { label: 'Reportes', href: '/dashboard/reportes' },
     { label: catMeta?.label ?? def.category },
     { label: `${def.code} · ${def.title}` },
@@ -21,33 +22,29 @@ export default function ReportSlugPage() {
 
   if ((def as any).variants?.template) {
     return (
-      <div className="p-6 max-w-5xl mx-auto">
-        <ReportTemplateShell
-          reportId={def.id}
-          code={def.code}
-          title={def.title}
-          subtitle={def.subtitle}
-          breadcrumbs={crumbs}
-          renderForm={() => (
-            <div className="rounded-md border bg-muted/30 p-6 text-sm text-muted-foreground">
-              Formulario pendiente — plantilla AC-R-022 en desarrollo.
-            </div>
-          )}
-          onGenerate={async () => {
-            throw new Error('Generación pixel-perfect pendiente de implementación');
-          }}
-        />
-      </div>
+      <ReportTemplateShell
+        reportId={def.id}
+        code={def.code}
+        title={def.title}
+        subtitle={def.subtitle}
+        breadcrumbs={crumbs}
+        renderForm={() => (
+          <div className="rounded-md border border-primary/20 bg-primary/5 p-6 text-sm text-muted-foreground">
+            Formulario pendiente — plantilla AC-R-022 en desarrollo.
+          </div>
+        )}
+        onGenerate={async () => {
+          throw new Error('Generación pixel-perfect pendiente de implementación');
+        }}
+      />
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <ReportTableShell
-        definition={def as any}
-        breadcrumbs={crumbs}
-        renderFilters={buildReportFilters(def)}
-      />
-    </div>
+    <ReportTableShell
+      definition={def as any}
+      breadcrumbs={crumbs}
+      renderFilters={buildReportFilters(def)}
+    />
   );
 }

@@ -1,17 +1,17 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 export type KpiColor = 'info' | 'success' | 'accent' | 'destructive' | 'warning';
 
-const borderByColor: Record<KpiColor, string> = {
-  info: 'border-t-info',
-  success: 'border-t-success',
-  accent: 'border-t-accent',
-  destructive: 'border-t-destructive',
-  warning: 'border-t-warning',
+const iconColorByKpi: Record<KpiColor, string> = {
+  info: 'text-info',
+  success: 'text-success',
+  accent: 'text-primary',
+  destructive: 'text-destructive',
+  warning: 'text-warning',
 };
 
 function AnimatedNumber({
@@ -35,41 +35,41 @@ function AnimatedNumber({
 export interface KpiCardProps {
   label: string;
   value: number | string;
-  /** Optional raw numeric value for count-up when `value` is a pre-formatted string. */
   rawValue?: number;
   sub?: string;
   color: KpiColor;
   selected?: boolean;
   onClick?: () => void;
+  index?: number;
 }
 
-export function KpiCard({ label, value, rawValue, sub, color, selected, onClick }: KpiCardProps) {
-  const Tag = onClick ? 'button' : 'div';
-
-  // Determine if we can animate: use rawValue if provided, or value if it's a number.
+export function KpiCard({ label, value, rawValue, sub, color, selected, onClick, index = 0 }: KpiCardProps) {
+  const Tag = onClick ? motion.button : motion.div;
   const numericValue = rawValue !== undefined ? rawValue : typeof value === 'number' ? value : null;
 
   return (
     <Tag
       type={onClick ? 'button' : undefined}
       onClick={onClick}
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay: index * 0.08, ease: 'easeOut' }}
       className={cn(
-        'text-left rounded-lg border bg-card px-3 py-3 border-t-[3px]',
-        borderByColor[color],
-        selected && 'bg-muted/60',
-        onClick && 'hover:bg-muted/40 transition'
+        'text-left bg-card border border-border rounded-lg p-4 flex flex-col min-h-[88px]',
+        'hover:shadow-md hover:border-primary/20 transition-all duration-200',
+        selected && 'border-primary/40 bg-primary/5',
+        onClick && 'cursor-pointer'
       )}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
+      <div className="flex items-center gap-2 mb-2">
+        <span className={cn('h-2 w-2 rounded-full shrink-0', iconColorByKpi[color], 'bg-current')} />
+        <span className="text-xs text-muted-foreground uppercase tracking-wide leading-tight">
+          {label}
+        </span>
       </div>
-      <div className="text-2xl font-bold leading-none mt-1">
-        {numericValue !== null ? (
-          <AnimatedNumber value={numericValue} />
-        ) : (
-          value
-        )}
-      </div>
+      <p className="text-xl font-bold text-foreground truncate mt-auto">
+        {numericValue !== null ? <AnimatedNumber value={numericValue} /> : value}
+      </p>
       {sub && <div className="text-xs text-muted-foreground mt-1">{sub}</div>}
     </Tag>
   );

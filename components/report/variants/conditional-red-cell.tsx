@@ -10,7 +10,7 @@ export function ConditionalRedCell({
   return (
     <td
       className={cn(
-        'px-2 py-1.5 text-right tabular-nums',
+        'px-3 py-2 text-right tabular-nums',
         isRed && 'bg-destructive/5 text-destructive font-semibold',
         className
       )}

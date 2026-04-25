@@ -1,45 +1,53 @@
+'use client';
+
+import { motion } from 'framer-motion';
 import type { ReportCategoryMeta } from '@/lib/report/registry';
 import type { ReportDefinition } from '@/lib/report/types';
+import { Card } from '@/components/ui/card';
 import { ReportRow } from './report-row';
 import { cn } from '@/lib/utils';
 
 export interface ReportCategoryCardProps {
   meta: ReportCategoryMeta;
   reports: ReportDefinition<any, any>[];
+  index?: number;
 }
 
-export function ReportCategoryCard({ meta, reports }: ReportCategoryCardProps) {
+export function ReportCategoryCard({ meta, reports, index = 0 }: ReportCategoryCardProps) {
   if (reports.length === 0) return null;
 
   const Icon = meta.icon;
 
   return (
-    <div
-      className={cn(
-        'rounded-lg border border-default-200 bg-card flex flex-col',
-        'transition-all hover:border-primary-200 hover:shadow-sm',
-        meta.accentDestructive && 'border-l-[3px] border-l-destructive'
-      )}
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay: index * 0.08, ease: 'easeOut' }}
     >
-      <div className="flex items-center justify-between gap-3 p-4 pb-3 border-b border-default-100">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="rounded-md bg-primary-100 text-primary-700 p-2 shrink-0">
-            <Icon className="h-[18px] w-[18px]" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-default-900 leading-tight">{meta.label}</h3>
-            <p className="text-xs text-default-500 mt-0.5 truncate">{meta.description}</p>
+      <Card className="overflow-hidden flex flex-col h-full hover:shadow-md transition-shadow duration-200">
+        <div className="p-6 pb-4">
+          <div className="flex items-start gap-4">
+            <div className="rounded-lg bg-primary/10 text-primary p-3 shrink-0">
+              <Icon className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-semibold text-foreground leading-tight">{meta.label}</h3>
+                <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[11px] font-semibold tabular-nums">
+                  {reports.length} {reports.length === 1 ? 'reporte' : 'reportes'}
+                </span>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{meta.description}</p>
+            </div>
           </div>
         </div>
-        <span className="rounded-full bg-primary-100 text-primary-700 px-2 py-0.5 text-[11px] font-semibold shrink-0 tabular-nums">
-          {reports.length}
-        </span>
-      </div>
-      <div className="p-2 space-y-0.5">
-        {reports.map((r) => (
-          <ReportRow key={r.id} report={r} />
-        ))}
-      </div>
-    </div>
+
+        <div className="px-6 pb-6 space-y-2">
+          {reports.map((r) => (
+            <ReportRow key={r.id} report={r} />
+          ))}
+        </div>
+      </Card>
+    </motion.div>
   );
 }

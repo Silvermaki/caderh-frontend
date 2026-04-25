@@ -17,8 +17,8 @@ export interface MissingDbBannerProps {
 
 const prioBg: Record<MissingDbItem['priority'], string> = {
   high: 'bg-destructive/15 text-destructive',
-  med:  'bg-amber-100 text-amber-900',
-  low:  'bg-indigo-100 text-indigo-900',
+  med:  'bg-warning/15 text-warning',
+  low:  'bg-info/15 text-info',
 };
 
 export function MissingDbBanner({ missing }: MissingDbBannerProps) {
@@ -26,7 +26,7 @@ export function MissingDbBanner({ missing }: MissingDbBannerProps) {
   if (missing.length === 0 || dismissed) return null;
 
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-info/40 bg-info/10 px-3 py-2 text-sm text-info-foreground mb-3">
+    <div className="flex items-center gap-2 rounded-lg border border-info/40 bg-info/10 px-3 py-2 text-sm text-info-foreground mb-4">
       <Info className="h-4 w-4 text-info shrink-0" />
       <span>
         Este reporte tiene <b>{missing.length} columnas</b> pendientes de captura en el sistema. Se muestran vacías (—) hasta que se defina cómo capturarlas.

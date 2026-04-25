@@ -3,6 +3,15 @@
 
 const nextConfig = {
   reactStrictMode: false,
+  experimental: {
+    optimizePackageImports: [
+      'lucide-react',
+      'framer-motion',
+      'date-fns',
+      '@radix-ui/react-icons',
+      'recharts',
+    ],
+  },
   async rewrites() {
     return [
       {

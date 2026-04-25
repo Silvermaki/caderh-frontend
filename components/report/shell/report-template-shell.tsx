@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { ReportBreadcrumbs, type Crumb } from '../table/report-breadcrumbs';
 import { ReportHeader } from '../table/report-header';
@@ -38,20 +39,22 @@ export function ReportTemplateShell({
   }
 
   return (
-    <div>
+    <div className="mb-4">
       <ReportBreadcrumbs crumbs={breadcrumbs} />
       <ReportHeader title={`${code} · ${title}`} subtitle={subtitle} />
 
-      <div className="max-w-md border rounded-lg bg-card p-4">
-        <div className="flex flex-col gap-3">
-          {renderForm()}
-          <div className="pt-2 flex justify-end">
-            <Button onClick={handleGenerate} disabled={busy}>
-              {busy ? 'Generando…' : 'Generar reporte'}
-            </Button>
+      <Card className="p-4 max-w-md">
+        <CardContent className="p-0">
+          <div className="flex flex-col gap-3">
+            {renderForm()}
+            <div className="pt-2 flex justify-end">
+              <Button onClick={handleGenerate} disabled={busy}>
+                {busy ? 'Generando…' : 'Generar reporte'}
+              </Button>
+            </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {recent.length > 0 && (
         <div className="mt-6 max-w-md">

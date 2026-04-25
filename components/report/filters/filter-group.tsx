@@ -18,7 +18,7 @@ export function FilterGroup({ label, activeCount = 0, defaultOpen = true, childr
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-muted/40"
+        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground hover:bg-primary/5 hover:text-primary transition-colors"
       >
         <span className="inline-flex items-center gap-2">
           {label}
