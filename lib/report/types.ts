@@ -58,6 +58,29 @@ export interface HierarchicalSpec {
   levels: string[];
 }
 
+export type ChartKind = 'bar' | 'groupedBar' | 'stackedBar' | 'donut' | 'line';
+
+export interface ChartSeries {
+  key: string;
+  label: string;
+  color?: 'primary' | 'success' | 'info' | 'warning' | 'destructive';
+}
+
+export interface ChartSpec<TRow = any> {
+  kind: ChartKind;
+  title: string;
+  subtitle?: string;
+  height?: number;
+  /** Function to derive chart data from current rows. */
+  data: (rows: TRow[]) => Array<Record<string, any>>;
+  /** Field name in the derived data used as X axis (or label for donut). */
+  xKey: string;
+  /** Series definitions — for bar/line each is a series; for donut, the first one is the value. */
+  series: ChartSeries[];
+  /** Optional value formatter for tooltips/labels. */
+  valueFormat?: (n: number) => string;
+}
+
 export interface Pagination {
   offset: number;
   limit: number;
@@ -88,6 +111,7 @@ export interface ReportDefinition<TFilters, TRow> {
     conditionalRed?: ConditionalRedSpec<TRow>;
     compoundHeaders?: true;
     hierarchical?: HierarchicalSpec;
+    chart?: ChartSpec<TRow>;
   };
 
   fetcher: (filters: TFilters, pagination: Pagination) => Promise<Page<TRow>>;

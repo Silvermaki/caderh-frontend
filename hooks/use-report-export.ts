@@ -6,6 +6,24 @@ import { buildWorkbook, downloadWorkbook } from '@/components/report/export/expo
 import { requestPdfExport, triggerBlobDownload } from '@/components/report/export/export-pdf';
 import type { ColumnDef, ReportDefinition } from '@/lib/report/types';
 
+async function captureChartAsPng(reportId: string): Promise<string | undefined> {
+  if (typeof window === 'undefined') return undefined;
+  const node = document.getElementById(`chart-${reportId}`);
+  if (!node) return undefined;
+  try {
+    const html2canvas = (await import('html2canvas')).default;
+    const canvas = await html2canvas(node, {
+      backgroundColor: '#ffffff',
+      scale: 2,
+      logging: false,
+      useCORS: true,
+    });
+    return canvas.toDataURL('image/png');
+  } catch {
+    return undefined;
+  }
+}
+
 export function useReportExport<TFilters, TRow>(
   def: ReportDefinition<TFilters, TRow>,
   filters: TFilters,
@@ -20,15 +38,21 @@ export function useReportExport<TFilters, TRow>(
     try {
       const missing = flatColumns.filter((c) => c.missingInDb).map((c) => c.label);
       if (kind === 'xlsx' || kind === 'csv') {
-        const wb = buildWorkbook({
+        const chartImage = (def.variants as any)?.chart
+          ? await captureChartAsPng(def.id)
+          : undefined;
+        const wb = await buildWorkbook({
           title: def.title,
+          code: def.code,
+          subtitle: def.subtitle,
           columns: flatColumns,
           rows: currentRows,
           filtersApplied: filters as any,
           missingColumns: missing,
+          chartImage,
         });
-        const fname = `${def.code}_${def.id}.${kind}`;
-        downloadWorkbook(wb, fname);
+        const fname = `${def.code}_${def.id}.${kind === 'csv' ? 'xlsx' : kind}`;
+        await downloadWorkbook(wb, fname);
       } else {
         const blob = await requestPdfExport(def.id, filters as any);
         triggerBlobDownload(blob, `${def.code}_${def.id}.pdf`);

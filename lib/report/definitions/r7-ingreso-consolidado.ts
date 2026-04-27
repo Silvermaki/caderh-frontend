@@ -42,6 +42,23 @@ export const r7Definition: ReportDefinition<R7Filters, R7Row> = {
         { key: 'granTotal',         label: 'Gran total',          color: 'info',    format: 'money' },
       ],
     },
+    chart: {
+      kind: 'stackedBar',
+      title: 'Ingreso por trimestre',
+      subtitle: 'Desembolsos a CADERH y donaciones, apilados por trimestre',
+      xKey: 'periodo',
+      valueFormat: (v: number) => `L ${(v / 1000).toFixed(0)}K`,
+      series: [
+        { key: 'desembolsado', label: 'Desembolsado a CADERH', color: 'info' },
+        { key: 'donaciones',   label: 'Donaciones',            color: 'success' },
+      ],
+      data: (rows: R7Row[]) =>
+        rows.map((r) => ({
+          periodo: `${r.year} · ${r.quarter}`,
+          desembolsado: r.desembolsado ?? 0,
+          donaciones: r.donaciones ?? 0,
+        })),
+    },
   } as any,
   export: { excel: 'client', pdf: 'server', csv: 'client' },
   fetcher: async (filters, pagination) => {

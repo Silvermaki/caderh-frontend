@@ -42,6 +42,32 @@ export const r3Definition: ReportDefinition<R3Filters, R3Row> = {
   filters: ['project'],
   defaultFilters: {},
   columns,
+  variants: {
+    chart: {
+      kind: 'bar',
+      title: '% de retención por proyecto',
+      subtitle: 'Promedio de retención agregado por proyecto',
+      xKey: 'proyecto',
+      valueFormat: (v: number) => `${v.toFixed(1)}%`,
+      series: [
+        { key: 'pctRetencion', label: '% Retención', color: 'success' },
+      ],
+      data: (rows: R3Row[]) => {
+        const byProj = new Map<string, { proyecto: string; total: number; count: number }>();
+        for (const r of rows) {
+          const key = r.proyecto || '—';
+          const acc = byProj.get(key) ?? { proyecto: key, total: 0, count: 0 };
+          acc.total += r.pctRetencion ?? 0;
+          acc.count += 1;
+          byProj.set(key, acc);
+        }
+        return Array.from(byProj.values()).map((p) => ({
+          proyecto: p.proyecto,
+          pctRetencion: p.count > 0 ? p.total / p.count : 0,
+        })).sort((a, b) => b.pctRetencion - a.pctRetencion).slice(0, 10);
+      },
+    },
+  } as any,
   export: { excel: 'client', pdf: 'server', csv: 'client' },
   fetcher: async (filters) => {
     const res = await apiGet<{ rows: R3Row[]; total: number }>(

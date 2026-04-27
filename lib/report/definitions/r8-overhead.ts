@@ -53,6 +53,21 @@ export const r8Definition: ReportDefinition<R8Filters, R8Row> = {
       when: (r: R8Row) => r.overheadPresupuestado != null && r.overheadTotal < r.overheadPresupuestado,
       cells: ['overheadTotal', 'pctEjecucionOverhead'],
     },
+    chart: {
+      kind: 'donut',
+      title: 'Distribución del overhead por proyecto',
+      subtitle: 'Participación de cada proyecto en el overhead total anual',
+      xKey: 'projectName',
+      valueFormat: (v: number) => `L ${v.toLocaleString('es-HN', { maximumFractionDigits: 0 })}`,
+      series: [
+        { key: 'overheadTotal', label: 'Overhead total', color: 'warning' },
+      ],
+      data: (rows: R8Row[]) =>
+        rows
+          .filter((r) => (r.overheadTotal ?? 0) > 0)
+          .map((r) => ({ projectName: r.projectName, overheadTotal: r.overheadTotal }))
+          .slice(0, 8),
+    },
   } as any,
   export: { excel: 'client', pdf: 'server', csv: 'client' },
   fetcher: async (filters) => {

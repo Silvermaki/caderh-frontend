@@ -13,6 +13,7 @@ import { ExportMenu } from '../export/export-menu';
 import { MissingDbBanner, type MissingDbItem } from '../missing-db/missing-db-banner';
 import { CompoundHeader } from '../variants/compound-header';
 import { ConditionalRedCell } from '../variants/conditional-red-cell';
+import { ReportChart } from '../variants/report-chart';
 import { ReportSkeleton } from './report-skeleton';
 import { useReportQuery } from '@/hooks/use-report-query';
 import { useReportExport } from '@/hooks/use-report-export';
@@ -118,6 +119,14 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
       <MissingDbBanner missing={missing} />
 
       {aboveTable}
+
+      {definition.variants?.chart && hasData && (
+        <ReportChart
+          spec={definition.variants.chart as any}
+          rows={query.data!.rows}
+          captureId={`chart-${definition.id}`}
+        />
+      )}
 
       <Card className="p-6">
         <CardContent className="p-0">

@@ -54,7 +54,24 @@ export const r6Definition: ReportDefinition<R6Filters, R6Row> = {
       when: (r: R6Row) => r.totalDesembolsado < r.presupuestoAnual && r.presupuestoAnual > 0,
       cells: ['totalDesembolsado', 'pctEjecucion'],
     },
-  },
+    chart: {
+      kind: 'groupedBar',
+      title: 'Presupuesto vs Desembolsado por proyecto',
+      subtitle: 'Comparación de lo presupuestado anual con lo realmente ejecutado',
+      xKey: 'projectName',
+      valueFormat: (v: number) => `L ${(v / 1000).toFixed(0)}K`,
+      series: [
+        { key: 'presupuestoAnual', label: 'Presupuesto anual', color: 'info' },
+        { key: 'totalDesembolsado', label: 'Desembolsado', color: 'success' },
+      ],
+      data: (rows: R6Row[]) =>
+        rows.map((r) => ({
+          projectName: r.projectName,
+          presupuestoAnual: r.presupuestoAnual ?? 0,
+          totalDesembolsado: r.totalDesembolsado ?? 0,
+        })).slice(0, 10),
+    },
+  } as any,
   export: { excel: 'client', pdf: 'server', csv: 'client' },
   fetcher: async (filters, pagination) => {
     const page = pagination.offset !== undefined && pagination.limit

@@ -48,6 +48,27 @@ export const r1Definition: ReportDefinition<R1Filters, R1Row> = {
     hierarchical: {
       levels: ['ciudad', 'centro'],
     },
+    chart: {
+      kind: 'groupedBar',
+      title: 'Matrícula por área técnica',
+      subtitle: 'Hombres vs mujeres agregados por área',
+      xKey: 'areaTecnica',
+      series: [
+        { key: 'hombres', label: 'Hombres', color: 'info' },
+        { key: 'mujeres', label: 'Mujeres', color: 'primary' },
+      ],
+      data: (rows: R1Row[]) => {
+        const byArea = new Map<string, { areaTecnica: string; hombres: number; mujeres: number }>();
+        for (const r of rows) {
+          const key = r.areaTecnica || '—';
+          const acc = byArea.get(key) ?? { areaTecnica: key, hombres: 0, mujeres: 0 };
+          acc.hombres += r.hombres ?? 0;
+          acc.mujeres += r.mujeres ?? 0;
+          byArea.set(key, acc);
+        }
+        return Array.from(byArea.values()).sort((a, b) => (b.hombres + b.mujeres) - (a.hombres + a.mujeres)).slice(0, 10);
+      },
+    },
   },
   export: { excel: 'client', pdf: 'server', csv: 'client' },
   fetcher: async (filters, pagination) => {

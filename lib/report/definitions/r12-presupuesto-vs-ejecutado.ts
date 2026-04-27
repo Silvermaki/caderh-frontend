@@ -62,6 +62,26 @@ export const r12Definition: ReportDefinition<R12Filters, R12Row> = {
       when: (r: R12Row) => r.presupuestoProgramado != null && r.ejecutadoTotal < r.presupuestoProgramado,
       cells: ['ejecutadoTotal', 'pctEjecucion', 'saldoDisponible'],
     },
+    chart: {
+      kind: 'bar',
+      title: 'Ejecutado por rubro',
+      subtitle: 'Suma del gasto ejecutado anual por categoría presupuestal',
+      xKey: 'rubroName',
+      valueFormat: (v: number) => `L ${(v / 1000).toFixed(0)}K`,
+      series: [
+        { key: 'ejecutadoTotal', label: 'Ejecutado', color: 'primary' },
+      ],
+      data: (rows: R12Row[]) => {
+        const byRubro = new Map<string, { rubroName: string; ejecutadoTotal: number }>();
+        for (const r of rows) {
+          const key = r.rubroName || '—';
+          const acc = byRubro.get(key) ?? { rubroName: key, ejecutadoTotal: 0 };
+          acc.ejecutadoTotal += r.ejecutadoTotal ?? 0;
+          byRubro.set(key, acc);
+        }
+        return Array.from(byRubro.values()).sort((a, b) => b.ejecutadoTotal - a.ejecutadoTotal).slice(0, 10);
+      },
+    },
   } as any,
   export: { excel: 'client', pdf: 'server', csv: 'client' },
   fetcher: async (filters) => {
