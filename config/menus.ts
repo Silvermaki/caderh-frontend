@@ -58,6 +58,11 @@ let navs = [
     ]
   },
   {
+    title: "Reportes",
+    icon: Graph,
+    href: "/dashboard/reportes",
+  },
+  {
     title: "Centros",
     icon: DashBoard,
     child: [

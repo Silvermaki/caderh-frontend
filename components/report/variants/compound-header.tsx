@@ -1,0 +1,76 @@
+import type { AnyColumn, ColumnDef, CompoundColumnDef } from '@/lib/report/types';
+import { MissingDbHeader } from '../missing-db/missing-db-header';
+
+function isCompound<T>(c: AnyColumn<T>): c is CompoundColumnDef<T> {
+  return 'group' in c;
+}
+
+function renderLabel<T>(c: ColumnDef<T>) {
+  if (c.missingInDb) {
+    return <MissingDbHeader label={c.label} note={c.missingNote} source={c.plannedSource} />;
+  }
+  return c.label;
+}
+
+const HEADER_CELL = 'px-3 py-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground border-b border-border';
+
+export function CompoundHeader<TRow>({ columns }: { columns: AnyColumn<TRow>[] }) {
+  const hasGroups = columns.some(isCompound);
+
+  if (!hasGroups) {
+    return (
+      <thead>
+        <tr>
+          {columns.map((c) => {
+            const col = c as ColumnDef<TRow>;
+            return (
+              <th key={col.key} className={`${HEADER_CELL} text-left`}>
+                {renderLabel(col)}
+              </th>
+            );
+          })}
+        </tr>
+      </thead>
+    );
+  }
+
+  return (
+    <thead>
+      <tr>
+        {columns.map((c, i) => {
+          if (isCompound(c)) {
+            return (
+              <th
+                key={c.group + i}
+                colSpan={c.children.length}
+                className={`${HEADER_CELL} text-center`}
+              >
+                {c.group}
+              </th>
+            );
+          }
+          return (
+            <th
+              key={c.key}
+              rowSpan={2}
+              className={`${HEADER_CELL} text-left align-bottom`}
+            >
+              {renderLabel(c)}
+            </th>
+          );
+        })}
+      </tr>
+      <tr>
+        {columns.flatMap((c) =>
+          isCompound(c)
+            ? c.children.map((sub) => (
+                <th key={sub.key} className={`${HEADER_CELL} text-${sub.align ?? 'left'}`}>
+                  {renderLabel(sub)}
+                </th>
+              ))
+            : []
+        )}
+      </tr>
+    </thead>
+  );
+}
