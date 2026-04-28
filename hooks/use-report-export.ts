@@ -54,7 +54,13 @@ export function useReportExport<TFilters, TRow>(
         const fname = `${def.code}_${def.id}.${kind === 'csv' ? 'xlsx' : kind}`;
         await downloadWorkbook(wb, fname);
       } else {
-        const blob = await requestPdfExport(def.id, filters as any);
+        const blob = await requestPdfExport(def.id, {
+          filters: filters as any,
+          columns: flatColumns,
+          title: def.title,
+          subtitle: def.subtitle,
+          code: def.code,
+        });
         triggerBlobDownload(blob, `${def.code}_${def.id}.pdf`);
       }
       toast.success('Archivo listo', { id: dismissId });
