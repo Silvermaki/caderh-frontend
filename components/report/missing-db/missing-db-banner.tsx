@@ -1,8 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Info, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+// The "missing-in-DB" banner is a development aid for the team — it lists
+// columns the client still has to wire up. End users in production should
+// not see it (the cells already render `—` and the export footer notes them).
+function isLocalhost(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return (
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '0.0.0.0' ||
+    host === '[::1]' ||
+    host.endsWith('.local')
+  );
+}
 
 export interface MissingDbItem {
   key: string;
@@ -23,7 +38,11 @@ const prioBg: Record<MissingDbItem['priority'], string> = {
 
 export function MissingDbBanner({ missing }: MissingDbBannerProps) {
   const [dismissed, setDismissed] = useState(false);
-  if (missing.length === 0 || dismissed) return null;
+  // Hydrate to `true` only on localhost (after mount, to keep SSR markup stable).
+  const [showOnHost, setShowOnHost] = useState(false);
+  useEffect(() => { setShowOnHost(isLocalhost()); }, []);
+
+  if (!showOnHost || missing.length === 0 || dismissed) return null;
 
   return (
     <div className="flex items-center gap-2 rounded-lg border border-info/40 bg-info/10 px-3 py-2 text-sm text-info-foreground mb-4">
