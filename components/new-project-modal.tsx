@@ -178,13 +178,13 @@ const NewProjectModal = ({
     // Step 2
     const [financingSources, setFinancingSources] = useState<any[]>([]);
     const [financingItems, setFinancingItems] = useState<
-        { financing_source_id: string; amount: string; description: string }[]
-    >([{ financing_source_id: "", amount: "", description: "" }]);
+        { financing_source_id: string; amount: string; description: string; disbursement_date: string }[]
+    >([{ financing_source_id: "", amount: "", description: "", disbursement_date: "" }]);
 
     // Step 3
     const [donationItems, setDonationItems] = useState<
-        { amount: string; description: string; donation_type: string }[]
-    >([{ amount: "", description: "", donation_type: "CASH" }]);
+        { amount: string; description: string; donor_name: string; donation_type: string; disbursement_date: string }[]
+    >([{ amount: "", description: "", donor_name: "", donation_type: "CASH", disbursement_date: "" }]);
 
     // Step 4
     const [expenseItems, setExpenseItems] = useState<
@@ -306,9 +306,9 @@ const NewProjectModal = ({
         setProjectId(null);
         setIsSubmitting(false);
         setFinancingItems([
-            { financing_source_id: "", amount: "", description: "" },
+            { financing_source_id: "", amount: "", description: "", disbursement_date: "" },
         ]);
-        setDonationItems([{ amount: "", description: "", donation_type: "CASH" }]);
+        setDonationItems([{ amount: "", description: "", donor_name: "", donation_type: "CASH", disbursement_date: "" }]);
         setExpenseItems([{ amount: "", description: "", expense_category_id: "" }]);
         setUploadedFiles([]);
         setFileDescription("");
@@ -382,6 +382,7 @@ const NewProjectModal = ({
                             financing_source_id: i.financing_source_id,
                             amount: Number(i.amount),
                             description: i.description || "",
+                            disbursement_date: i.disbursement_date || null,
                         })),
                     }),
                 }
@@ -400,10 +401,14 @@ const NewProjectModal = ({
 
     const onStep3 = async () => {
         const valid = donationItems.filter(
-            (i) => i.amount && !isNaN(Number(i.amount)) && i.donation_type
+            (i) => i.amount && !isNaN(Number(i.amount)) && i.donation_type && i.donor_name.trim()
         );
         if (valid.length === 0) {
-            toast.error("Agrega al menos una donación válida");
+            toast.error("Agrega al menos una donación válida (incluye el donante)");
+            return;
+        }
+        if (valid.length < donationItems.filter((i) => i.amount || i.donor_name.trim()).length) {
+            toast.error("Cada donación debe indicar el donante");
             return;
         }
         setIsSubmitting(true);
@@ -420,7 +425,9 @@ const NewProjectModal = ({
                         items: valid.map((i) => ({
                             amount: Number(i.amount),
                             description: i.description || "",
+                            donor_name: i.donor_name.trim(),
                             donation_type: i.donation_type,
+                            disbursement_date: i.disbursement_date || null,
                         })),
                     }),
                 }
@@ -573,7 +580,7 @@ const NewProjectModal = ({
     const addFinancingItem = () => {
         setFinancingItems((prev) => [
             ...prev,
-            { financing_source_id: "", amount: "", description: "" },
+            { financing_source_id: "", amount: "", description: "", disbursement_date: "" },
         ]);
         setTimeout(
             () =>
@@ -601,7 +608,7 @@ const NewProjectModal = ({
     const addDonationItem = () => {
         setDonationItems((prev) => [
             ...prev,
-            { amount: "", description: "", donation_type: "CASH" },
+            { amount: "", description: "", donor_name: "", donation_type: "CASH", disbursement_date: "" },
         ]);
         setTimeout(
             () =>
@@ -687,25 +694,28 @@ const NewProjectModal = ({
             let errorCount = 0;
 
             if (type === "financing-sources") {
-                const items: { financing_source_id: string; amount: string; description: string }[] = [];
+                const items: { financing_source_id: string; amount: string; description: string; disbursement_date: string }[] = [];
                 for (const row of jsonRows) {
                     const fsId = String(row["Fuente ID"] ?? "").trim();
                     const monto = Number(row["Monto"]);
                     const desc = String(row["Descripcion"] ?? "").trim();
+                    const fecha = String(row["Fecha Desembolso"] ?? "").trim();
                     if (!fsId || isNaN(monto)) { errorCount++; continue; }
-                    items.push({ financing_source_id: fsId, amount: String(monto), description: desc });
+                    items.push({ financing_source_id: fsId, amount: String(monto), description: desc, disbursement_date: fecha });
                     imported++;
                 }
                 if (items.length > 0) setFinancingItems(items);
             } else if (type === "donations") {
-                const items: { amount: string; description: string; donation_type: string }[] = [];
+                const items: { amount: string; description: string; donor_name: string; donation_type: string; disbursement_date: string }[] = [];
                 for (const row of jsonRows) {
                     const monto = Number(row["Monto"]);
                     const desc = String(row["Descripcion"] ?? "").trim();
+                    const donor = String(row["Donante"] ?? "").trim();
                     const tipoRaw = String(row["Tipo"] ?? "").trim().toUpperCase();
                     const dtype = DONATION_TYPE_MAP[tipoRaw];
-                    if (isNaN(monto) || !dtype) { errorCount++; continue; }
-                    items.push({ amount: String(monto), description: desc, donation_type: dtype });
+                    const fecha = String(row["Fecha Desembolso"] ?? "").trim();
+                    if (isNaN(monto) || !dtype || !donor) { errorCount++; continue; }
+                    items.push({ amount: String(monto), description: desc, donor_name: donor, donation_type: dtype, disbursement_date: fecha });
                     imported++;
                 }
                 if (items.length > 0) setDonationItems(items);
@@ -1028,6 +1038,22 @@ const NewProjectModal = ({
                                                 placeholder="Opcional"
                                             />
                                         </div>
+                                        <div className="min-w-[160px]">
+                                            <Label className="mb-1 text-xs">
+                                                Fecha Desembolso
+                                            </Label>
+                                            <Input
+                                                type="date"
+                                                value={item.disbursement_date}
+                                                onChange={(e) =>
+                                                    updateFinancingItem(
+                                                        i,
+                                                        "disbursement_date",
+                                                        e.target.value
+                                                    )
+                                                }
+                                            />
+                                        </div>
                                         <Button
                                             type="button"
                                             variant="ghost"
@@ -1122,6 +1148,23 @@ const NewProjectModal = ({
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <Label className="mb-1 text-xs">
+                                                Donante <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Input
+                                                value={item.donor_name}
+                                                onChange={(e) =>
+                                                    updateDonationItem(
+                                                        i,
+                                                        "donor_name",
+                                                        e.target.value
+                                                    )
+                                                }
+                                                placeholder="Nombre del donante"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <Label className="mb-1 text-xs">
                                                 Descripción
                                             </Label>
                                             <Input
@@ -1134,6 +1177,22 @@ const NewProjectModal = ({
                                                     )
                                                 }
                                                 placeholder="Opcional"
+                                            />
+                                        </div>
+                                        <div className="min-w-[160px]">
+                                            <Label className="mb-1 text-xs">
+                                                Fecha Desembolso
+                                            </Label>
+                                            <Input
+                                                type="date"
+                                                value={item.disbursement_date}
+                                                onChange={(e) =>
+                                                    updateDonationItem(
+                                                        i,
+                                                        "disbursement_date",
+                                                        e.target.value
+                                                    )
+                                                }
                                             />
                                         </div>
                                         <Button

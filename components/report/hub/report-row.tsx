@@ -38,7 +38,7 @@ function variantChips(def: ReportDefinition<any, any>): Chip[] {
 }
 
 export function ReportRow({ report }: ReportRowProps) {
-  const chips = variantChips(report);
+  // const chips = variantChips(report);
   return (
     <Link
       href={`/dashboard/reportes/${report.id}`}
@@ -61,6 +61,8 @@ export function ReportRow({ report }: ReportRowProps) {
           </div>
         )}
       </div>
+      {/* Variant chips ocultos temporalmente — re-habilitar descomentando `chips`
+          arriba y este bloque cuando se quiera volver a mostrar los iconos.
       {chips.length > 0 && (
         <div className="flex gap-1.5 items-center shrink-0">
           {chips.map((c, i) => {
@@ -73,6 +75,7 @@ export function ReportRow({ report }: ReportRowProps) {
           })}
         </div>
       )}
+      */}
       <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0 transition-all duration-200 group-hover:translate-x-1 group-hover:text-primary" />
     </Link>
   );

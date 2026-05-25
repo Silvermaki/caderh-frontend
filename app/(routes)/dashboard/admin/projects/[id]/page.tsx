@@ -180,16 +180,28 @@ const Page = () => {
     const [accomplishmentsPatching, setAccomplishmentsPatching] = useState(false);
 
     const [addSourceOpen, setAddSourceOpen] = useState(false);
-    const [addSourceForm, setAddSourceForm] = useState({ financing_source_id: "", amount: "", description: "" });
+    const [addSourceForm, setAddSourceForm] = useState({ financing_source_id: "", amount: "", description: "", disbursement_date: "" });
     const [addSourceSaving, setAddSourceSaving] = useState(false);
 
+    const [editSourceOpen, setEditSourceOpen] = useState(false);
+    const [editSourceForm, setEditSourceForm] = useState({ id: "", financing_source_id: "", amount: "", description: "", disbursement_date: "" });
+    const [editSourceSaving, setEditSourceSaving] = useState(false);
+
     const [addDonationOpen, setAddDonationOpen] = useState(false);
-    const [addDonationForm, setAddDonationForm] = useState({ amount: "", donation_type: "CASH", description: "" });
+    const [addDonationForm, setAddDonationForm] = useState({ amount: "", donation_type: "CASH", donor_name: "", description: "", disbursement_date: "" });
     const [addDonationSaving, setAddDonationSaving] = useState(false);
+
+    const [editDonationOpen, setEditDonationOpen] = useState(false);
+    const [editDonationForm, setEditDonationForm] = useState({ id: "", amount: "", donation_type: "CASH", donor_name: "", description: "", disbursement_date: "" });
+    const [editDonationSaving, setEditDonationSaving] = useState(false);
 
     const [addExpenseOpen, setAddExpenseOpen] = useState(false);
     const [addExpenseForm, setAddExpenseForm] = useState({ amount: "", description: "", expense_category_id: "" });
     const [addExpenseSaving, setAddExpenseSaving] = useState(false);
+
+    const [editExpenseOpen, setEditExpenseOpen] = useState(false);
+    const [editExpenseForm, setEditExpenseForm] = useState({ id: "", amount: "", description: "", expense_category_id: "" });
+    const [editExpenseSaving, setEditExpenseSaving] = useState(false);
 
     const [expenseCategories, setExpenseCategories] = useState<any[]>([]);
     const [newCategoryName, setNewCategoryName] = useState("");
@@ -744,6 +756,7 @@ const Page = () => {
                         financing_source_id: addSourceForm.financing_source_id,
                         amount: Number(addSourceForm.amount),
                         description: addSourceForm.description || "",
+                        disbursement_date: addSourceForm.disbursement_date || null,
                     }),
                 }
             );
@@ -751,7 +764,7 @@ const Page = () => {
             if (res.ok) {
                 toast.success("Fuente agregada");
                 setAddSourceOpen(false);
-                setAddSourceForm({ financing_source_id: "", amount: "", description: "" });
+                setAddSourceForm({ financing_source_id: "", amount: "", description: "", disbursement_date: "" });
                 fetchStep2();
                 fetchProject();
             } else {
@@ -761,6 +774,55 @@ const Page = () => {
             toast.error("Error al agregar fuente");
         }
         setAddSourceSaving(false);
+    };
+
+    const openEditSource = (row: any) => {
+        setEditSourceForm({
+            id: row.id,
+            financing_source_id: row.financing_source_id ?? "",
+            amount: String(row.amount ?? ""),
+            description: row.description ?? "",
+            disbursement_date: row.disbursement_date ? String(row.disbursement_date).slice(0, 10) : "",
+        });
+        setEditSourceOpen(true);
+    };
+
+    const onEditSource = async () => {
+        if (!editSourceForm.financing_source_id || !editSourceForm.amount) {
+            toast.error("Completa fuente y monto");
+            return;
+        }
+        setEditSourceSaving(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/${id}/financing-source/${editSourceForm.id}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session?.user?.session}`,
+                    },
+                    body: JSON.stringify({
+                        financing_source_id: editSourceForm.financing_source_id,
+                        amount: Number(editSourceForm.amount),
+                        description: editSourceForm.description || "",
+                        disbursement_date: editSourceForm.disbursement_date || null,
+                    }),
+                }
+            );
+            const json = await res.json();
+            if (res.ok) {
+                toast.success("Fuente actualizada");
+                setEditSourceOpen(false);
+                fetchStep2();
+                fetchProject();
+            } else {
+                toast.error(json.message ?? "Error al actualizar");
+            }
+        } catch {
+            toast.error("Error al actualizar fuente");
+        }
+        setEditSourceSaving(false);
     };
 
     const onDeleteSource = async (sourceId: string) => {
@@ -790,6 +852,10 @@ const Page = () => {
             toast.error("Completa monto y tipo");
             return;
         }
+        if (!addDonationForm.donor_name.trim()) {
+            toast.error("El donante es obligatorio");
+            return;
+        }
         setAddDonationSaving(true);
         try {
             const res = await fetch(
@@ -803,7 +869,9 @@ const Page = () => {
                     body: JSON.stringify({
                         amount: Number(addDonationForm.amount),
                         donation_type: addDonationForm.donation_type,
+                        donor_name: addDonationForm.donor_name.trim(),
                         description: addDonationForm.description || "",
+                        disbursement_date: addDonationForm.disbursement_date || null,
                     }),
                 }
             );
@@ -811,7 +879,7 @@ const Page = () => {
             if (res.ok) {
                 toast.success("Donación agregada");
                 setAddDonationOpen(false);
-                setAddDonationForm({ amount: "", donation_type: "CASH", description: "" });
+                setAddDonationForm({ amount: "", donation_type: "CASH", donor_name: "", description: "", disbursement_date: "" });
                 fetchStep3();
                 fetchProject();
             } else {
@@ -821,6 +889,61 @@ const Page = () => {
             toast.error("Error al agregar donación");
         }
         setAddDonationSaving(false);
+    };
+
+    const openEditDonation = (row: any) => {
+        setEditDonationForm({
+            id: row.id,
+            amount: String(row.amount ?? ""),
+            donation_type: row.donation_type ?? "CASH",
+            donor_name: row.donor_name ?? "",
+            description: row.description ?? "",
+            disbursement_date: row.disbursement_date ? String(row.disbursement_date).slice(0, 10) : "",
+        });
+        setEditDonationOpen(true);
+    };
+
+    const onEditDonation = async () => {
+        if (!editDonationForm.amount || !editDonationForm.donation_type) {
+            toast.error("Completa monto y tipo");
+            return;
+        }
+        if (!editDonationForm.donor_name.trim()) {
+            toast.error("El donante es obligatorio");
+            return;
+        }
+        setEditDonationSaving(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/${id}/donation/${editDonationForm.id}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session?.user?.session}`,
+                    },
+                    body: JSON.stringify({
+                        amount: Number(editDonationForm.amount),
+                        donation_type: editDonationForm.donation_type,
+                        donor_name: editDonationForm.donor_name.trim(),
+                        description: editDonationForm.description || "",
+                        disbursement_date: editDonationForm.disbursement_date || null,
+                    }),
+                }
+            );
+            const json = await res.json();
+            if (res.ok) {
+                toast.success("Donación actualizada");
+                setEditDonationOpen(false);
+                fetchStep3();
+                fetchProject();
+            } else {
+                toast.error(json.message ?? "Error al actualizar");
+            }
+        } catch {
+            toast.error("Error al actualizar donación");
+        }
+        setEditDonationSaving(false);
     };
 
     const onDeleteDonation = async (donationId: string) => {
@@ -881,6 +1004,53 @@ const Page = () => {
             toast.error("Error al agregar gasto");
         }
         setAddExpenseSaving(false);
+    };
+
+    const openEditExpense = (row: any) => {
+        setEditExpenseForm({
+            id: row.id,
+            amount: String(row.amount ?? ""),
+            description: row.description ?? "",
+            expense_category_id: row.expense_category_id ?? "",
+        });
+        setEditExpenseOpen(true);
+    };
+
+    const onEditExpense = async () => {
+        if (!editExpenseForm.amount) {
+            toast.error("Completa el monto");
+            return;
+        }
+        setEditExpenseSaving(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_PROXY}/supervisor/project/${id}/expense/${editExpenseForm.id}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session?.user?.session}`,
+                    },
+                    body: JSON.stringify({
+                        amount: Number(editExpenseForm.amount),
+                        description: editExpenseForm.description || "",
+                        expense_category_id: editExpenseForm.expense_category_id || null,
+                    }),
+                }
+            );
+            const json = await res.json();
+            if (res.ok) {
+                toast.success("Gasto actualizado");
+                setEditExpenseOpen(false);
+                fetchStep4();
+                fetchProject();
+            } else {
+                toast.error(json.message ?? "Error al actualizar");
+            }
+        } catch {
+            toast.error("Error al actualizar gasto");
+        }
+        setEditExpenseSaving(false);
     };
 
     const onDeleteExpense = async (expenseId: string) => {
@@ -1469,6 +1639,7 @@ const Page = () => {
                                             <TableHead>Nombre</TableHead>
                                             <TableHead>Descripción</TableHead>
                                             <TableHead>Monto</TableHead>
+                                            <TableHead>Fecha Desembolso</TableHead>
                                             {canEdit && <TableHead>Acciones</TableHead>}
                                         </TableRow>
                                     </TableHeader>
@@ -1478,16 +1649,26 @@ const Page = () => {
                                                 <TableCell>{r.financing_source_name ?? "-"}</TableCell>
                                                 <TableCell>{r.description || "-"}</TableCell>
                                                 <TableCell>{formatCurrency(Number(r.amount ?? 0))}</TableCell>
+                                                <TableCell>{r.disbursement_date ? String(r.disbursement_date).slice(0, 10) : "-"}</TableCell>
                                                 {canEdit && (
                                                     <TableCell>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="text-destructive"
-                                                            onClick={() => onDeleteSource(r.id)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
+                                                        <div className="flex gap-1">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => openEditSource(r)}
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="text-destructive"
+                                                                onClick={() => onDeleteSource(r.id)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
                                                     </TableCell>
                                                 )}
                                             </TableRow>
@@ -1563,32 +1744,43 @@ const Page = () => {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead>Donante / Descripción</TableHead>
+                                            <TableHead>Donante</TableHead>
+                                            <TableHead>Descripción</TableHead>
                                             <TableHead>Tipo</TableHead>
                                             <TableHead>Monto</TableHead>
-                                            <TableHead>Fecha</TableHead>
+                                            <TableHead>Fecha Desembolso</TableHead>
                                             {canEdit && <TableHead>Acciones</TableHead>}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
                                         {donations.map((r) => (
                                             <TableRow key={r.id}>
+                                                <TableCell>{r.donor_name || "-"}</TableCell>
                                                 <TableCell>{r.description || "-"}</TableCell>
                                                 <TableCell>{r.donation_type === "CASH" ? "Efectivo" : r.donation_type === "BENEFIT" ? "Beneficio" : "Suministros"}</TableCell>
                                                 <TableCell>{formatCurrency(Number(r.amount ?? 0))}</TableCell>
                                                 <TableCell>
-                                                    {r.created_dt ? dateToString(new Date(r.created_dt)) : "-"}
+                                                    {r.disbursement_date ? String(r.disbursement_date).slice(0, 10) : "-"}
                                                 </TableCell>
                                                 {canEdit && (
                                                     <TableCell>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="text-destructive"
-                                                            onClick={() => onDeleteDonation(r.id)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
+                                                        <div className="flex gap-1">
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                onClick={() => openEditDonation(r)}
+                                                            >
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="text-destructive"
+                                                                onClick={() => onDeleteDonation(r.id)}
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
                                                     </TableCell>
                                                 )}
                                             </TableRow>
@@ -1667,14 +1859,23 @@ const Page = () => {
                                                     <TableCell>{formatCurrency(Number(r.amount ?? 0))}</TableCell>
                                                     {canEdit && (
                                                         <TableCell>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                className="text-destructive"
-                                                                onClick={() => onDeleteExpense(r.id)}
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
+                                                            <div className="flex gap-1">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    onClick={() => openEditExpense(r)}
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="text-destructive"
+                                                                    onClick={() => onDeleteExpense(r.id)}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
                                                         </TableCell>
                                                     )}
                                                 </TableRow>
@@ -2046,10 +2247,75 @@ const Page = () => {
                                     onChange={(e) => setAddSourceForm((p) => ({ ...p, description: e.target.value }))}
                                 />
                             </div>
+                            <div>
+                                <Label>Fecha Desembolso</Label>
+                                <Input
+                                    type="date"
+                                    value={addSourceForm.disbursement_date}
+                                    onChange={(e) => setAddSourceForm((p) => ({ ...p, disbursement_date: e.target.value }))}
+                                />
+                            </div>
                             <div className="flex gap-2 justify-end">
                                 <Button variant="outline" onClick={() => setAddSourceOpen(false)}>Cancelar</Button>
                                 <Button onClick={onAddSource} disabled={addSourceSaving}>
                                     {addSourceSaving ? "Guardando..." : "Agregar"}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {editSourceOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <Card className="w-full max-w-md mx-4">
+                        <CardHeader className="flex flex-row justify-between">
+                            <CardTitle>Editar Fuente</CardTitle>
+                            <Button variant="ghost" size="icon" onClick={() => setEditSourceOpen(false)}>×</Button>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div>
+                                <Label>Fuente</Label>
+                                <Select
+                                    value={editSourceForm.financing_source_id}
+                                    onValueChange={(v) => setEditSourceForm((p) => ({ ...p, financing_source_id: v }))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Selecciona" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {allFinancingSources.map((fs) => (
+                                            <SelectItem key={fs.id} value={fs.id}>{fs.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label>Monto</Label>
+                                <CurrencyInput
+                                    value={editSourceForm.amount}
+                                    onChange={(v) => setEditSourceForm((p) => ({ ...p, amount: v }))}
+                                />
+                            </div>
+                            <div>
+                                <Label>Descripción (opcional)</Label>
+                                <Input
+                                    value={editSourceForm.description}
+                                    onChange={(e) => setEditSourceForm((p) => ({ ...p, description: e.target.value }))}
+                                />
+                            </div>
+                            <div>
+                                <Label>Fecha Desembolso</Label>
+                                <Input
+                                    type="date"
+                                    value={editSourceForm.disbursement_date}
+                                    onChange={(e) => setEditSourceForm((p) => ({ ...p, disbursement_date: e.target.value }))}
+                                />
+                            </div>
+                            <div className="flex gap-2 justify-end">
+                                <Button variant="outline" onClick={() => setEditSourceOpen(false)}>Cancelar</Button>
+                                <Button onClick={onEditSource} disabled={editSourceSaving}>
+                                    {editSourceSaving ? "Guardando..." : "Guardar"}
                                 </Button>
                             </div>
                         </CardContent>
@@ -2089,16 +2355,99 @@ const Page = () => {
                                 </Select>
                             </div>
                             <div>
-                                <Label>Donante / Descripción (opcional)</Label>
+                                <Label>Donante <span className="text-red-500">*</span></Label>
+                                <Input
+                                    value={addDonationForm.donor_name}
+                                    onChange={(e) => setAddDonationForm((p) => ({ ...p, donor_name: e.target.value }))}
+                                    placeholder="Nombre del donante"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <Label>Descripción (opcional)</Label>
                                 <Input
                                     value={addDonationForm.description}
                                     onChange={(e) => setAddDonationForm((p) => ({ ...p, description: e.target.value }))}
+                                />
+                            </div>
+                            <div>
+                                <Label>Fecha Desembolso</Label>
+                                <Input
+                                    type="date"
+                                    value={addDonationForm.disbursement_date}
+                                    onChange={(e) => setAddDonationForm((p) => ({ ...p, disbursement_date: e.target.value }))}
                                 />
                             </div>
                             <div className="flex gap-2 justify-end">
                                 <Button variant="outline" onClick={() => setAddDonationOpen(false)}>Cancelar</Button>
                                 <Button onClick={onAddDonation} disabled={addDonationSaving}>
                                     {addDonationSaving ? "Guardando..." : "Agregar"}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {editDonationOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <Card className="w-full max-w-md mx-4">
+                        <CardHeader className="flex flex-row justify-between">
+                            <CardTitle>Editar Donación</CardTitle>
+                            <Button variant="ghost" size="icon" onClick={() => setEditDonationOpen(false)}>×</Button>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div>
+                                <Label>Monto</Label>
+                                <CurrencyInput
+                                    value={editDonationForm.amount}
+                                    onChange={(v) => setEditDonationForm((p) => ({ ...p, amount: v }))}
+                                />
+                            </div>
+                            <div>
+                                <Label>Tipo</Label>
+                                <Select
+                                    value={editDonationForm.donation_type}
+                                    onValueChange={(v) => setEditDonationForm((p) => ({ ...p, donation_type: v }))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="CASH">Efectivo</SelectItem>
+                                        <SelectItem value="SUPPLY">Suministros</SelectItem>
+                                        <SelectItem value="BENEFIT">Beneficio</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label>Donante <span className="text-red-500">*</span></Label>
+                                <Input
+                                    value={editDonationForm.donor_name}
+                                    onChange={(e) => setEditDonationForm((p) => ({ ...p, donor_name: e.target.value }))}
+                                    placeholder="Nombre del donante"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <Label>Descripción (opcional)</Label>
+                                <Input
+                                    value={editDonationForm.description}
+                                    onChange={(e) => setEditDonationForm((p) => ({ ...p, description: e.target.value }))}
+                                />
+                            </div>
+                            <div>
+                                <Label>Fecha Desembolso</Label>
+                                <Input
+                                    type="date"
+                                    value={editDonationForm.disbursement_date}
+                                    onChange={(e) => setEditDonationForm((p) => ({ ...p, disbursement_date: e.target.value }))}
+                                />
+                            </div>
+                            <div className="flex gap-2 justify-end">
+                                <Button variant="outline" onClick={() => setEditDonationOpen(false)}>Cancelar</Button>
+                                <Button onClick={onEditDonation} disabled={editDonationSaving}>
+                                    {editDonationSaving ? "Guardando..." : "Guardar"}
                                 </Button>
                             </div>
                         </CardContent>
@@ -2164,6 +2513,55 @@ const Page = () => {
                                 <Button variant="outline" onClick={() => setAddExpenseOpen(false)}>Cancelar</Button>
                                 <Button onClick={onAddExpense} disabled={addExpenseSaving}>
                                     {addExpenseSaving ? "Guardando..." : "Agregar"}
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {editExpenseOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <Card className="w-full max-w-md mx-4">
+                        <CardHeader className="flex flex-row justify-between">
+                            <CardTitle>Editar Gasto</CardTitle>
+                            <Button variant="ghost" size="icon" onClick={() => setEditExpenseOpen(false)}>×</Button>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div>
+                                <Label>Monto</Label>
+                                <CurrencyInput
+                                    value={editExpenseForm.amount}
+                                    onChange={(v) => setEditExpenseForm((p) => ({ ...p, amount: v }))}
+                                />
+                            </div>
+                            <div>
+                                <Label>Categoría (opcional)</Label>
+                                <Select
+                                    value={editExpenseForm.expense_category_id}
+                                    onValueChange={(v) => setEditExpenseForm((p) => ({ ...p, expense_category_id: v }))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Sin categoría" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {expenseCategories.map((c) => (
+                                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label>Descripción (opcional)</Label>
+                                <Input
+                                    value={editExpenseForm.description}
+                                    onChange={(e) => setEditExpenseForm((p) => ({ ...p, description: e.target.value }))}
+                                />
+                            </div>
+                            <div className="flex gap-2 justify-end">
+                                <Button variant="outline" onClick={() => setEditExpenseOpen(false)}>Cancelar</Button>
+                                <Button onClick={onEditExpense} disabled={editExpenseSaving}>
+                                    {editExpenseSaving ? "Guardando..." : "Guardar"}
                                 </Button>
                             </div>
                         </CardContent>

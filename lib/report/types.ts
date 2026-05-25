@@ -8,7 +8,7 @@ export type ReportCategory =
 
 export type FilterKey =
   | 'dateRange' | 'year' | 'quarter'
-  | 'project' | 'cftp' | 'course'
+  | 'project' | 'cftp' | 'course' | 'financingSource'
   | 'gender' | 'age' | 'youthStatus'
   | 'department' | 'municipality' | 'city'
   | 'technicalArea' | 'trainingType' | 'modality';

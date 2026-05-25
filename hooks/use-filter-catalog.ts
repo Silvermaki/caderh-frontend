@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiGet } from '@/lib/api/reports-client';
 
 export type CatalogKey =
-  | 'project' | 'cftp' | 'course'
+  | 'project' | 'cftp' | 'course' | 'financingSource'
   | 'area' | 'department' | 'municipality'
   | 'instructor';
 
@@ -28,6 +28,11 @@ const CATALOGS: Record<CatalogKey, CatalogEndpoint> = {
     path: '/centros/courses',
     params: { all: 'true' },
     map: (r) => ({ value: String(r.id), label: r.nombre }),
+  },
+  financingSource: {
+    path: '/supervisor/financing-sources',
+    params: { all: 'true' },
+    map: (r) => ({ value: String(r.id), label: r.name }),
   },
   area: {
     path: '/centros/areas',

@@ -2,8 +2,8 @@ import type { ReportDefinition, ColumnDef } from '../types';
 import { registerReport } from '../registry';
 import { apiGet } from '@/lib/api/reports-client';
 
-export interface R12Filters { project?: string[]; year?: number; }
-export interface R12Row {
+export interface R9Filters { project?: string[]; year?: number; }
+export interface R9Row {
   projectId: string;
   projectName: string;
   rubroId: number;
@@ -22,35 +22,35 @@ const money = (n: number | null) =>
   n == null ? '—' : n.toLocaleString('es-HN', { style: 'currency', currency: 'HNL' });
 const pct = (n: number | null) => n == null ? '—' : `${n.toFixed(1)}%`;
 
-const columns: ColumnDef<R12Row>[] = [
-  { key: 'projectName', label: 'Proyecto', align: 'left',  render: (r: R12Row) => r.projectName },
-  { key: 'rubroName',   label: 'Rubro',    align: 'left',  render: (r: R12Row) => r.rubroName },
+const columns: ColumnDef<R9Row>[] = [
+  { key: 'projectName', label: 'Proyecto', align: 'left',  render: (r: R9Row) => r.projectName },
+  { key: 'rubroName',   label: 'Rubro',    align: 'left',  render: (r: R9Row) => r.rubroName },
   {
     key: 'presupuestoProgramado', label: 'Presupuesto programado anual', align: 'right',
     missingInDb: true, missingNote: 'No existe tabla de presupuesto programado',
     plannedSource: 'project_budgets (pendiente)',
-    render: (r: R12Row) => money(r.presupuestoProgramado),
+    render: (r: R9Row) => money(r.presupuestoProgramado),
   } as any,
-  { key: 'ejecutadoQ1', label: 'Ejec. Q1', align: 'right', render: (r: R12Row) => money(r.ejecutadoQ1) },
-  { key: 'ejecutadoQ2', label: 'Ejec. Q2', align: 'right', render: (r: R12Row) => money(r.ejecutadoQ2) },
-  { key: 'ejecutadoQ3', label: 'Ejec. Q3', align: 'right', render: (r: R12Row) => money(r.ejecutadoQ3) },
-  { key: 'ejecutadoQ4', label: 'Ejec. Q4', align: 'right', render: (r: R12Row) => money(r.ejecutadoQ4) },
-  { key: 'ejecutadoTotal', label: 'Ejecutado total', align: 'right', render: (r: R12Row) => money(r.ejecutadoTotal) },
+  { key: 'ejecutadoQ1', label: 'Ejec. Q1', align: 'right', render: (r: R9Row) => money(r.ejecutadoQ1) },
+  { key: 'ejecutadoQ2', label: 'Ejec. Q2', align: 'right', render: (r: R9Row) => money(r.ejecutadoQ2) },
+  { key: 'ejecutadoQ3', label: 'Ejec. Q3', align: 'right', render: (r: R9Row) => money(r.ejecutadoQ3) },
+  { key: 'ejecutadoQ4', label: 'Ejec. Q4', align: 'right', render: (r: R9Row) => money(r.ejecutadoQ4) },
+  { key: 'ejecutadoTotal', label: 'Ejecutado total', align: 'right', render: (r: R9Row) => money(r.ejecutadoTotal) },
   {
     key: 'pctEjecucion', label: '% de ejecución', align: 'right',
     missingInDb: true, missingNote: 'Deriva de presupuesto programado (pendiente)',
-    render: (r: R12Row) => pct(r.pctEjecucion),
+    render: (r: R9Row) => pct(r.pctEjecucion),
   } as any,
   {
     key: 'saldoDisponible', label: 'Saldo disponible', align: 'right',
     missingInDb: true, missingNote: 'Deriva de presupuesto programado (pendiente)',
-    render: (r: R12Row) => money(r.saldoDisponible),
+    render: (r: R9Row) => money(r.saldoDisponible),
   } as any,
 ];
 
-export const r12Definition: ReportDefinition<R12Filters, R12Row> = {
-  id: 'r12-presupuesto-vs-ejecutado',
-  code: 'R12',
+export const r9Definition: ReportDefinition<R9Filters, R9Row> = {
+  id: 'r9-presupuesto-vs-ejecutado',
+  code: 'R9',
   category: 'egresos',
   title: 'Presupuesto ejecutado vs programado',
   subtitle: 'Desglose por rubro, con rojo cuando ejecutado < programado',
@@ -59,7 +59,7 @@ export const r12Definition: ReportDefinition<R12Filters, R12Row> = {
   columns,
   variants: {
     conditionalRed: {
-      when: (r: R12Row) => r.presupuestoProgramado != null && r.ejecutadoTotal < r.presupuestoProgramado,
+      when: (r: R9Row) => r.presupuestoProgramado != null && r.ejecutadoTotal < r.presupuestoProgramado,
       cells: ['ejecutadoTotal', 'pctEjecucion', 'saldoDisponible'],
     },
     chart: {
@@ -71,7 +71,7 @@ export const r12Definition: ReportDefinition<R12Filters, R12Row> = {
       series: [
         { key: 'ejecutadoTotal', label: 'Ejecutado', color: 'primary' },
       ],
-      data: (rows: R12Row[]) => {
+      data: (rows: R9Row[]) => {
         const byRubro = new Map<string, { rubroName: string; ejecutadoTotal: number }>();
         for (const r of rows) {
           const key = r.rubroName || '—';
@@ -85,12 +85,12 @@ export const r12Definition: ReportDefinition<R12Filters, R12Row> = {
   } as any,
   export: { excel: 'client', pdf: 'server', csv: 'client' },
   fetcher: async (filters) => {
-    const res = await apiGet<{ rows: R12Row[]; total: number; meta?: any }>(
-      '/reports/r12-presupuesto-vs-ejecutado',
+    const res = await apiGet<{ rows: R9Row[]; total: number; meta?: any }>(
+      '/reports/r9-presupuesto-vs-ejecutado',
       { project: filters.project?.join(','), year: filters.year },
     );
     return { rows: res.rows, total: res.total, meta: res.meta };
   },
 };
 
-registerReport(r12Definition);
+registerReport(r9Definition);

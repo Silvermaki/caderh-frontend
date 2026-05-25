@@ -5,7 +5,14 @@ import { apiGet } from '@/lib/api/reports-client';
 export interface R1Filters {
   project?: string[];
   cftp?: string[];
+  financingSource?: string[];
+  technicalArea?: string[];
+  city?: string[];
   year?: number;
+  quarter?: string;
+  age_min?: number;
+  age_max?: number;
+  gender?: string[];
 }
 
 export interface R1Row {
@@ -15,6 +22,9 @@ export interface R1Row {
   centro: string;
   curso: string;
   areaTecnica: string;
+  anio: number | null;
+  trimestre: number | null;
+  edad: number | null;
   hombres: number;
   mujeres: number;
   formacionNormal: number;
@@ -22,31 +32,55 @@ export interface R1Row {
   total: number;
 }
 
+const QUARTER_LABEL: Record<number, string> = { 1: 'Q1', 2: 'Q2', 3: 'Q3', 4: 'Q4' };
+
 const columns: ColumnDef<R1Row>[] = [
-  { key: 'proyecto',        label: 'Proyecto',      align: 'left',  render: (r: R1Row) => r.proyecto },
-  { key: 'ciudad',          label: 'Ciudad/Zona',   align: 'left',  render: (r: R1Row) => r.ciudad },
-  { key: 'centro',          label: 'Centro (CFTP)', align: 'left',  render: (r: R1Row) => r.centro },
-  { key: 'curso',           label: 'Curso',         align: 'left',  render: (r: R1Row) => r.curso },
-  { key: 'areaTecnica',     label: 'Área técnica',  align: 'left',  render: (r: R1Row) => r.areaTecnica },
-  { key: 'hombres',         label: 'Hombres',       align: 'right', render: (r: R1Row) => String(r.hombres) },
-  { key: 'mujeres',         label: 'Mujeres',       align: 'right', render: (r: R1Row) => String(r.mujeres) },
-  { key: 'formacionNormal', label: 'F. Normal',     align: 'right', render: (r: R1Row) => String(r.formacionNormal) },
-  { key: 'formacionDual',   label: 'F. Dual',       align: 'right', render: (r: R1Row) => String(r.formacionDual) },
-  { key: 'total',           label: 'Total',         align: 'right', render: (r: R1Row) => String(r.total) },
+  { key: 'proyecto',        label: 'Proyecto',          align: 'left',  render: (r) => r.proyecto },
+  { key: 'ciudad',          label: 'Ciudad/Zona',       align: 'left',  render: (r) => r.ciudad },
+  { key: 'centro',          label: 'Centro (CFTP)',     align: 'left',  render: (r) => r.centro },
+  { key: 'curso',           label: 'Curso',             align: 'left',  render: (r) => r.curso },
+  { key: 'areaTecnica',     label: 'Área técnica',      align: 'left',  render: (r) => r.areaTecnica },
+  { key: 'anio',            label: 'Año',               align: 'right', render: (r) => r.anio != null ? String(r.anio) : '—' },
+  { key: 'trimestre',       label: 'Trimestre',         align: 'right', render: (r) => r.trimestre != null ? (QUARTER_LABEL[r.trimestre] ?? String(r.trimestre)) : '—' },
+  { key: 'edad',            label: 'Edad',              align: 'right', render: (r) => r.edad != null ? String(r.edad) : '—' },
+  { key: 'hombres',         label: 'Hombres',           align: 'right', render: (r) => String(r.hombres) },
+  { key: 'mujeres',         label: 'Mujeres',           align: 'right', render: (r) => String(r.mujeres) },
+  { key: 'formacionNormal', label: 'F. Normal',         align: 'right', render: (r) => String(r.formacionNormal) },
+  { key: 'formacionDual',   label: 'F. Dual',           align: 'right', render: (r) => String(r.formacionDual) },
+  { key: 'total',           label: 'Total',             align: 'right', render: (r) => String(r.total) },
 ];
+
+const sumKey = (k: keyof R1Row) => (rows: R1Row[]) => rows.reduce((s, r) => s + (Number(r[k]) || 0), 0);
 
 export const r1Definition: ReportDefinition<R1Filters, R1Row> = {
   id: 'r1-matricula-cftp',
   code: 'R1',
   category: 'estudiantes',
   title: 'Consolidado matrícula por CFTP',
-  subtitle: 'Jerárquico: Ciudad → Centro → Curso, con subtotales',
-  filters: ['project', 'cftp', 'year'],
+  subtitle: 'Pivot por ciudad / centro / curso / año / trimestre / edad',
+  filters: [
+    'year', 'quarter',
+    'project', 'cftp', 'financingSource',
+    'gender', 'age',
+    'city',
+    'technicalArea',
+  ],
   defaultFilters: { year: new Date().getFullYear() },
   columns,
+  totals: [
+    { key: 'hombres',          kind: 'sum' },
+    { key: 'mujeres',          kind: 'sum' },
+    { key: 'formacionNormal',  kind: 'sum' },
+    { key: 'formacionDual',    kind: 'sum' },
+    { key: 'total',            kind: 'sum' },
+  ],
   variants: {
-    hierarchical: {
-      levels: ['ciudad', 'centro'],
+    kpiStrip: {
+      cards: [
+        { key: 'totalHombres', label: 'Total Hombres', color: 'info',    compute: sumKey('hombres') },
+        { key: 'totalMujeres', label: 'Total Mujeres', color: 'accent',  compute: sumKey('mujeres') },
+        { key: 'totalGeneral', label: 'Total Matrícula', color: 'success', compute: sumKey('total') },
+      ],
     },
     chart: {
       kind: 'groupedBar',
@@ -81,7 +115,14 @@ export const r1Definition: ReportDefinition<R1Filters, R1Row> = {
       {
         project: filters.project?.join(','),
         cftp: filters.cftp?.join(','),
+        financingSource: filters.financingSource?.join(','),
+        technicalArea: filters.technicalArea?.join(','),
+        city: filters.city?.join(','),
         year: filters.year,
+        quarter: filters.quarter,
+        age_min: filters.age_min,
+        age_max: filters.age_max,
+        gender: filters.gender?.join(','),
         page,
         page_size: pageSize,
       },

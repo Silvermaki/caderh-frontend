@@ -1,7 +1,7 @@
 'use client';
 import type { ReportDefinition } from '@/lib/report/types';
 import { FilterGroup } from './filter-group';
-import { DateRangeField, MultiSelectField, SingleSelectField } from './filter-controls';
+import { DateRangeField, MultiSelectField, NumberRangeField, SingleSelectField } from './filter-controls';
 import { useFilterCatalog } from '@/hooks/use-filter-catalog';
 import { FILTER_META } from '@/lib/report/filter-keys';
 
@@ -10,6 +10,8 @@ interface FiltersInput {
   setFilter: (k: string, v: any) => void;
   def: ReportDefinition<any, any>;
 }
+
+// ─── Contexto ────────────────────────────────────────────────────────────────
 
 function ProjectField({ filters, setFilter }: FiltersInput) {
   const { options } = useFilterCatalog('project');
@@ -34,6 +36,32 @@ function CftpField({ filters, setFilter }: FiltersInput) {
     />
   );
 }
+
+function CourseField({ filters, setFilter }: FiltersInput) {
+  const { options } = useFilterCatalog('course');
+  return (
+    <MultiSelectField
+      label={FILTER_META.course.label}
+      value={filters.course ?? []}
+      onChange={(v) => setFilter('course', v)}
+      options={options}
+    />
+  );
+}
+
+function FinancingSourceField({ filters, setFilter }: FiltersInput) {
+  const { options } = useFilterCatalog('financingSource');
+  return (
+    <MultiSelectField
+      label={FILTER_META.financingSource.label}
+      value={filters.financingSource ?? []}
+      onChange={(v) => setFilter('financingSource', v)}
+      options={options}
+    />
+  );
+}
+
+// ─── Período ─────────────────────────────────────────────────────────────────
 
 function YearField({ filters, setFilter }: FiltersInput) {
   const current = new Date().getFullYear();
@@ -83,22 +111,136 @@ function DateRange({ filters, setFilter }: FiltersInput) {
   );
 }
 
-export function buildReportFilters(def: ReportDefinition<any, any>) {
-  return (filters: any, setFilter: (k: string, v: any) => void) => (
-    <>
-      {(def.filters.includes('dateRange') || def.filters.includes('year') || def.filters.includes('quarter')) && (
-        <FilterGroup label="Período">
-          {def.filters.includes('dateRange') && <DateRange filters={filters} setFilter={setFilter} def={def} />}
-          {def.filters.includes('year')      && <YearField filters={filters} setFilter={setFilter} def={def} />}
-          {def.filters.includes('quarter')   && <QuarterField filters={filters} setFilter={setFilter} def={def} />}
-        </FilterGroup>
-      )}
-      {(def.filters.includes('project') || def.filters.includes('cftp')) && (
-        <FilterGroup label="Contexto">
-          {def.filters.includes('project') && <ProjectField filters={filters} setFilter={setFilter} def={def} />}
-          {def.filters.includes('cftp')    && <CftpField    filters={filters} setFilter={setFilter} def={def} />}
-        </FilterGroup>
-      )}
-    </>
+// ─── Demografía ──────────────────────────────────────────────────────────────
+
+function GenderField({ filters, setFilter }: FiltersInput) {
+  return (
+    <MultiSelectField
+      label={FILTER_META.gender.label}
+      value={filters.gender ?? []}
+      onChange={(v) => setFilter('gender', v)}
+      options={[
+        { value: 'M', label: 'Hombres' },
+        { value: 'F', label: 'Mujeres' },
+      ]}
+    />
   );
+}
+
+function AgeField({ filters, setFilter }: FiltersInput) {
+  return (
+    <NumberRangeField
+      label={FILTER_META.age.label}
+      value={{ min: filters.age_min, max: filters.age_max }}
+      onChange={(v) => {
+        setFilter('age_min', v.min);
+        setFilter('age_max', v.max);
+      }}
+      description="Rango de edad (en años)"
+    />
+  );
+}
+
+// ─── Ubicación ───────────────────────────────────────────────────────────────
+
+function CityField({ filters, setFilter }: FiltersInput) {
+  const { options } = useFilterCatalog('municipality');
+  return (
+    <MultiSelectField
+      label={FILTER_META.city.label}
+      value={filters.city ?? []}
+      onChange={(v) => setFilter('city', v)}
+      options={options}
+    />
+  );
+}
+
+function MunicipalityField({ filters, setFilter }: FiltersInput) {
+  const { options } = useFilterCatalog('municipality');
+  return (
+    <MultiSelectField
+      label={FILTER_META.municipality.label}
+      value={filters.municipality ?? []}
+      onChange={(v) => setFilter('municipality', v)}
+      options={options}
+    />
+  );
+}
+
+function DepartmentField({ filters, setFilter }: FiltersInput) {
+  const { options } = useFilterCatalog('department');
+  return (
+    <MultiSelectField
+      label={FILTER_META.department.label}
+      value={filters.department ?? []}
+      onChange={(v) => setFilter('department', v)}
+      options={options}
+    />
+  );
+}
+
+// ─── Programático ────────────────────────────────────────────────────────────
+
+function TechnicalAreaField({ filters, setFilter }: FiltersInput) {
+  const { options } = useFilterCatalog('area');
+  return (
+    <MultiSelectField
+      label={FILTER_META.technicalArea.label}
+      value={filters.technicalArea ?? []}
+      onChange={(v) => setFilter('technicalArea', v)}
+      options={options}
+    />
+  );
+}
+
+// ─── Builder ─────────────────────────────────────────────────────────────────
+
+export function buildReportFilters(def: ReportDefinition<any, any>) {
+  return (filters: any, setFilter: (k: string, v: any) => void) => {
+    const has = (k: any) => def.filters.includes(k);
+
+    const showPeriodo     = has('dateRange') || has('year') || has('quarter');
+    const showContexto    = has('project') || has('cftp') || has('course') || has('financingSource');
+    const showDemografia  = has('gender') || has('age') || has('youthStatus');
+    const showUbicacion   = has('department') || has('municipality') || has('city');
+    const showProgram     = has('technicalArea') || has('trainingType') || has('modality');
+
+    return (
+      <>
+        {showPeriodo && (
+          <FilterGroup label="Período">
+            {has('dateRange') && <DateRange     filters={filters} setFilter={setFilter} def={def} />}
+            {has('year')      && <YearField     filters={filters} setFilter={setFilter} def={def} />}
+            {has('quarter')   && <QuarterField  filters={filters} setFilter={setFilter} def={def} />}
+          </FilterGroup>
+        )}
+        {showContexto && (
+          <FilterGroup label="Contexto">
+            {has('project')         && <ProjectField         filters={filters} setFilter={setFilter} def={def} />}
+            {has('cftp')            && <CftpField            filters={filters} setFilter={setFilter} def={def} />}
+            {has('course')          && <CourseField          filters={filters} setFilter={setFilter} def={def} />}
+            {has('financingSource') && <FinancingSourceField filters={filters} setFilter={setFilter} def={def} />}
+          </FilterGroup>
+        )}
+        {showDemografia && (
+          <FilterGroup label="Demografía">
+            {has('gender') && <GenderField filters={filters} setFilter={setFilter} def={def} />}
+            {has('age')    && <AgeField    filters={filters} setFilter={setFilter} def={def} />}
+          </FilterGroup>
+        )}
+        {showUbicacion && (
+          <FilterGroup label="Ubicación">
+            {has('department')   && <DepartmentField   filters={filters} setFilter={setFilter} def={def} />}
+            {has('municipality') && <MunicipalityField filters={filters} setFilter={setFilter} def={def} />}
+            {has('city')         && <CityField         filters={filters} setFilter={setFilter} def={def} />}
+          </FilterGroup>
+        )}
+        {showProgram && (
+          <FilterGroup label="Programático">
+            {has('technicalArea') && <TechnicalAreaField filters={filters} setFilter={setFilter} def={def} />}
+          </FilterGroup>
+        )}
+      </>
+    );
+  };
 }

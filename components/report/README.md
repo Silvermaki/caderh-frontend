@@ -2,19 +2,20 @@
 
 Ver `docs/diseno-modulo-reportes.md` para decisiones de diseño y criterios.
 
-## Para agregar un nuevo reporte (R1–R13)
+## Para agregar un nuevo reporte (R1–R11)
 
 1. Crear `lib/report/definitions/rN-<slug>.ts`
 2. Exportar un `ReportDefinition<Filters, Row>` y llamar `registerReport(...)`
-3. Importar ese archivo en `app/(routes)/dashboard/reportes/page.tsx` (para que aparezca en el hub) y en `[slug]/page.tsx` no se necesita — el registry lo resuelve.
-4. El endpoint backend debe estar en `app/api/reports/<slug>/route.ts` (GET con query params de filtros y paginación) o el `fetcher` llama a un service existente.
+3. Importar ese archivo en `lib/report/definitions/index.ts` (barrel) para que el registry esté poblado.
+4. El endpoint backend debe estar en `src/api/reports/reports/<rN>.js` (GET con query params de filtros y paginación) registrado en `reports.api.js`.
 
 ## Variantes
 
 - **KPI strip (R4/R7):** pasar `<KpiStrip>` al prop `aboveTable` del shell.
-- **Rojo condicional (R6/R8/R12):** declarar `variants.conditionalRed` con `when` y `cells`.
-- **Compound headers (R9):** mezclar `CompoundColumnDef` en `columns`. El shell + `<CompoundHeader>` lo resuelven.
+- **Rojo condicional (R6/R8/R9):** declarar `variants.conditionalRed` con `when` y `cells`.
+- **Compound headers:** mezclar `CompoundColumnDef` en `columns`. El shell + `<CompoundHeader>` lo resuelven.
 - **Jerárquico (R1):** usar `<HierarchicalBody>` en vez del tbody default (por ahora requiere wrapper custom).
+- **Template (R11):** marcar `variants.template = true` y usar `<ReportTemplateShell>`. No renderiza tabla; pide al backend un archivo binario.
 - **Columnas sin fuente:** marcar `missingInDb: true` + `missingNote` + `plannedSource`. El shell agrega el banner y el warning icon automáticamente.
 
 ## Export

@@ -31,8 +31,9 @@ export const FILTER_META: Record<FilterKey, FilterMeta> = {
   year:          { key: 'year',          label: 'Año',               group: 'periodo',      control: 'select' },
   quarter:       { key: 'quarter',       label: 'Trimestre',         group: 'periodo',      control: 'multi-select' },
   project:       { key: 'project',       label: 'Proyecto',          group: 'contexto',     control: 'multi-select' },
-  cftp:          { key: 'cftp',          label: 'CFTP',              group: 'contexto',     control: 'multi-select', dependsOn: 'project' },
-  course:        { key: 'course',        label: 'Curso',             group: 'contexto',     control: 'multi-select', dependsOn: 'cftp' },
+  cftp:           { key: 'cftp',           label: 'Centro de formación', group: 'contexto',   control: 'multi-select' },
+  course:         { key: 'course',         label: 'Curso',             group: 'contexto',     control: 'multi-select', dependsOn: 'cftp' },
+  financingSource:{ key: 'financingSource',label: 'Fuente de financiamiento', group: 'contexto', control: 'multi-select' },
   gender:        { key: 'gender',        label: 'Género',            group: 'demografia',   control: 'multi-select' },
   age:           {
     key: 'age', label: 'Edad', group: 'demografia', control: 'number-range',

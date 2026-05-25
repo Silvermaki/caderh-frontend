@@ -94,9 +94,11 @@ export function MultiSelectField({
   return (
     <FilterField label={label} description={description}>
       <MultiSelect
+        key={`${label}-${options.length}`}
         options={options}
         defaultValue={value}
         onValueChange={onChange}
+        modalPopover
       />
     </FilterField>
   );

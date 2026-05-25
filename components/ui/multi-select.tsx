@@ -4,8 +4,7 @@ import {
     CheckIcon,
     XCircle,
     ChevronDown,
-    XIcon,
-    Sparkles
+    Search,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -17,15 +16,6 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-    CommandSeparator,
-} from "@/components/ui/command";
 
 /**
  * Variants for the multi-select component to handle different styles.
@@ -141,19 +131,13 @@ export const MultiSelect = React.forwardRef<
             React.useState<string[]>(defaultValue);
         const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
         const [isAnimating, setIsAnimating] = React.useState(false);
+        const [searchQuery, setSearchQuery] = React.useState("");
 
-        const handleInputKeyDown = (
-            event: React.KeyboardEvent<HTMLInputElement>
-        ) => {
-            if (event.key === "Enter") {
-                setIsPopoverOpen(true);
-            } else if (event.key === "Backspace" && !event.currentTarget.value) {
-                const newSelectedValues = [...selectedValues];
-                newSelectedValues.pop();
-                setSelectedValues(newSelectedValues);
-                onValueChange(newSelectedValues);
-            }
-        };
+        const filteredOptions = React.useMemo(() => {
+            const q = searchQuery.trim().toLowerCase();
+            if (!q) return options;
+            return options.filter((o) => o.label.toLowerCase().includes(q));
+        }, [options, searchQuery]);
 
         const toggleOption = (option: string) => {
             const newSelectedValues = selectedValues.includes(option)
@@ -268,88 +252,93 @@ export const MultiSelect = React.forwardRef<
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent
-                    className="w-auto p-0"
+                    className="w-[var(--radix-popover-trigger-width)] p-0"
                     align="start"
+                    style={{ pointerEvents: "auto" }}
                     onEscapeKeyDown={() => setIsPopoverOpen(false)}
+                    onOpenAutoFocus={(e) => e.preventDefault()}
                 >
-                    <Command>
-                        <CommandInput
-                            placeholder="Search..."
-                            onKeyDown={handleInputKeyDown}
-                        />
-                        <CommandList>
-                            <CommandEmpty>No results found.</CommandEmpty>
-                            <CommandGroup>
-                                <CommandItem
-                                    key="all"
-                                    onSelect={toggleAll}
-                                    className="cursor-pointer"
-                                >
-                                    <div
-                                        className={cn(
-                                            "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-foreground",
-                                            selectedValues.length === options.length
-                                                ? "bg-foreground text-primary-foreground"
-                                                : "opacity-50 [&_svg]:invisible"
-                                        )}
-                                    >
-                                        <CheckIcon className="h-4 w-4" />
-                                    </div>
-                                    <span>(Select All)</span>
-                                </CommandItem>
-                                {options.map((option) => {
-                                    const isSelected = selectedValues.includes(option.value);
-                                    return (
-                                        <CommandItem
-                                            key={option.value}
-                                            onSelect={() => toggleOption(option.value)}
-                                            className="cursor-pointer"
-                                        >
-                                            <div
-                                                className={cn(
-                                                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-foreground",
-                                                    isSelected
-                                                        ? "bg-foreground text-primary-foreground"
-                                                        : "opacity-50 [&_svg]:invisible"
-                                                )}
-                                            >
-                                                <CheckIcon className="h-4 w-4" />
-                                            </div>
-                                            {option.icon && (
-                                                <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
-                                            )}
-                                            <span>{option.label}</span>
-                                        </CommandItem>
-                                    );
-                                })}
-                            </CommandGroup>
-                            <CommandSeparator />
-                            <CommandGroup>
-                                <div className="flex items-center justify-between">
-                                    {selectedValues.length > 0 && (
-                                        <>
-                                            <CommandItem
-                                                onSelect={handleClear}
-                                                className="flex-1 justify-center cursor-pointer"
-                                            >
-                                                Clear
-                                            </CommandItem>
-                                            <Separator
-                                                orientation="vertical"
-                                                className="flex min-h-6 h-full"
-                                            />
-                                        </>
+                    <div className="flex flex-col bg-popover text-popover-foreground rounded-md overflow-hidden">
+                        <div className="flex items-center border-b px-3">
+                            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                            <input
+                                type="text"
+                                placeholder="Buscar..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="flex h-10 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+                            />
+                        </div>
+                        <div className="max-h-[300px] overflow-y-auto p-1">
+                            <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); toggleAll(); }}
+                                className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground"
+                            >
+                                <div
+                                    className={cn(
+                                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-foreground",
+                                        selectedValues.length === options.length && options.length > 0
+                                            ? "bg-foreground text-primary-foreground"
+                                            : "opacity-50 [&_svg]:invisible"
                                     )}
-                                    <CommandItem
-                                        onSelect={() => setIsPopoverOpen(false)}
-                                        className="flex-1 justify-center cursor-pointer max-w-full"
-                                    >
-                                        Close
-                                    </CommandItem>
+                                >
+                                    <CheckIcon className="h-4 w-4" />
                                 </div>
-                            </CommandGroup>
-                        </CommandList>
-                    </Command>
+                                <span>(Seleccionar todos)</span>
+                            </button>
+                            {filteredOptions.length === 0 && (
+                                <div className="py-6 text-center text-sm text-muted-foreground">Sin resultados.</div>
+                            )}
+                            {filteredOptions.map((option) => {
+                                const isSelected = selectedValues.includes(option.value);
+                                return (
+                                    <button
+                                        type="button"
+                                        key={option.value}
+                                        onClick={(e) => { e.preventDefault(); toggleOption(option.value); }}
+                                        className="flex w-full items-center rounded-sm px-2 py-1.5 text-sm cursor-pointer hover:bg-accent hover:text-accent-foreground"
+                                    >
+                                        <div
+                                            className={cn(
+                                                "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-foreground",
+                                                isSelected
+                                                    ? "bg-foreground text-primary-foreground"
+                                                    : "opacity-50 [&_svg]:invisible"
+                                            )}
+                                        >
+                                            <CheckIcon className="h-4 w-4" />
+                                        </div>
+                                        {option.icon && (
+                                            <option.icon className="mr-2 h-4 w-4 text-muted-foreground" />
+                                        )}
+                                        <span className="text-left">{option.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <div className="flex items-center justify-between border-t">
+                            {selectedValues.length > 0 && (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={(e) => { e.preventDefault(); handleClear(); }}
+                                        className="flex-1 px-2 py-1.5 text-sm cursor-pointer hover:bg-accent text-center"
+                                    >
+                                        Limpiar
+                                    </button>
+                                    <Separator orientation="vertical" className="flex min-h-6 h-full" />
+                                </>
+                            )}
+                            <button
+                                type="button"
+                                onClick={(e) => { e.preventDefault(); setIsPopoverOpen(false); }}
+                                className="flex-1 px-2 py-1.5 text-sm cursor-pointer hover:bg-accent text-center"
+                            >
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
                 </PopoverContent>
             </Popover>
         );

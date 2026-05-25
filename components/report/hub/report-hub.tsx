@@ -4,6 +4,7 @@ import '@/lib/report/definitions';
 import { REPORT_CATEGORIES, reportsByCategory, allReports } from '@/lib/report/registry';
 import { ReportBreadcrumbs } from '../table/report-breadcrumbs';
 import { ReportCategoryCard } from './report-category-card';
+import { ReportLegend } from './report-legend';
 import { ReportSearch } from './report-search';
 
 export function ReportHub() {
@@ -24,6 +25,13 @@ export function ReportHub() {
       <div className="mt-5 mb-6 max-w-md">
         <ReportSearch />
       </div>
+
+      {/* Leyenda de iconos ocultada — los chips en ReportRow están comentados
+          temporalmente. Re-habilitar cuando se vuelvan a mostrar los iconos.
+      <div className="mb-6">
+        <ReportLegend />
+      </div>
+      */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {REPORT_CATEGORIES.map((meta, i) => (
