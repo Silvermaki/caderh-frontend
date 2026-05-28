@@ -1,5 +1,6 @@
 
 import * as React from "react";
+import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { Icon } from "@iconify/react";
 import { cn } from "@/lib/utils";
@@ -215,6 +216,7 @@ const BreadcrumbItem = React.forwardRef<HTMLSpanElement, any>(
       isCurrent,
       onAction,
       modifier,
+      asChild,
       ...props
     },
     ref
@@ -229,9 +231,11 @@ const BreadcrumbItem = React.forwardRef<HTMLSpanElement, any>(
       }
     };
 
+    const Comp = asChild ? Slot : "span";
+
     return (
       <li className="inline-flex items-center">
-        <span
+        <Comp
           ref={ref}
           className={cn(
             breadcrumbItemsVariants({ color, size, underline }),
@@ -248,13 +252,22 @@ const BreadcrumbItem = React.forwardRef<HTMLSpanElement, any>(
           onClick={handleClick}
           {...props}
         >
-          {startContent && <span>{startContent}</span>}
-          {href ? <Link href={href}>{children}</Link> : children}
-          {endContent && <span>{endContent}</span>}
-          {!isLast && separator && (
-            <span className="separator px-1 cursor-default">{separator}</span>
+          {asChild ? (
+            children
+          ) : (
+            <>
+              {startContent && <span>{startContent}</span>}
+              {href ? <Link href={href}>{children}</Link> : children}
+              {endContent && <span>{endContent}</span>}
+              {!isLast && separator && (
+                <span className="separator px-1 cursor-default">{separator}</span>
+              )}
+            </>
           )}
-        </span>
+        </Comp>
+        {asChild && !isLast && separator && (
+          <span className="separator px-1 cursor-default flex items-center">{separator}</span>
+        )}
       </li>
     );
   }

@@ -175,7 +175,7 @@ const UserModal = ({ user, users, setUsers, loading, isOpen, setIsOpen, reload }
                                                                 <Label className="font-medium text-default-600 mr-2">
                                                                     Rol:
                                                                 </Label>
-                                                                <Badge color={`${user.role === 'ADMIN' ? "dark" : "default"}`}>{user.role === 'ADMIN' ? "Administrador" : "Agente"}</Badge>
+                                                                <Badge color={user.role === 'ADMIN' ? "dark" : user.role === 'MANAGER' ? "info" : "default"}>{user.role === 'ADMIN' ? "Administrador" : user.role === 'MANAGER' ? "Supervisor" : "Agente"}</Badge>
                                                             </div>
                                                             <div className="flex flex-row items-center justify-center">
                                                                 <Label className="font-medium text-default-600 mr-2">

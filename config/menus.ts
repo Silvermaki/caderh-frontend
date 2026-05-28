@@ -7,7 +7,7 @@ import {
   Pages,
   User
 } from "@/components/svg";
-import { Folder } from "lucide-react";
+import { Folder, HelpCircle } from "lucide-react";
 
 
 export interface MenuItemProps {
@@ -91,6 +91,11 @@ let navs = [
         href: "/dashboard/centros/processes",
       },
     ]
+  },
+  {
+    title: "Ayuda",
+    icon: HelpCircle,
+    href: "/dashboard/ayuda",
   }
 ];
 

@@ -165,6 +165,9 @@ const Page = () => {
     const [expenses, setExpenses] = useState<any[]>([]);
     const [files, setFiles] = useState<any[]>([]);
     const [allFinancingSources, setAllFinancingSources] = useState<any[]>([]);
+    const [financingSourcesLoaded, setFinancingSourcesLoaded] = useState(false);
+    const [donationsLoaded, setDonationsLoaded] = useState(false);
+    const [expensesLoaded, setExpensesLoaded] = useState(false);
 
     const [infoEditing, setInfoEditing] = useState(false);
     const [infoForm, setInfoForm] = useState({
@@ -287,6 +290,7 @@ const Page = () => {
             const json = await res.json();
             setFinancingSources(json.data ?? []);
         }
+        setFinancingSourcesLoaded(true);
     };
 
     const fetchStep3 = async () => {
@@ -299,6 +303,7 @@ const Page = () => {
             const json = await res.json();
             setDonations(json.data ?? []);
         }
+        setDonationsLoaded(true);
     };
 
     const fetchStep4 = async () => {
@@ -311,6 +316,7 @@ const Page = () => {
             const json = await res.json();
             setExpenses(json.data ?? []);
         }
+        setExpensesLoaded(true);
     };
 
     const fetchStep5 = async () => {
@@ -1628,7 +1634,9 @@ const Page = () => {
                                 )}
                             </div>
                         </div>
-                        {financingSources.length === 0 ? (
+                        {!financingSourcesLoaded ? (
+                                <SkeletonTable />
+                            ) : financingSources.length === 0 ? (
                                 <p className="text-muted-foreground py-8 text-center">
                                     No hay fuentes. Agrega una para comenzar.
                                 </p>
@@ -1736,7 +1744,9 @@ const Page = () => {
                                 <p className="text-sm font-semibold text-foreground mt-0.5">{formatCurrency(benefitDonations)}</p>
                             </div>
                         </div>
-                        {donations.length === 0 ? (
+                        {!donationsLoaded ? (
+                                <SkeletonTable />
+                            ) : donations.length === 0 ? (
                                 <p className="text-muted-foreground py-8 text-center">
                                     No hay donaciones. Agrega una para comenzar.
                                 </p>
@@ -1835,7 +1845,9 @@ const Page = () => {
                                 )}
                             </div>
                         </div>
-                        {expenses.length === 0 ? (
+                        {!expensesLoaded ? (
+                                <SkeletonTable />
+                            ) : expenses.length === 0 ? (
                                 <p className="text-muted-foreground py-8 text-center">
                                     No hay gastos. Agrega uno para comenzar.
                                 </p>
