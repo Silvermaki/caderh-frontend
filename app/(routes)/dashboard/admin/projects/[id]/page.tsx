@@ -37,7 +37,9 @@ import {
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
+    SelectLabel,
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
@@ -178,6 +180,7 @@ const Page = () => {
         end_date: "",
         project_category: "PROJECT",
         accomplishments: [] as { text: string; completed: boolean }[],
+        total_budget: "",
     });
     const [infoSaving, setInfoSaving] = useState(false);
     const [accomplishmentsPatching, setAccomplishmentsPatching] = useState(false);
@@ -199,11 +202,11 @@ const Page = () => {
     const [editDonationSaving, setEditDonationSaving] = useState(false);
 
     const [addExpenseOpen, setAddExpenseOpen] = useState(false);
-    const [addExpenseForm, setAddExpenseForm] = useState({ amount: "", description: "", expense_category_id: "" });
+    const [addExpenseForm, setAddExpenseForm] = useState({ amount: "", description: "", expense_category_id: "", origin: "" });
     const [addExpenseSaving, setAddExpenseSaving] = useState(false);
 
     const [editExpenseOpen, setEditExpenseOpen] = useState(false);
-    const [editExpenseForm, setEditExpenseForm] = useState({ id: "", amount: "", description: "", expense_category_id: "" });
+    const [editExpenseForm, setEditExpenseForm] = useState({ id: "", amount: "", description: "", expense_category_id: "", origin: "" });
     const [editExpenseSaving, setEditExpenseSaving] = useState(false);
 
     const [expenseCategories, setExpenseCategories] = useState<any[]>([]);
@@ -266,6 +269,7 @@ const Page = () => {
                     end_date: json.data.end_date ? json.data.end_date.slice(0, 10) : "",
                     project_category: json.data.project_category ?? "PROJECT",
                     accomplishments: accArr,
+                    total_budget: json.data.total_budget != null ? String(json.data.total_budget) : "",
                 });
             } else {
                 const json = await res.json();
@@ -695,6 +699,7 @@ const Page = () => {
                         start_date: infoForm.start_date,
                         end_date: infoForm.end_date,
                         project_category: infoForm.project_category,
+                        total_budget: infoForm.total_budget && !isNaN(Number(infoForm.total_budget)) ? Number(infoForm.total_budget) : null,
                         accomplishments: infoForm.accomplishments.map((a) => ({
                             text: a.text,
                             completed: a.completed,
@@ -974,6 +979,14 @@ const Page = () => {
         }
     };
 
+    // Convierte el valor combinado del selector de origen ("SOURCE:<id>" o
+    // "DONATION:<id>") en los campos que espera el backend. Vacío = pozo general.
+    const parseExpenseOrigin = (origin: string) => {
+        if (!origin) return { origin_kind: null, origin_id: null };
+        const [origin_kind, origin_id] = origin.split(":");
+        return { origin_kind, origin_id };
+    };
+
     const onAddExpense = async () => {
         if (!addExpenseForm.amount) {
             toast.error("Completa el monto");
@@ -993,6 +1006,7 @@ const Page = () => {
                         amount: Number(addExpenseForm.amount),
                         description: addExpenseForm.description || "",
                         expense_category_id: addExpenseForm.expense_category_id || null,
+                        ...parseExpenseOrigin(addExpenseForm.origin),
                     }),
                 }
             );
@@ -1000,7 +1014,7 @@ const Page = () => {
             if (res.ok) {
                 toast.success("Gasto agregado");
                 setAddExpenseOpen(false);
-                setAddExpenseForm({ amount: "", description: "", expense_category_id: "" });
+                setAddExpenseForm({ amount: "", description: "", expense_category_id: "", origin: "" });
                 fetchStep4();
                 fetchProject();
             } else {
@@ -1013,11 +1027,19 @@ const Page = () => {
     };
 
     const openEditExpense = (row: any) => {
+        const origin = row.origin_kind && row.origin_id
+            ? `${row.origin_kind}:${row.origin_id}`
+            : row.project_financing_source_id
+                ? `SOURCE:${row.project_financing_source_id}`
+                : row.project_donation_id
+                    ? `DONATION:${row.project_donation_id}`
+                    : "";
         setEditExpenseForm({
             id: row.id,
             amount: String(row.amount ?? ""),
             description: row.description ?? "",
             expense_category_id: row.expense_category_id ?? "",
+            origin,
         });
         setEditExpenseOpen(true);
     };
@@ -1041,6 +1063,7 @@ const Page = () => {
                         amount: Number(editExpenseForm.amount),
                         description: editExpenseForm.description || "",
                         expense_category_id: editExpenseForm.expense_category_id || null,
+                        ...parseExpenseOrigin(editExpenseForm.origin),
                     }),
                 }
             );
@@ -1204,6 +1227,76 @@ const Page = () => {
         .filter((d: any) => String(d.donation_type).toUpperCase() === "BENEFIT")
         .reduce((s: number, r: any) => s + Number(r.amount ?? 0), 0);
 
+    // Origen del gasto (opcional): opciones agrupadas en las categorías que
+    // pide CADERH (presupuesto general / fondo efectivo / fondo especie),
+    // conservando el detalle por fuente/donante para la trazabilidad.
+    const donationOption = (r: any) => ({
+        value: `DONATION:${r.id}`,
+        label: `${r.donor_name || "Sin especificar"} (${formatCurrency(Number(r.amount ?? 0))})`,
+    });
+    const expenseOriginGroups = [
+        {
+            label: "Presupuesto general",
+            options: [
+                { value: "__none__", label: "General (sin origen específico)" },
+                ...financingSources.map((r: any) => ({
+                    value: `SOURCE:${r.id}`,
+                    label: `Fuente · ${r.financing_source_name ?? "Sin nombre"} (${formatCurrency(Number(r.amount ?? 0))})`,
+                })),
+            ],
+        },
+        {
+            label: "Fondo de donación en efectivo",
+            options: donations.filter((r: any) => String(r.donation_type).toUpperCase() === "CASH").map(donationOption),
+        },
+        {
+            label: "Fondo de donación en especie",
+            options: donations.filter((r: any) => String(r.donation_type).toUpperCase() === "SUPPLY").map(donationOption),
+        },
+        {
+            label: "Fondo de beneficio",
+            options: donations.filter((r: any) => String(r.donation_type).toUpperCase() === "BENEFIT").map(donationOption),
+        },
+    ].filter((g) => g.options.length > 0);
+    const consumedBySource: Record<string, number> = {};
+    const consumedByDonation: Record<string, number> = {};
+    for (const e of expenses as any[]) {
+        const amt = Number(e.amount ?? 0);
+        if (e.project_financing_source_id) {
+            consumedBySource[e.project_financing_source_id] = (consumedBySource[e.project_financing_source_id] ?? 0) + amt;
+        } else if (e.project_donation_id) {
+            consumedByDonation[e.project_donation_id] = (consumedByDonation[e.project_donation_id] ?? 0) + amt;
+        }
+    }
+    const originLabelForExpense = (e: any): string => {
+        if (e.project_financing_source_id) {
+            const src = financingSources.find((r: any) => r.id === e.project_financing_source_id);
+            return `Fuente · ${src?.financing_source_name ?? "Sin nombre"}`;
+        }
+        if (e.project_donation_id) {
+            const don = donations.find((r: any) => r.id === e.project_donation_id);
+            return `Donante · ${don?.donor_name ?? "Sin especificar"}`;
+        }
+        return "General";
+    };
+
+    // Gastos imputados a donaciones, agrupados por tipo, para rebajar las cards
+    // de resumen (efectivo/especie/beneficio) y mostrar el disponible neto.
+    const consumedByDonationType: Record<string, number> = { CASH: 0, SUPPLY: 0, BENEFIT: 0 };
+    for (const e of expenses as any[]) {
+        if (e.project_donation_id) {
+            const don = donations.find((d: any) => d.id === e.project_donation_id);
+            if (don) {
+                const t = String(don.donation_type).toUpperCase();
+                consumedByDonationType[t] = (consumedByDonationType[t] ?? 0) + Number(e.amount ?? 0);
+            }
+        }
+    }
+    const cashConsumed = consumedByDonationType.CASH ?? 0;
+    const inKindConsumed = consumedByDonationType.SUPPLY ?? 0;
+    const cashAvailable = cashDonations - cashConsumed;
+    const inKindAvailable = inKindDonations - inKindConsumed;
+
     const isSupervisor = userRole === 'ADMIN' || userRole === 'MANAGER';
     const canEdit = isSupervisor || (userRole === 'USER' && Array.isArray(project?.assigned_agents) && project.assigned_agents.some((a: any) => a.id === userId));
 
@@ -1263,6 +1356,9 @@ const Page = () => {
                 progressColor={progressColor}
                 inKindDonations={inKindDonations}
                 cashDonations={cashDonations}
+                inKindAvailable={inKindAvailable}
+                cashAvailable={cashAvailable}
+                totalBudget={project.total_budget != null ? Number(project.total_budget) : null}
                 projectCategory={project.project_category}
             />
 
@@ -1343,6 +1439,7 @@ const Page = () => {
                                                 end_date: project?.end_date ? String(project.end_date).slice(0, 10) : "",
                                                 project_category: project?.project_category ?? "PROJECT",
                                                 accomplishments: accArr,
+                                                total_budget: project?.total_budget != null ? String(project.total_budget) : "",
                                             });
                                             setInfoEditing(false);
                                         }}
@@ -1512,6 +1609,19 @@ const Page = () => {
                                         </div>
                                     </div>
                                     <div>
+                                        <Label>Presupuesto Total (referencia, opcional)</Label>
+                                        <div className="mt-1">
+                                            <CurrencyInput
+                                                value={infoForm.total_budget}
+                                                onChange={(v) => setInfoForm((p) => ({ ...p, total_budget: v }))}
+                                                disabled={infoSaving}
+                                            />
+                                        </div>
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Monto planificado para control presupuestario. No se suma a los ingresos recibidos.
+                                        </p>
+                                    </div>
+                                    <div>
                                         <Label>Logros del Proyecto</Label>
                                         <div className="mt-2 space-y-2">
                                             {infoForm.accomplishments.map((item, i) => (
@@ -1647,16 +1757,23 @@ const Page = () => {
                                             <TableHead>Nombre</TableHead>
                                             <TableHead>Descripción</TableHead>
                                             <TableHead>Monto</TableHead>
-                                            <TableHead>Fecha Desembolso</TableHead>
+                                            <TableHead>Consumido</TableHead>
+                                            <TableHead>Disponible</TableHead>
+                                            <TableHead>Fecha de Ingreso</TableHead>
                                             {canEdit && <TableHead>Acciones</TableHead>}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {financingSources.map((r) => (
+                                        {financingSources.map((r) => {
+                                            const consumido = consumedBySource[r.id] ?? 0;
+                                            const disponible = Number(r.amount ?? 0) - consumido;
+                                            return (
                                             <TableRow key={r.id}>
                                                 <TableCell>{r.financing_source_name ?? "-"}</TableCell>
                                                 <TableCell>{r.description || "-"}</TableCell>
                                                 <TableCell>{formatCurrency(Number(r.amount ?? 0))}</TableCell>
+                                                <TableCell>{formatCurrency(consumido)}</TableCell>
+                                                <TableCell className={disponible < 0 ? "text-destructive font-medium" : ""}>{formatCurrency(disponible)}</TableCell>
                                                 <TableCell>{r.disbursement_date ? String(r.disbursement_date).slice(0, 10) : "-"}</TableCell>
                                                 {canEdit && (
                                                     <TableCell>
@@ -1680,7 +1797,8 @@ const Page = () => {
                                                     </TableCell>
                                                 )}
                                             </TableRow>
-                                        ))}
+                                            );
+                                        })}
                                     </TableBody>
                                 </Table>
                             )}
@@ -1728,19 +1846,19 @@ const Page = () => {
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 mb-4">
                             <div className="border border-border rounded-md px-3 py-2">
-                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Total</span>
+                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Total Recibido</span>
                                 <p className="text-sm font-semibold text-foreground mt-0.5">{formatCurrency(totalDonaciones)}</p>
                             </div>
                             <div className="border border-border rounded-md px-3 py-2">
-                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Efectivo</span>
+                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Efectivo Recibido</span>
                                 <p className="text-sm font-semibold text-foreground mt-0.5">{formatCurrency(cashDonations)}</p>
                             </div>
                             <div className="border border-border rounded-md px-3 py-2">
-                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Especie</span>
+                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Especie Recibida</span>
                                 <p className="text-sm font-semibold text-foreground mt-0.5">{formatCurrency(inKindDonations)}</p>
                             </div>
                             <div className="border border-border rounded-md px-3 py-2">
-                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Beneficio</span>
+                                <span className="text-xs text-muted-foreground uppercase tracking-wide">Beneficio Recibido</span>
                                 <p className="text-sm font-semibold text-foreground mt-0.5">{formatCurrency(benefitDonations)}</p>
                             </div>
                         </div>
@@ -1758,17 +1876,24 @@ const Page = () => {
                                             <TableHead>Descripción</TableHead>
                                             <TableHead>Tipo</TableHead>
                                             <TableHead>Monto</TableHead>
-                                            <TableHead>Fecha Desembolso</TableHead>
+                                            <TableHead>Consumido</TableHead>
+                                            <TableHead>Disponible</TableHead>
+                                            <TableHead>Fecha de Ingreso</TableHead>
                                             {canEdit && <TableHead>Acciones</TableHead>}
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {donations.map((r) => (
+                                        {donations.map((r) => {
+                                            const consumido = consumedByDonation[r.id] ?? 0;
+                                            const disponible = Number(r.amount ?? 0) - consumido;
+                                            return (
                                             <TableRow key={r.id}>
                                                 <TableCell>{r.donor_name || "-"}</TableCell>
                                                 <TableCell>{r.description || "-"}</TableCell>
                                                 <TableCell>{r.donation_type === "CASH" ? "Efectivo" : r.donation_type === "BENEFIT" ? "Beneficio" : "Suministros"}</TableCell>
                                                 <TableCell>{formatCurrency(Number(r.amount ?? 0))}</TableCell>
+                                                <TableCell>{formatCurrency(consumido)}</TableCell>
+                                                <TableCell className={disponible < 0 ? "text-destructive font-medium" : ""}>{formatCurrency(disponible)}</TableCell>
                                                 <TableCell>
                                                     {r.disbursement_date ? String(r.disbursement_date).slice(0, 10) : "-"}
                                                 </TableCell>
@@ -1794,7 +1919,8 @@ const Page = () => {
                                                     </TableCell>
                                                 )}
                                             </TableRow>
-                                        ))}
+                                            );
+                                        })}
                                     </TableBody>
                                 </Table>
                             )}
@@ -1857,6 +1983,7 @@ const Page = () => {
                                         <TableRow>
                                             <TableHead>Descripción</TableHead>
                                             <TableHead>Categoría</TableHead>
+                                            <TableHead>Origen</TableHead>
                                             <TableHead>Monto</TableHead>
                                             {canEdit && <TableHead>Acciones</TableHead>}
                                         </TableRow>
@@ -1868,6 +1995,7 @@ const Page = () => {
                                                 <TableRow key={r.id}>
                                                     <TableCell>{r.description || "-"}</TableCell>
                                                     <TableCell>{cat?.name ?? "-"}</TableCell>
+                                                    <TableCell>{originLabelForExpense(r)}</TableCell>
                                                     <TableCell>{formatCurrency(Number(r.amount ?? 0))}</TableCell>
                                                     {canEdit && (
                                                         <TableCell>
@@ -2260,7 +2388,7 @@ const Page = () => {
                                 />
                             </div>
                             <div>
-                                <Label>Fecha Desembolso</Label>
+                                <Label>Fecha de Ingreso</Label>
                                 <Input
                                     type="date"
                                     value={addSourceForm.disbursement_date}
@@ -2317,7 +2445,7 @@ const Page = () => {
                                 />
                             </div>
                             <div>
-                                <Label>Fecha Desembolso</Label>
+                                <Label>Fecha de Ingreso</Label>
                                 <Input
                                     type="date"
                                     value={editSourceForm.disbursement_date}
@@ -2383,7 +2511,7 @@ const Page = () => {
                                 />
                             </div>
                             <div>
-                                <Label>Fecha Desembolso</Label>
+                                <Label>Fecha de Ingreso</Label>
                                 <Input
                                     type="date"
                                     value={addDonationForm.disbursement_date}
@@ -2449,7 +2577,7 @@ const Page = () => {
                                 />
                             </div>
                             <div>
-                                <Label>Fecha Desembolso</Label>
+                                <Label>Fecha de Ingreso</Label>
                                 <Input
                                     type="date"
                                     value={editDonationForm.disbursement_date}
@@ -2515,6 +2643,28 @@ const Page = () => {
                                 </div>
                             </div>
                             <div>
+                                <Label>Origen del gasto (opcional)</Label>
+                                <Select
+                                    value={addExpenseForm.origin || "__none__"}
+                                    onValueChange={(v) => setAddExpenseForm((p) => ({ ...p, origin: v === "__none__" ? "" : v }))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="General (sin origen específico)" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {expenseOriginGroups.map((g) => (
+                                            <SelectGroup key={g.label}>
+                                                <SelectLabel>{g.label}</SelectLabel>
+                                                {g.options.map((o) => (
+                                                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground mt-1">Se rebaja del saldo de la fuente o donación elegida.</p>
+                            </div>
+                            <div>
                                 <Label>Descripción (opcional)</Label>
                                 <Input
                                     value={addExpenseForm.description}
@@ -2562,6 +2712,28 @@ const Page = () => {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                            </div>
+                            <div>
+                                <Label>Origen del gasto (opcional)</Label>
+                                <Select
+                                    value={editExpenseForm.origin || "__none__"}
+                                    onValueChange={(v) => setEditExpenseForm((p) => ({ ...p, origin: v === "__none__" ? "" : v }))}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="General (sin origen específico)" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {expenseOriginGroups.map((g) => (
+                                            <SelectGroup key={g.label}>
+                                                <SelectLabel>{g.label}</SelectLabel>
+                                                {g.options.map((o) => (
+                                                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                                                ))}
+                                            </SelectGroup>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <p className="text-xs text-muted-foreground mt-1">Se rebaja del saldo de la fuente o donación elegida.</p>
                             </div>
                             <div>
                                 <Label>Descripción (opcional)</Label>

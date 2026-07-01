@@ -201,6 +201,9 @@ const NewProjectModal = ({
     const [fileDescription, setFileDescription] = useState("");
     const [fileFilename, setFileFilename] = useState("");
 
+    // Step 1 - Presupuesto total planificado (referencia; no suma a ingresos)
+    const [totalBudget, setTotalBudget] = useState("");
+
     // Step 1 - Logros (un logro por defecto para que el usuario pueda iniciar)
     const [accomplishmentItems, setAccomplishmentItems] = useState<
         { text: string; completed: boolean }[]
@@ -314,6 +317,7 @@ const NewProjectModal = ({
         setFileDescription("");
         setFileFilename("");
         setAccomplishmentItems([{ text: "", completed: false }]);
+        setTotalBudget("");
         reset();
         reloadList();
     };
@@ -337,6 +341,7 @@ const NewProjectModal = ({
                         start_date: data.start_date,
                         end_date: data.end_date,
                         project_category: data.project_category,
+                        total_budget: totalBudget && !isNaN(Number(totalBudget)) ? Number(totalBudget) : null,
                         accomplishments: accomplishmentItems
                             .filter((a) => a.text.trim())
                             .map((a) => ({
@@ -400,13 +405,12 @@ const NewProjectModal = ({
     };
 
     const onStep3 = async () => {
+        // Las donaciones son opcionales al crear el proyecto: se puede avanzar
+        // sin ninguna registrada. Solo se valida que las filas parcialmente
+        // llenas indiquen el donante.
         const valid = donationItems.filter(
             (i) => i.amount && !isNaN(Number(i.amount)) && i.donation_type && i.donor_name.trim()
         );
-        if (valid.length === 0) {
-            toast.error("Agrega al menos una donación válida (incluye el donante)");
-            return;
-        }
         if (valid.length < donationItems.filter((i) => i.amount || i.donor_name.trim()).length) {
             toast.error("Cada donación debe indicar el donante");
             return;
@@ -445,13 +449,12 @@ const NewProjectModal = ({
     };
 
     const onStep4 = async () => {
+        // Los gastos son opcionales al crear el proyecto: se pueden ir
+        // registrando gradualmente desde el detalle del proyecto. Solo se
+        // envían las filas con monto válido (la lista puede quedar vacía).
         const valid = expenseItems.filter(
             (i) => i.amount && !isNaN(Number(i.amount))
         );
-        if (valid.length === 0) {
-            toast.error("Agrega al menos un gasto válido");
-            return;
-        }
         setIsSubmitting(true);
         try {
             const res = await fetch(
@@ -699,7 +702,7 @@ const NewProjectModal = ({
                     const fsId = String(row["Fuente ID"] ?? "").trim();
                     const monto = Number(row["Monto"]);
                     const desc = String(row["Descripcion"] ?? "").trim();
-                    const fecha = String(row["Fecha Desembolso"] ?? "").trim();
+                    const fecha = String(row["Fecha de Ingreso"] ?? row["Fecha Desembolso"] ?? "").trim();
                     if (!fsId || isNaN(monto)) { errorCount++; continue; }
                     items.push({ financing_source_id: fsId, amount: String(monto), description: desc, disbursement_date: fecha });
                     imported++;
@@ -713,7 +716,7 @@ const NewProjectModal = ({
                     const donor = String(row["Donante"] ?? "").trim();
                     const tipoRaw = String(row["Tipo"] ?? "").trim().toUpperCase();
                     const dtype = DONATION_TYPE_MAP[tipoRaw];
-                    const fecha = String(row["Fecha Desembolso"] ?? "").trim();
+                    const fecha = String(row["Fecha de Ingreso"] ?? row["Fecha Desembolso"] ?? "").trim();
                     if (isNaN(monto) || !dtype || !donor) { errorCount++; continue; }
                     items.push({ amount: String(monto), description: desc, donor_name: donor, donation_type: dtype, disbursement_date: fecha });
                     imported++;
@@ -855,6 +858,19 @@ const NewProjectModal = ({
                                                 {errors.end_date.message}
                                             </div>
                                         )}
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <Label className="mb-2 font-medium text-default-600">
+                                            Presupuesto Total (referencia, opcional)
+                                        </Label>
+                                        <CurrencyInput
+                                            value={totalBudget}
+                                            onChange={setTotalBudget}
+                                            disabled={isSubmitting}
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                            Monto planificado para control presupuestario. No se suma a los ingresos recibidos.
+                                        </p>
                                     </div>
                                     <div className="md:col-span-2">
                                         <Label className="mb-2 font-medium text-default-600">
@@ -1040,7 +1056,7 @@ const NewProjectModal = ({
                                         </div>
                                         <div className="min-w-[160px]">
                                             <Label className="mb-1 text-xs">
-                                                Fecha Desembolso
+                                                Fecha de Ingreso
                                             </Label>
                                             <Input
                                                 type="date"
@@ -1181,7 +1197,7 @@ const NewProjectModal = ({
                                         </div>
                                         <div className="min-w-[160px]">
                                             <Label className="mb-1 text-xs">
-                                                Fecha Desembolso
+                                                Fecha de Ingreso
                                             </Label>
                                             <Input
                                                 type="date"

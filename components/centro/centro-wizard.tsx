@@ -127,6 +127,20 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
             .then(r => r.json()).then(d => setMunicipios(d.data ?? [])).catch(() => {});
     }, [centroForm.departamento_id, session?.user?.session]);
 
+    // ─── Suggest next centro code (editable) ───
+    // Precarga el siguiente CFP-### disponible como sugerencia. El campo sigue
+    // siendo editable; solo se rellena si el usuario aún no escribió un código.
+    useEffect(() => {
+        if (!isOpen || !session) return;
+        fetch(`${apiBase}/centros/centros/next-code`, { headers: authHeadersRaw })
+            .then(r => r.json())
+            .then(d => {
+                const code = d?.data?.code;
+                if (code) setCentroForm(prev => (prev.codigo?.trim() ? prev : { ...prev, codigo: code }));
+            })
+            .catch(() => {});
+    }, [isOpen, session?.user?.session]);
+
     // ─── Reset on close ───
     useEffect(() => {
         if (!isOpen) {
@@ -352,7 +366,7 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         {fieldInput("nombre", "Nombre", { required: true })}
                                         {fieldInput("siglas", "Siglas", { required: true })}
-                                        {fieldInput("codigo", "Código", { required: true })}
+                                        {fieldInput("codigo", "Código", { required: true, placeholder: "Se sugiere automáticamente (editable)" })}
                                         <div>
                                             <Label className="mb-1 font-medium text-default-600">Departamento *</Label>
                                             <Select value={centroForm.departamento_id} onValueChange={(v) => { set("departamento_id", v); set("municipio_id", ""); }} disabled={isSubmitting}>

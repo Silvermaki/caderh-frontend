@@ -17,7 +17,7 @@ import SkeletonTable from "@/components/skeleton-table";
 import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
-import { PlusCircle, RefreshCcw, MapPin, Phone, Mail, User } from "lucide-react";
+import { PlusCircle, RefreshCcw, MapPin, Phone, Mail, User, ArrowDown01, ArrowDown10, ArrowDownAZ, ArrowDownZA } from "lucide-react";
 import CentroWizard from "@/components/centro/centro-wizard";
 import { Icon } from "@iconify/react";
 import { prettifyNumber } from "@/app/libs/utils";
@@ -33,8 +33,8 @@ function PageContent() {
     const [offset, setOffset] = useState<number>(0);
     const [limit, setLimit] = useState<number>(10);
     const [count, setCount] = useState<number>(0);
-    const [desc, setDesc] = useState<boolean>(true);
-    const [sort, setSort] = useState<string>("nombre");
+    const [desc, setDesc] = useState<boolean>(false);
+    const [sort, setSort] = useState<string>("codigo");
     const [search, setSearch] = useState<string>(searchInit);
     const [searchInput, setSearchInput] = useState<string>(searchInit);
     const [loading, setLoading] = useState<boolean>(true);
@@ -68,14 +68,14 @@ function PageContent() {
         setLoading(false);
     };
 
-    const getDataInit = async (searchValue: string, estatus?: string) => {
+    const getDataInit = async (searchValue: string, estatus?: string, sortField?: string, sortDesc?: boolean) => {
         const activeStatus = estatus ?? statusFilter;
         setSearch(searchValue);
         const params = new URLSearchParams({
             offset: "0",
             limit: limit + "",
-            sort,
-            desc: desc ? "desc" : "asc",
+            sort: sortField ?? sort,
+            desc: (sortDesc ?? desc) ? "desc" : "asc",
             search: searchValue,
             estatus: activeStatus,
         });
@@ -135,6 +135,15 @@ function PageContent() {
         }
     }, [session]);
 
+    const SORT_ICONS: Record<string, React.ElementType> = {
+        "codigo:asc": ArrowDown01,
+        "codigo:desc": ArrowDown10,
+        "nombre:asc": ArrowDownAZ,
+        "nombre:desc": ArrowDownZA,
+    };
+    const sortKey = `${sort}:${desc ? "desc" : "asc"}`;
+    const SortIcon = SORT_ICONS[sortKey] ?? ArrowDown01;
+
     const pages = count > 0 ? Math.ceil(count / limit) : 0;
     const pageIndices = Array.from({ length: pages }, (_, i) => i);
 
@@ -192,6 +201,49 @@ function PageContent() {
                                 <SelectContent>
                                     <SelectItem value="1">Activo</SelectItem>
                                     <SelectItem value="0">Inactivo</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <Select
+                                value={sortKey}
+                                onValueChange={(v) => {
+                                    const [field, dir] = v.split(":");
+                                    setSort(field);
+                                    setDesc(dir === "desc");
+                                    setOffset(0);
+                                    getDataInit(search, undefined, field, dir === "desc");
+                                }}
+                            >
+                                <SelectTrigger className="w-[130px] h-10 whitespace-nowrap">
+                                    <span className="flex items-center">
+                                        <SortIcon className="h-4 w-4 mr-2 shrink-0 text-muted-foreground" />
+                                        {sort === "codigo" ? "Código" : "Nombre"}
+                                    </span>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="codigo:asc">
+                                        <span className="flex items-center">
+                                            <ArrowDown01 className="h-4 w-4 mr-2.5 shrink-0 text-muted-foreground" />
+                                            <span className="pr-2">Código ascendente</span>
+                                        </span>
+                                    </SelectItem>
+                                    <SelectItem value="codigo:desc">
+                                        <span className="flex items-center">
+                                            <ArrowDown10 className="h-4 w-4 mr-2.5 shrink-0 text-muted-foreground" />
+                                            <span className="pr-2">Código descendente</span>
+                                        </span>
+                                    </SelectItem>
+                                    <SelectItem value="nombre:asc">
+                                        <span className="flex items-center">
+                                            <ArrowDownAZ className="h-4 w-4 mr-2.5 shrink-0 text-muted-foreground" />
+                                            <span className="pr-2">Nombre A–Z</span>
+                                        </span>
+                                    </SelectItem>
+                                    <SelectItem value="nombre:desc">
+                                        <span className="flex items-center">
+                                            <ArrowDownZA className="h-4 w-4 mr-2.5 shrink-0 text-muted-foreground" />
+                                            <span className="pr-2">Nombre Z–A</span>
+                                        </span>
+                                    </SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

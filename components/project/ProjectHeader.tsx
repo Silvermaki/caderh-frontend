@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import {
     Calendar,
     CalendarRange,
+    ClipboardList,
     DollarSign,
     TrendingUp,
     Target,
@@ -36,6 +37,12 @@ interface ProjectHeaderProps {
     inKindDonations?: number;
     /** Suma de donaciones tipo efectivo (CASH). */
     cashDonations?: number;
+    /** Disponible neto de especie (donado − gastos imputados). */
+    inKindAvailable?: number;
+    /** Disponible neto de efectivo (donado − gastos imputados). */
+    cashAvailable?: number;
+    /** Presupuesto total planificado (referencia; no suma a ingresos). */
+    totalBudget?: number | null;
     /** Categoría del proyecto (PROJECT o AGREEMENT). */
     projectCategory?: string;
 }
@@ -54,6 +61,9 @@ const ProjectHeader = ({
     interactive,
     inKindDonations,
     cashDonations,
+    inKindAvailable,
+    cashAvailable,
+    totalBudget,
     projectCategory,
 }: ProjectHeaderProps) => {
     const acc = Array.isArray(accomplishments)
@@ -61,6 +71,60 @@ const ProjectHeader = ({
         : [];
     const completedCount = acc.filter((a: any) => a && a.completed).length;
     const overExecution = totalExpenses > financed ? totalExpenses - financed : 0;
+
+    const kpiCards = [
+        ...(totalBudget != null && totalBudget > 0 ? [{
+            icon: ClipboardList,
+            label: "Presupuesto Total",
+            value: formatCurrency(totalBudget),
+            tooltip: "Monto planificado de referencia para control presupuestario. No se suma a los ingresos recibidos.",
+            iconColor: "text-info",
+        }] : []),
+        {
+            icon: DollarSign,
+            label: "Presupuesto General",
+            value: formatCurrency(financed),
+            iconColor: "text-success",
+        },
+        {
+            icon: TrendingUp,
+            label: "Presupuesto Ejecutado",
+            value: formatCurrency(totalExpenses),
+            iconColor: "text-warning",
+        },
+        {
+            icon: Wallet,
+            label: "Presupuesto Disponible",
+            value: formatCurrency(remaining),
+            iconColor: "text-primary",
+        },
+        ...(overExecution > 0 ? [{
+            icon: AlertCircle,
+            label: "Sobre Ejecución",
+            value: formatCurrency(overExecution),
+            iconColor: "text-destructive",
+        }] : []),
+        {
+            icon: Package,
+            label: "Donaciones en Especie",
+            value: formatCurrency(inKindAvailable ?? inKindDonations ?? 0),
+            tooltip: `Monto disponible: donaciones en especie recibidas menos los gastos imputados a ellas. Total recibido: ${formatCurrency(inKindDonations ?? 0)}.`,
+            iconColor: "text-muted-foreground",
+        },
+        {
+            icon: Banknote,
+            label: "Donaciones en Efectivo",
+            value: formatCurrency(cashAvailable ?? cashDonations ?? 0),
+            tooltip: `Monto disponible: donaciones en efectivo recibidas menos los gastos imputados a ellas. Total recibido: ${formatCurrency(cashDonations ?? 0)}.`,
+            iconColor: "text-success",
+        },
+        {
+            icon: Target,
+            label: "Logros",
+            value: acc.length > 0 ? `${completedCount} / ${acc.length}` : "-",
+            iconColor: "text-[#04bb36]",
+        },
+    ];
 
     return (
         <Card className={cn(
@@ -101,59 +165,11 @@ const ProjectHeader = ({
             <div className="px-6 pb-2">
                 <div className={cn(
                     "grid grid-cols-1 sm:grid-cols-2 gap-3",
-                    overExecution > 0 ? "lg:grid-cols-7" : "lg:grid-cols-6"
+                    kpiCards.length >= 8 ? "lg:grid-cols-8" : kpiCards.length === 7 ? "lg:grid-cols-7" : "lg:grid-cols-6"
                 )}>
-                    <KPIBlock
-                        icon={DollarSign}
-                        label="Presupuesto General"
-                        value={formatCurrency(financed)}
-                        iconColor="text-success"
-                        index={0}
-                    />
-                    <KPIBlock
-                        icon={TrendingUp}
-                        label="Presupuesto Ejecutado"
-                        value={formatCurrency(totalExpenses)}
-                        iconColor="text-warning"
-                        index={1}
-                    />
-                    <KPIBlock
-                        icon={Wallet}
-                        label="Presupuesto Disponible"
-                        value={formatCurrency(remaining)}
-                        iconColor="text-primary"
-                        index={2}
-                    />
-                    {overExecution > 0 && (
-                        <KPIBlock
-                            icon={AlertCircle}
-                            label="Sobre Ejecución"
-                            value={formatCurrency(overExecution)}
-                            iconColor="text-destructive"
-                            index={3}
-                        />
-                    )}
-                    <KPIBlock
-                        icon={Package}
-                        label="Donaciones en Especie"
-                        value={formatCurrency(inKindDonations ?? 0)}
-                        iconColor="text-muted-foreground"
-                        index={overExecution > 0 ? 4 : 3}
-                    />
-                    <KPIBlock
-                        icon={Banknote}
-                        label="Donaciones en Efectivo"
-                        value={formatCurrency(cashDonations ?? 0)}
-                        iconColor="text-success"
-                        index={overExecution > 0 ? 5 : 4}
-                    />
-                    <KPIBlock
-                        icon={Target}
-                        label="Logros"
-                        value={acc.length > 0 ? `${completedCount} / ${acc.length}` : "-"}
-                        iconColor="text-[#04bb36]"
-                        index={overExecution > 0 ? 6 : 5}
-                    />
+                    {kpiCards.map((card, i) => (
+                        <KPIBlock key={card.label} {...card} index={i} />
+                    ))}
                 </div>
             </div>
 

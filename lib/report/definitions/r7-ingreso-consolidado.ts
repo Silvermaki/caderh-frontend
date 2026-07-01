@@ -18,8 +18,8 @@ const pct = (n: number) => `${n.toFixed(1)}%`;
 const columns: ColumnDef<R7Row>[] = [
   { key: 'year',     label: 'Año',       align: 'left',  render: (r) => String(r.year) },
   { key: 'quarter',  label: 'Trimestre', align: 'left',  render: (r) => r.quarter },
-  { key: 'desembolsado', label: 'Desembolsado a CADERH', align: 'right', render: (r) => money(r.desembolsado) },
-  { key: 'donaciones',   label: 'Donaciones',            align: 'right', render: (r) => money(r.donaciones) },
+  { key: 'desembolsado', label: 'Ingresos recibidos por CADERH', align: 'right', render: (r) => money(r.desembolsado) },
+  { key: 'donaciones',   label: 'Donaciones (especie y beneficio)', align: 'right', render: (r) => money(r.donaciones) },
   { key: 'granTotal',    label: 'Gran total',            align: 'right', render: (r) => money(r.granTotal) },
   { key: 'pctSobrePresupuesto', label: '% s/ presupuesto anual', align: 'right', render: (r) => pct(r.pctSobrePresupuesto) },
 ];
@@ -45,12 +45,12 @@ export const r7Definition: ReportDefinition<R7Filters, R7Row> = {
     chart: {
       kind: 'stackedBar',
       title: 'Ingreso por trimestre',
-      subtitle: 'Desembolsos a CADERH y donaciones, apilados por trimestre',
+      subtitle: 'Ingresos recibidos por CADERH y donaciones, apilados por trimestre',
       xKey: 'periodo',
       valueFormat: (v: number) => `L ${(v / 1000).toFixed(0)}K`,
       series: [
-        { key: 'desembolsado', label: 'Desembolsado a CADERH', color: 'info' },
-        { key: 'donaciones',   label: 'Donaciones',            color: 'success' },
+        { key: 'desembolsado', label: 'Ingresos recibidos por CADERH', color: 'info' },
+        { key: 'donaciones',   label: 'Donaciones (especie y beneficio)', color: 'success' },
       ],
       data: (rows: R7Row[]) =>
         rows.map((r) => ({

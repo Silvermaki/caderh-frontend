@@ -610,7 +610,7 @@ export const docsModules: DocModule[] = [
             id: "paso-2-fuentes",
             title: 'Paso 2 de 5 — "Fuentes"',
             body:
-              'Registra de dónde viene el dinero del proyecto. Cada fuente tiene un monto y una fecha de desembolso. Puedes agregar varias con "Agrega más" o importarlas desde un Excel usando el botón "Descargar Formato" como plantilla.',
+              'Registra de dónde viene el dinero del proyecto. Cada fuente tiene un monto y una fecha de ingreso. Puedes agregar varias con "Agrega más" o importarlas desde un Excel usando el botón "Descargar Formato" como plantilla.',
             screenshot: {
               src: "/docs/proyectos/crear-proyecto/proy-05-wizard-paso2-fuente-dropdown.png",
               alt: "Paso 2 del wizard mostrando el dropdown de Fuente con opciones USAID, BANHCAFE, GIZ y UTH",
@@ -631,7 +631,7 @@ export const docsModules: DocModule[] = [
               'Las donaciones son aportes adicionales al presupuesto. Cada una tiene monto, tipo (Efectivo o Especie) y donante. Si tu proyecto no tiene donaciones, puedes pasar al siguiente paso sin llenar nada.',
             screenshot: {
               src: "/docs/proyectos/crear-proyecto/proy-06-wizard-paso3-donaciones.png",
-              alt: "Paso 3 del wizard con campos de Monto, Tipo (Efectivo/Especie), Donante y Fecha Desembolso",
+              alt: "Paso 3 del wizard con campos de Monto, Tipo (Efectivo/Especie), Donante y Fecha de Ingreso",
               caption:
                 'El tipo "Especie" se usa para donaciones no monetarias: equipo, insumos, capacitaciones.',
             },

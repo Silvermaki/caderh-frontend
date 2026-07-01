@@ -21,6 +21,8 @@ export interface R6Row {
   pctEjecucion: number;
   donacionesEspecie: number;
   donacionesEfectivo: number;
+  gastosEjecutados: number;
+  saldoDisponible: number;
 }
 
 const money = (n: number) =>
@@ -31,15 +33,17 @@ const columns: ColumnDef<R6Row>[] = [
   { key: 'projectName',        label: 'Proyecto / Fuente',    align: 'left',  render: (r) => r.projectName },
   { key: 'presupuestoGlobal',  label: 'Presupuesto global',   align: 'right', render: (r) => money(r.presupuestoGlobal) },
   { key: 'presupuestoAnual',   label: 'Presupuesto anual',    align: 'right', render: (r) => money(r.presupuestoAnual) },
-  { key: 'desembolsoQ1',       label: 'Desemb. Q1',           align: 'right', render: (r) => money(r.desembolsoQ1) },
-  { key: 'desembolsoQ2',       label: 'Desemb. Q2',           align: 'right', render: (r) => money(r.desembolsoQ2) },
-  { key: 'desembolsoQ3',       label: 'Desemb. Q3',           align: 'right', render: (r) => money(r.desembolsoQ3) },
-  { key: 'desembolsoQ4',       label: 'Desemb. Q4',           align: 'right', render: (r) => money(r.desembolsoQ4) },
+  { key: 'desembolsoQ1',       label: 'Ingresos Q1',          align: 'right', render: (r) => money(r.desembolsoQ1) },
+  { key: 'desembolsoQ2',       label: 'Ingresos Q2',          align: 'right', render: (r) => money(r.desembolsoQ2) },
+  { key: 'desembolsoQ3',       label: 'Ingresos Q3',          align: 'right', render: (r) => money(r.desembolsoQ3) },
+  { key: 'desembolsoQ4',       label: 'Ingresos Q4',          align: 'right', render: (r) => money(r.desembolsoQ4) },
   { key: 'desembolsoSinFecha', label: 'Sin fecha',            align: 'right', render: (r) => money(r.desembolsoSinFecha) },
-  { key: 'totalDesembolsado',  label: 'Total desembolsado',   align: 'right', render: (r) => money(r.totalDesembolsado) },
+  { key: 'totalDesembolsado',  label: 'Total ingresos recibidos', align: 'right', render: (r) => money(r.totalDesembolsado) },
   { key: 'pctEjecucion',       label: '% Ejecución',          align: 'right', render: (r) => pct(r.pctEjecucion) },
   { key: 'donacionesEspecie',  label: 'Donaciones especie',   align: 'right', render: (r) => money(r.donacionesEspecie) },
   { key: 'donacionesEfectivo', label: 'Donaciones efectivo',  align: 'right', render: (r) => money(r.donacionesEfectivo) },
+  { key: 'gastosEjecutados',   label: 'Gastos ejecutados',    align: 'right', render: (r) => money(r.gastosEjecutados) },
+  { key: 'saldoDisponible',    label: 'Saldo disponible',     align: 'right', render: (r) => money(r.saldoDisponible) },
 ];
 
 export const r6Definition: ReportDefinition<R6Filters, R6Row> = {
@@ -47,7 +51,7 @@ export const r6Definition: ReportDefinition<R6Filters, R6Row> = {
   code: 'R6',
   category: 'ingresos',
   title: 'Ingreso total por proyecto',
-  subtitle: 'Presupuesto vs desembolsos trimestrales, con % de ejecución',
+  subtitle: 'Presupuesto vs ingresos recibidos trimestrales, con % de ejecución',
   filters: ['project', 'year'],
   defaultFilters: { year: new Date().getFullYear() },
   columns,
@@ -58,13 +62,13 @@ export const r6Definition: ReportDefinition<R6Filters, R6Row> = {
     },
     chart: {
       kind: 'groupedBar',
-      title: 'Presupuesto vs Desembolsado por proyecto',
-      subtitle: 'Comparación de lo presupuestado anual con lo realmente ejecutado',
+      title: 'Presupuesto vs Ingresos recibidos por proyecto',
+      subtitle: 'Comparación de lo presupuestado anual con los ingresos realmente recibidos',
       xKey: 'projectName',
       valueFormat: (v: number) => `L ${(v / 1000).toFixed(0)}K`,
       series: [
         { key: 'presupuestoAnual', label: 'Presupuesto anual', color: 'info' },
-        { key: 'totalDesembolsado', label: 'Desembolsado', color: 'success' },
+        { key: 'totalDesembolsado', label: 'Ingresos recibidos', color: 'success' },
       ],
       data: (rows: R6Row[]) =>
         rows.map((r) => ({
