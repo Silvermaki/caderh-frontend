@@ -322,7 +322,13 @@ const NewProjectModal = ({
         reloadList();
     };
 
+    // Candado síncrono anti doble-envío: sin él, un doble click en el paso 1
+    // (antes de que exista projectId) crearía dos proyectos.
+    const step1LockRef = useRef(false);
+
     const onStep1 = async (data: any) => {
+        if (step1LockRef.current) return;
+        step1LockRef.current = true;
         setIsSubmitting(true);
         try {
             const res = await fetch(
@@ -362,6 +368,7 @@ const NewProjectModal = ({
             toast.error("Error al crear proyecto");
         }
         setIsSubmitting(false);
+        step1LockRef.current = false;
     };
 
     const onStep2 = async () => {

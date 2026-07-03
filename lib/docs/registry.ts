@@ -83,7 +83,7 @@ export const docsModules: DocModule[] = [
               src: "/docs/inicio/orientacion/inicio-01-dashboard.png",
               alt: "Dashboard de CADERH con KPIs (Total Proyectos, Financiamiento, Gastos, Donaciones) y 4 gráficos",
               caption:
-                "Vista del dashboard. Los números son datos reales del sistema, actualizados al momento.",
+                "Vista del dashboard de Estadísticas. Actualmente muestra datos de demostración (así lo indica el subtítulo de la página).",
             },
           },
           {
@@ -578,7 +578,7 @@ export const docsModules: DocModule[] = [
               src: "/docs/proyectos/crear-proyecto/proy-01-listado.png",
               alt: "Listado de proyectos con tarjetas mostrando presupuesto y porcentaje ejecutado",
               caption:
-                "Cada tarjeta resume el proyecto: presupuesto, ejecutado, disponible, donaciones y % de avance.",
+                "Cada tarjeta resume el proyecto: presupuesto, ejecutado, disponible, donaciones y el % de ejecución financiera (gastos en efectivo ÷ ingresos en efectivo; la especie no participa).",
             },
           },
           {
@@ -723,7 +723,7 @@ export const docsModules: DocModule[] = [
               "Fechas de inicio y fin.",
               "Presupuesto general, ejecutado y disponible.",
               "Donaciones en especie y efectivo.",
-              "Logros completados y porcentaje total de fondo ejecutado.",
+              "Logros completados y el % de ejecución financiera (gastos ejecutados en efectivo ÷ ingresos recibidos en efectivo; las donaciones en especie no participan de este indicador).",
             ],
             screenshot: {
               src: "/docs/proyectos/ver-detalle/proy-10-detalle-general.png",

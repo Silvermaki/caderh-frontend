@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { Breadcrumbs, BreadcrumbItem } from "@/components/ui/breadcrumbs";
@@ -185,6 +185,11 @@ const Page = () => {
     const [infoSaving, setInfoSaving] = useState(false);
     const [accomplishmentsPatching, setAccomplishmentsPatching] = useState(false);
 
+    // Candado síncrono anti doble-envío: `disabled={saving}` no basta cuando el
+    // segundo click llega antes del re-render (visto en pruebas: dos POST con
+    // 80 ms de diferencia). El ref cambia en el mismo tick del primer click.
+    const submitLockRef = useRef(false);
+
     const [addSourceOpen, setAddSourceOpen] = useState(false);
     const [addSourceForm, setAddSourceForm] = useState({ financing_source_id: "", amount: "", description: "", disbursement_date: "" });
     const [addSourceSaving, setAddSourceSaving] = useState(false);
@@ -361,6 +366,8 @@ const Page = () => {
 
     const onCreateCategory = async () => {
         if (!newCategoryName.trim()) return;
+        if (submitLockRef.current) return;
+        submitLockRef.current = true;
         setCreatingCategory(true);
         try {
             const res = await fetch(
@@ -387,6 +394,7 @@ const Page = () => {
             toast.error("Error al crear categoría");
         }
         setCreatingCategory(false);
+        submitLockRef.current = false;
     };
 
     const fetchAgents = async () => {
@@ -753,6 +761,8 @@ const Page = () => {
             toast.error("Completa fuente y monto");
             return;
         }
+        if (submitLockRef.current) return;
+        submitLockRef.current = true;
         setAddSourceSaving(true);
         try {
             const res = await fetch(
@@ -785,6 +795,7 @@ const Page = () => {
             toast.error("Error al agregar fuente");
         }
         setAddSourceSaving(false);
+        submitLockRef.current = false;
     };
 
     const openEditSource = (row: any) => {
@@ -803,6 +814,8 @@ const Page = () => {
             toast.error("Completa fuente y monto");
             return;
         }
+        if (submitLockRef.current) return;
+        submitLockRef.current = true;
         setEditSourceSaving(true);
         try {
             const res = await fetch(
@@ -834,6 +847,7 @@ const Page = () => {
             toast.error("Error al actualizar fuente");
         }
         setEditSourceSaving(false);
+        submitLockRef.current = false;
     };
 
     const onDeleteSource = async (sourceId: string) => {
@@ -867,6 +881,8 @@ const Page = () => {
             toast.error("El donante es obligatorio");
             return;
         }
+        if (submitLockRef.current) return;
+        submitLockRef.current = true;
         setAddDonationSaving(true);
         try {
             const res = await fetch(
@@ -900,6 +916,7 @@ const Page = () => {
             toast.error("Error al agregar donación");
         }
         setAddDonationSaving(false);
+        submitLockRef.current = false;
     };
 
     const openEditDonation = (row: any) => {
@@ -923,6 +940,8 @@ const Page = () => {
             toast.error("El donante es obligatorio");
             return;
         }
+        if (submitLockRef.current) return;
+        submitLockRef.current = true;
         setEditDonationSaving(true);
         try {
             const res = await fetch(
@@ -955,6 +974,7 @@ const Page = () => {
             toast.error("Error al actualizar donación");
         }
         setEditDonationSaving(false);
+        submitLockRef.current = false;
     };
 
     const onDeleteDonation = async (donationId: string) => {
@@ -992,6 +1012,8 @@ const Page = () => {
             toast.error("Completa el monto");
             return;
         }
+        if (submitLockRef.current) return;
+        submitLockRef.current = true;
         setAddExpenseSaving(true);
         try {
             const res = await fetch(
@@ -1024,6 +1046,7 @@ const Page = () => {
             toast.error("Error al agregar gasto");
         }
         setAddExpenseSaving(false);
+        submitLockRef.current = false;
     };
 
     const openEditExpense = (row: any) => {
@@ -1049,6 +1072,8 @@ const Page = () => {
             toast.error("Completa el monto");
             return;
         }
+        if (submitLockRef.current) return;
+        submitLockRef.current = true;
         setEditExpenseSaving(true);
         try {
             const res = await fetch(
@@ -1080,6 +1105,7 @@ const Page = () => {
             toast.error("Error al actualizar gasto");
         }
         setEditExpenseSaving(false);
+        submitLockRef.current = false;
     };
 
     const onDeleteExpense = async (expenseId: string) => {
@@ -1211,9 +1237,17 @@ const Page = () => {
 
     const financed = Number(project.financed_amount ?? 0);
     const totalExpenses = Number(project.total_expenses ?? 0);
-    const executedPct = financed > 0 ? Math.min(100, Math.round((totalExpenses / financed) * 100)) : 0;
+    // % de ejecución financiera (criterio CADERH): gastos ejecutados en
+    // efectivo ÷ ingresos recibidos en efectivo × 100. La especie queda fuera.
+    // Sin tope en el valor mostrado (>100% = sobre-ejecución, igual que R6/R7);
+    // null cuando hay gastos en efectivo pero ningún ingreso en efectivo (N/D).
+    const cashIncome = Number(project.cash_income ?? 0);
+    const cashExpenses = Number(project.cash_expenses ?? 0);
+    const executedPct = cashIncome > 0
+        ? Math.round((cashExpenses / cashIncome) * 100)
+        : (cashExpenses > 0 ? null : 0);
     const remaining = Math.max(0, financed - totalExpenses);
-    const progressColor = executedPct >= 90 ? "destructive" : executedPct >= 70 ? "warning" : "success";
+    const progressColor = executedPct == null || executedPct >= 90 ? "destructive" : executedPct >= 70 ? "warning" : "success";
     const totalFuentes = financingSources.reduce((s, r) => s + Number(r.amount ?? 0), 0);
     const totalDonaciones = donations.reduce((s, r) => s + Number(r.amount ?? 0), 0);
     const totalGastos = expenses.reduce((s, r) => s + Number(r.amount ?? 0), 0);

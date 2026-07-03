@@ -57,8 +57,10 @@ export const r6Definition: ReportDefinition<R6Filters, R6Row> = {
   columns,
   variants: {
     conditionalRed: {
-      when: (r: R6Row) => r.totalDesembolsado < r.presupuestoAnual && r.presupuestoAnual > 0,
-      cells: ['totalDesembolsado', 'pctEjecucion'],
+      // Sobre-ejecución financiera: gastos en efectivo superan los ingresos
+      // recibidos en efectivo (criterio CADERH, % sin tope).
+      when: (r: R6Row) => r.pctEjecucion > 100,
+      cells: ['pctEjecucion'],
     },
     chart: {
       kind: 'groupedBar',

@@ -30,7 +30,9 @@ interface ProjectHeaderProps {
     financed: number;
     totalExpenses: number;
     remaining: number;
-    executedPct: number;
+    /** % de ejecución financiera (efectivo). Sin tope; null = no determinable
+     *  (hay gastos en efectivo pero ningún ingreso en efectivo). */
+    executedPct: number | null;
     progressColor: "destructive" | "warning" | "success";
     interactive?: boolean;
     /** Suma de donaciones tipo suministro (SUPPLY). */
@@ -176,7 +178,7 @@ const ProjectHeader = ({
             {/* Animated progress bar */}
             <div className="px-6 pt-3 pb-6">
                 <p className="text-xs text-muted-foreground mb-2">
-                    Total Fondo Ejecutado: {executedPct}%
+                    Ejecución Financiera (efectivo): {executedPct == null ? "N/D" : `${executedPct}%`}
                 </p>
                 <motion.div
                     initial={{ opacity: 0, scaleX: 0 }}
@@ -184,7 +186,7 @@ const ProjectHeader = ({
                     transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" }}
                     style={{ transformOrigin: "left" }}
                 >
-                    <Progress value={executedPct} color={progressColor} size="sm" />
+                    <Progress value={executedPct == null ? 100 : Math.min(100, executedPct)} color={progressColor} size="sm" />
                 </motion.div>
             </div>
         </Card>

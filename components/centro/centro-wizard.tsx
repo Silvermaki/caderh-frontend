@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -291,8 +291,13 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
     };
 
     // ─── Submit ───
+    // Candado síncrono anti doble-envío: evita crear el centro dos veces si el
+    // segundo click llega antes del re-render que deshabilita el botón.
+    const submitLockRef = useRef(false);
     const handleSubmit = async () => {
         if (!validateStep1()) { setStep(1); return; }
+        if (submitLockRef.current) return;
+        submitLockRef.current = true;
         setIsSubmitting(true);
         try {
             const payload = {
@@ -335,6 +340,7 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
             }
         } catch { toast.error("Error al crear centro"); }
         setIsSubmitting(false);
+        submitLockRef.current = false;
     };
 
     // ─── Navigation ───

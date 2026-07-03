@@ -249,11 +249,18 @@ function PageContent() {
                                 const expenses = Number(p.total_expenses ?? 0);
                                 const inKindDonations = Number((p as any).in_kind_donations ?? 0);
                                 const cashDonations = Number((p as any).cash_donations ?? 0);
+                                // % de ejecución financiera (criterio CADERH):
+                                // gastos en efectivo ÷ ingresos en efectivo.
+                                // Sin tope (>100% = sobre-ejecución); null = N/D.
+                                const cashIncome = Number((p as any).cash_income ?? 0);
+                                const cashExpenses = Number((p as any).cash_expenses ?? 0);
                                 const executedPct =
-                                    financed > 0 ? Math.min(100, Math.round((expenses / financed) * 100)) : 0;
+                                    cashIncome > 0
+                                        ? Math.round((cashExpenses / cashIncome) * 100)
+                                        : (cashExpenses > 0 ? null : 0);
                                 const remaining = Math.max(0, financed - expenses);
                                 const progressColor: "destructive" | "warning" | "success" =
-                                    executedPct >= 90 ? "destructive" : executedPct >= 70 ? "warning" : "success";
+                                    executedPct == null || executedPct >= 90 ? "destructive" : executedPct >= 70 ? "warning" : "success";
                                 return (
                                     <Link
                                         key={p.id}
