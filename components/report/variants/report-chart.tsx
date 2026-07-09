@@ -94,10 +94,25 @@ export function ReportChart<TRow>({ spec, rows, captureId }: ReportChartProps<TR
 }
 
 function renderChart<TRow>(spec: ChartSpec<TRow>, data: Array<Record<string, any>>): React.ReactElement {
-  const { kind, xKey, series, valueFormat } = spec;
+  const { kind, xKey, xLabel, yLabel, series, valueFormat } = spec;
 
   const formatValueAxis = (v: number) =>
     valueFormat ? valueFormat(v) : v >= 1000 ? `${Math.round(v / 1000)}k` : String(v);
+
+  // Títulos de eje: indican qué se mide en cada eje (no aplica a donut).
+  const xAxisLabel = xLabel
+    ? { value: xLabel, position: 'insideBottom' as const, offset: -5, fontSize: 12, fill: 'hsl(var(--foreground))' }
+    : undefined;
+  const yAxisLabel = yLabel
+    ? { value: yLabel, angle: -90, position: 'insideLeft' as const, style: { textAnchor: 'middle' as const }, fontSize: 12, fill: 'hsl(var(--foreground))' }
+    : undefined;
+  // Márgenes extra para que los títulos de eje no se corten.
+  const chartMargin = {
+    top: 10,
+    right: 12,
+    left: yLabel ? 12 : 0,
+    bottom: xLabel ? 18 : 0,
+  };
 
   if (kind === 'donut') {
     const valueKey = series[0]?.key ?? 'value';
@@ -132,10 +147,10 @@ function renderChart<TRow>(spec: ChartSpec<TRow>, data: Array<Record<string, any
 
   if (kind === 'line') {
     return (
-      <LineChart data={data} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+      <LineChart data={data} margin={chartMargin}>
         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-        <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-        <YAxis tickFormatter={formatValueAxis} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+        <XAxis dataKey={xKey} label={xAxisLabel} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+        <YAxis label={yAxisLabel} tickFormatter={formatValueAxis} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
         <Tooltip content={<CustomTooltip valueFormat={valueFormat} />} />
         <Legend verticalAlign="top" height={32} formatter={(v: string) => <span className="text-xs text-muted-foreground">{v}</span>} />
         {series.map((s, i) => (
@@ -148,10 +163,10 @@ function renderChart<TRow>(spec: ChartSpec<TRow>, data: Array<Record<string, any
   // bar | groupedBar | stackedBar
   const stackId = kind === 'stackedBar' ? 'stack' : undefined;
   return (
-    <BarChart data={data} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
+    <BarChart data={data} margin={chartMargin}>
       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-      <XAxis dataKey={xKey} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} interval={0} angle={data.length > 6 ? -20 : 0} textAnchor={data.length > 6 ? 'end' : 'middle'} height={data.length > 6 ? 60 : 30} />
-      <YAxis tickFormatter={formatValueAxis} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+      <XAxis dataKey={xKey} label={xAxisLabel} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} interval={0} angle={data.length > 6 ? -20 : 0} textAnchor={data.length > 6 ? 'end' : 'middle'} height={data.length > 6 ? 60 : 30} />
+      <YAxis label={yAxisLabel} tickFormatter={formatValueAxis} tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
       <Tooltip content={<CustomTooltip valueFormat={valueFormat} />} cursor={{ fill: 'hsl(var(--primary) / 0.08)' }} />
       <Legend verticalAlign="top" height={32} formatter={(v: string) => <span className="text-xs text-muted-foreground">{v}</span>} />
       {series.map((s, i) => (

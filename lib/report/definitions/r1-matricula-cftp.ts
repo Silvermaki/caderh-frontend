@@ -17,6 +17,7 @@ export interface R1Filters {
 
 export interface R1Row {
   proyecto: string;
+  fuentes: string;
   ciudad: string;
   centroId: number;
   centro: string;
@@ -35,9 +36,12 @@ export interface R1Row {
 const QUARTER_LABEL: Record<number, string> = { 1: 'Q1', 2: 'Q2', 3: 'Q3', 4: 'Q4' };
 
 const columns: ColumnDef<R1Row>[] = [
-  { key: 'proyecto',        label: 'Proyecto',          align: 'left',  render: (r) => r.proyecto },
+  // hideIfEmpty: casi todas las filas vienen sin proyecto vinculado ('—') y la
+  // columna confundía a los revisores; se oculta si toda la página está vacía.
+  { key: 'proyecto',        label: 'Proyecto',          align: 'left',  hideIfEmpty: true, render: (r) => r.proyecto },
+  { key: 'fuentes',         label: 'Fuente(s) financiamiento', align: 'left', render: (r) => r.fuentes },
   { key: 'ciudad',          label: 'Ciudad/Zona',       align: 'left',  render: (r) => r.ciudad },
-  { key: 'centro',          label: 'Centro (CFTP)',     align: 'left',  render: (r) => r.centro },
+  { key: 'centro',          label: 'Centro (CFP)',      align: 'left',  render: (r) => r.centro },
   { key: 'curso',           label: 'Curso',             align: 'left',  render: (r) => r.curso },
   { key: 'areaTecnica',     label: 'Área técnica',      align: 'left',  render: (r) => r.areaTecnica },
   { key: 'anio',            label: 'Año',               align: 'right', render: (r) => r.anio != null ? String(r.anio) : '—' },
@@ -50,13 +54,11 @@ const columns: ColumnDef<R1Row>[] = [
   { key: 'total',           label: 'Total',             align: 'right', render: (r) => String(r.total) },
 ];
 
-const sumKey = (k: keyof R1Row) => (rows: R1Row[]) => rows.reduce((s, r) => s + (Number(r[k]) || 0), 0);
-
 export const r1Definition: ReportDefinition<R1Filters, R1Row> = {
   id: 'r1-matricula-cftp',
   code: 'R1',
   category: 'estudiantes',
-  title: 'Consolidado matrícula por CFTP',
+  title: 'Consolidado matrícula por CFP',
   subtitle: 'Pivot por ciudad / centro / curso / año / trimestre / edad',
   filters: [
     'year', 'quarter',
@@ -76,10 +78,11 @@ export const r1Definition: ReportDefinition<R1Filters, R1Row> = {
   ],
   variants: {
     kpiStrip: {
+      // Claves calculadas por el backend sobre el conjunto filtrado completo.
       cards: [
-        { key: 'totalHombres', label: 'Total Hombres', color: 'info',    compute: sumKey('hombres') },
-        { key: 'totalMujeres', label: 'Total Mujeres', color: 'accent',  compute: sumKey('mujeres') },
-        { key: 'totalGeneral', label: 'Total Matrícula', color: 'success', compute: sumKey('total') },
+        { key: 'totalHombres', label: 'Total Hombres',   color: 'info' },
+        { key: 'totalMujeres', label: 'Total Mujeres',   color: 'accent' },
+        { key: 'totalGeneral', label: 'Total Matrícula', color: 'success' },
       ],
     },
     chart: {
@@ -87,6 +90,8 @@ export const r1Definition: ReportDefinition<R1Filters, R1Row> = {
       title: 'Matrícula por área técnica',
       subtitle: 'Hombres vs mujeres agregados por área',
       xKey: 'areaTecnica',
+      xLabel: 'Área técnica',
+      yLabel: 'Estudiantes',
       series: [
         { key: 'hombres', label: 'Hombres', color: 'info' },
         { key: 'mujeres', label: 'Mujeres', color: 'primary' },
@@ -110,7 +115,7 @@ export const r1Definition: ReportDefinition<R1Filters, R1Row> = {
       ? Math.floor(pagination.offset / pagination.limit) + 1
       : 1;
     const pageSize = pagination?.limit ?? 25;
-    const res = await apiGet<{ rows: R1Row[]; total: number }>(
+    const res = await apiGet<{ rows: R1Row[]; total: number; totals?: Record<string, number>; kpis?: Record<string, number> }>(
       '/reports/r1-matricula-cftp',
       {
         project: filters.project?.join(','),
@@ -127,7 +132,7 @@ export const r1Definition: ReportDefinition<R1Filters, R1Row> = {
         page_size: pageSize,
       },
     );
-    return { rows: res.rows, total: res.total };
+    return { rows: res.rows, total: res.total, totalsRow: res.totals, kpis: res.kpis };
   },
 };
 

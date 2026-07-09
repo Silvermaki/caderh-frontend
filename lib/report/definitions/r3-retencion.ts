@@ -40,7 +40,7 @@ const pct = (n: number) => `${n.toFixed(1)}%`;
 const columns: ColumnDef<R3Row>[] = [
   { key: 'proyecto',       label: 'Proyecto',         align: 'left',  render: (r) => r.proyecto },
   { key: 'ciudad',         label: 'Ciudad/Zona',      align: 'left',  render: (r) => r.ciudad },
-  { key: 'centro',         label: 'Centro (CFTP)',    align: 'left',  render: (r) => r.centro },
+  { key: 'centro',         label: 'Centro (CFP)',     align: 'left',  render: (r) => r.centro },
   { key: 'curso',          label: 'Curso',            align: 'left',  render: (r) => r.curso },
   { key: 'areaTecnica',    label: 'Área técnica',     align: 'left',  render: (r) => r.areaTecnica },
   { key: 'anio',           label: 'Año',              align: 'right', render: (r) => r.anio != null ? String(r.anio) : '—' },
@@ -55,8 +55,6 @@ const columns: ColumnDef<R3Row>[] = [
   { key: 'desercion',      label: 'Deserción',        align: 'right', render: (r) => String(r.desercion) },
   { key: 'pctRetencion',   label: '% Retención',      align: 'right', render: (r) => pct(r.pctRetencion) },
 ];
-
-const sumKey = (k: keyof R3Row) => (rows: R3Row[]) => rows.reduce((s, r) => s + (Number(r[k]) || 0), 0);
 
 export const r3Definition: ReportDefinition<R3Filters, R3Row> = {
   id: 'r3-retencion',
@@ -90,20 +88,13 @@ export const r3Definition: ReportDefinition<R3Filters, R3Row> = {
   ],
   variants: {
     kpiStrip: {
+      // Claves calculadas por el backend sobre el conjunto filtrado completo
+      // (el backend expone `totalDesertados`, no `totalDesercion`).
       cards: [
-        { key: 'totalInicial',  label: 'Total Inicial',  color: 'info',    compute: sumKey('totalInicial') },
-        { key: 'totalFinal',    label: 'Total Egresados', color: 'success', compute: sumKey('totalFinal') },
-        { key: 'totalDesercion',label: 'Total Deserción', color: 'destructive', compute: sumKey('desercion') },
-        {
-          key: 'pctRetencionGlobal',
-          label: '% Retención',
-          color: 'accent',
-          compute: (rows: R3Row[]) => {
-            const ti = sumKey('totalInicial')(rows);
-            const tf = sumKey('totalFinal')(rows);
-            return ti > 0 ? Math.round((tf / ti) * 10000) / 100 : 0;
-          },
-        },
+        { key: 'totalInicial',       label: 'Total Inicial',   color: 'info' },
+        { key: 'totalFinal',         label: 'Total Egresados', color: 'success' },
+        { key: 'totalDesertados',    label: 'Total Deserción', color: 'destructive' },
+        { key: 'pctRetencionGlobal', label: '% Retención',     color: 'accent', format: 'percent' },
       ],
     },
     chart: {
@@ -111,6 +102,8 @@ export const r3Definition: ReportDefinition<R3Filters, R3Row> = {
       title: '% de retención por proyecto',
       subtitle: 'Promedio de retención agregado por proyecto',
       xKey: 'proyecto',
+      xLabel: 'Proyecto',
+      yLabel: '% Retención',
       valueFormat: (v: number) => `${v.toFixed(1)}%`,
       series: [
         { key: 'pctRetencion', label: '% Retención', color: 'success' },
@@ -130,14 +123,14 @@ export const r3Definition: ReportDefinition<R3Filters, R3Row> = {
         })).sort((a, b) => b.pctRetencion - a.pctRetencion).slice(0, 10);
       },
     },
-  } as any,
+  },
   export: { excel: 'client', pdf: 'server', csv: 'client' },
   fetcher: async (filters, pagination) => {
     const page = pagination?.offset !== undefined && pagination?.limit
       ? Math.floor(pagination.offset / pagination.limit) + 1
       : 1;
     const pageSize = pagination?.limit ?? 25;
-    const res = await apiGet<{ rows: R3Row[]; total: number }>(
+    const res = await apiGet<{ rows: R3Row[]; total: number; totals?: Record<string, number>; kpis?: Record<string, number> }>(
       '/reports/r3-retencion',
       {
         project: filters.project?.join(','),
@@ -154,7 +147,7 @@ export const r3Definition: ReportDefinition<R3Filters, R3Row> = {
         page_size: pageSize,
       },
     );
-    return { rows: res.rows, total: res.total };
+    return { rows: res.rows, total: res.total, totalsRow: res.totals, kpis: res.kpis };
   },
 };
 

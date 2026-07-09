@@ -24,6 +24,8 @@ const STEPS = [
     { key: "additional", label: "Información Adicional" },
 ];
 
+const VIVIENDA_OPTIONS = ["Propia", "Alquilada", "Otros"];
+
 const parseDateToISO = (raw: string | null | undefined): string => {
     if (!raw || typeof raw !== "string") return "";
     const trimmed = raw.trim();
@@ -173,6 +175,15 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
     }, [form.cantidad_viven, form.cantidad_trabajan_viven]);
 
     const selectedCentro = useMemo(() => centrosList.find((c) => c.id.toString() === form.centro_id), [centrosList, form.centro_id]);
+
+    // Si el valor guardado (dato histórico del SGC) no es una de las opciones,
+    // se incluye como opción extra para mostrarlo y no perderlo al guardar.
+    const viviendaOptions = useMemo(() => {
+        const opts = VIVIENDA_OPTIONS.map((v) => ({ value: v, label: v }));
+        const current = String(form.vivienda ?? "").trim();
+        if (current && !VIVIENDA_OPTIONS.includes(current)) opts.push({ value: current, label: current });
+        return opts;
+    }, [form.vivienda]);
 
     const validateStep = (step: number): boolean => {
         const e: Record<string, string> = {};
@@ -382,7 +393,7 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                     {fieldInput("numero_dep", "No. de dependientes", { required: true, placeholder: "0" })}
                     <div className="md:col-span-2">{fieldSwitch("tiene_hijos", "¿Tiene hijos?")}</div>
                     {!!form.tiene_hijos && fieldInput("cuantos_hijos", "¿Cuántos hijos?", { type: "number" })}
-                    {fieldInput("vivienda", "Tipo de vivienda")}
+                    {fieldSelect("vivienda", "Tipo de vivienda", viviendaOptions)}
                     {fieldInput("cantidad_viven", "Cantidad que viven en el hogar", { type: "number" })}
                     {fieldInput("cantidad_trabajan_viven", "Cantidad que trabajan", { type: "number" })}
                     <div>
@@ -440,8 +451,7 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
             case 4: return (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">{fieldSwitch("especial", "¿Necesidades especiales?")}</div>
-                    {!!form.especial && fieldInput("discapacidad_id", "Discapacidad")}
-                    <div className="md:col-span-2">{fieldSwitch("riesgo_social", "¿Riesgo social?")}</div>
+                    {!!form.especial && fieldInput("discapacidad_id", "Discapacidad o Enfermedad")}
                     {fieldInput("etnia_id", "Etnia")}
                     <div className="md:col-span-2">{fieldSwitch("interno", "¿Interno?")}</div>
                     <div className="md:col-span-2 mt-4 border-t pt-4">

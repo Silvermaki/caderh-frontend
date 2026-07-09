@@ -83,7 +83,7 @@ export const docsModules: DocModule[] = [
               src: "/docs/inicio/orientacion/inicio-01-dashboard.png",
               alt: "Dashboard de CADERH con KPIs (Total Proyectos, Financiamiento, Gastos, Donaciones) y 4 gráficos",
               caption:
-                "Vista del dashboard de Estadísticas. Actualmente muestra datos de demostración (así lo indica el subtítulo de la página).",
+                "Vista del dashboard de Estadísticas. Muestra datos reales del sistema, calculados a partir de los proyectos activos registrados.",
             },
           },
           {

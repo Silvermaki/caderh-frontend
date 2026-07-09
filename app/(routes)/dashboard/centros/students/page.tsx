@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { Breadcrumbs, BreadcrumbItem } from "@/components/ui/breadcrumbs";
 import DataTable from "@/components/ui/service-datatable";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, ExternalLink, Search, ChevronsUpDown } from "lucide-react";
+import { ArrowUpDown, ExternalLink, Search, ChevronsUpDown, Download, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import SkeletonTable from "@/components/skeleton-table";
@@ -47,13 +47,34 @@ function PageContent() {
     const [centroSelectWidth, setCentroSelectWidth] = useState(256);
     const centroMeasureRef = useRef<HTMLSpanElement>(null);
 
+    const [cursos, setCursos] = useState<{ id: number; nombre: string }[]>([]);
+    const [areas, setAreas] = useState<{ id: number; nombre: string }[]>([]);
+    const [fuentes, setFuentes] = useState<{ id: string; name: string }[]>([]);
+    const [cursoFilter, setCursoFilter] = useState("all");
+    const [areaFilter, setAreaFilter] = useState("all");
+    const [fuenteFilter, setFuenteFilter] = useState("all");
+
     const [selected, setSelected] = useState<any>(null);
     const [wizardOpen, setWizardOpen] = useState(false);
+    const [exporting, setExporting] = useState(false);
 
     const fetchCentros = async () => {
         try {
             const res = await fetch(`${apiBase}/centros/centros?all=true`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setCentros(d.data ?? []); }
+        } catch { /* silent */ }
+    };
+
+    const fetchFilterCatalogs = async () => {
+        try {
+            const [cursosRes, areasRes, fuentesRes] = await Promise.all([
+                fetch(`${apiBase}/centros/courses?all=true`, { headers: authHeaders }),
+                fetch(`${apiBase}/centros/areas?all=true`, { headers: authHeaders }),
+                fetch(`${apiBase}/supervisor/financing-sources?all=true`, { headers: authHeaders }),
+            ]);
+            if (cursosRes.ok) { const d = await cursosRes.json(); setCursos(d.data ?? []); }
+            if (areasRes.ok) { const d = await areasRes.json(); setAreas(d.data ?? []); }
+            if (fuentesRes.ok) { const d = await fuentesRes.json(); setFuentes(d.data ?? []); }
         } catch { /* silent */ }
     };
 
@@ -77,6 +98,12 @@ function PageContent() {
         });
         const cid = overrides.centro_id ?? centroFilter;
         if (cid && cid !== "all") p.set("centro_id", cid);
+        const cur = overrides.curso_id ?? cursoFilter;
+        if (cur && cur !== "all") p.set("curso_id", cur);
+        const ar = overrides.area_id ?? areaFilter;
+        if (ar && ar !== "all") p.set("area_id", ar);
+        const fu = overrides.fuente_id ?? fuenteFilter;
+        if (fu && fu !== "all") p.set("fuente_id", fu);
         return p.toString();
     };
 
@@ -104,6 +131,29 @@ function PageContent() {
     };
     const onRefresh = () => { window.history.replaceState(null, "", pathname); getDataInit(""); };
     const reloadList = () => fetchStudents(buildParams());
+
+    // Exporta el listado filtrado (mismos filtros activos, sin paginación) a Excel.
+    const exportExcel = async () => {
+        setExporting(true);
+        try {
+            const p = new URLSearchParams();
+            if (search) p.set("search", search);
+            if (centroFilter !== "all") p.set("centro_id", centroFilter);
+            if (cursoFilter !== "all") p.set("curso_id", cursoFilter);
+            if (areaFilter !== "all") p.set("area_id", areaFilter);
+            if (fuenteFilter !== "all") p.set("fuente_id", fuenteFilter);
+            const res = await fetch(`${apiBase}/centros/students/export?${p.toString()}`, { headers: authHeaders });
+            if (!res.ok) { toast.error("Error al exportar estudiantes"); setExporting(false); return; }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "estudiantes.xlsx";
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch { toast.error("Error al exportar estudiantes"); }
+        setExporting(false);
+    };
 
     const openPdfInNewTab = async (s: any) => {
         try {
@@ -134,7 +184,7 @@ function PageContent() {
         return list.filter((item) => item.label.toLowerCase().includes(q));
     }, [centros, centroFilterSearch]);
 
-    useEffect(() => { if (session) { fetchCentros(); getDataInit(searchInit); } }, [session]);
+    useEffect(() => { if (session) { fetchCentros(); fetchFilterCatalogs(); getDataInit(searchInit); } }, [session]);
     useEffect(() => { if (students.length > 0) getDataPagination(0); }, [limit]);
 
     const sortableHeader = (label: string) => ({ column }: any) => (
@@ -263,6 +313,53 @@ function PageContent() {
                             </div>
                         </PopoverContent>
                     </Popover>
+                </div>
+                <div className="w-[200px]">
+                    <Label className="mb-1 text-xs font-medium text-muted-foreground">Curso</Label>
+                    <Select
+                        value={cursoFilter}
+                        onValueChange={(v) => { setCursoFilter(v); setOffset(0); fetchStudents(buildParams({ curso_id: v, offset: 0 })); }}
+                    >
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Todos" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todos</SelectItem>
+                            {cursos.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.nombre}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="w-[200px]">
+                    <Label className="mb-1 text-xs font-medium text-muted-foreground">Área técnica</Label>
+                    <Select
+                        value={areaFilter}
+                        onValueChange={(v) => { setAreaFilter(v); setOffset(0); fetchStudents(buildParams({ area_id: v, offset: 0 })); }}
+                    >
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Todas" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todas</SelectItem>
+                            {areas.map((a) => <SelectItem key={a.id} value={String(a.id)}>{a.nombre}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="w-[220px]">
+                    <Label className="mb-1 text-xs font-medium text-muted-foreground">Fuente de financiamiento</Label>
+                    <Select
+                        value={fuenteFilter}
+                        onValueChange={(v) => { setFuenteFilter(v); setOffset(0); fetchStudents(buildParams({ fuente_id: v, offset: 0 })); }}
+                    >
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Todas" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todas</SelectItem>
+                            {fuentes.map((f) => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="flex items-end pb-0.5">
+                    <Button variant="outline" disabled={exporting} onClick={exportExcel}>
+                        {exporting
+                            ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            : <Download className="h-4 w-4 mr-2" />}
+                        Exportar Excel
+                    </Button>
                 </div>
                 {isSupervisor && (
                     <div className="flex items-end pb-0.5">

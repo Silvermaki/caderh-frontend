@@ -2,7 +2,14 @@ import type { ReportDefinition, ColumnDef } from '../types';
 import { registerReport } from '../registry';
 import { apiGet } from '@/lib/api/reports-client';
 
-export interface R4Filters { project?: string[]; estatus?: string; }
+export interface R4Filters {
+  project?: string[];
+  cftp?: string[];
+  financingSource?: string[];
+  technicalArea?: string[];
+  year?: number;
+  estatus?: string;
+}
 export interface R4Row {
   num: number;
   nombre_completo: string;
@@ -20,7 +27,9 @@ const columns: ColumnDef<R4Row>[] = [
   { key: 'dni',             label: 'DNI',             align: 'left',  render: (r: R4Row) => r.dni },
   { key: 'curso',           label: 'Curso',           align: 'left',  render: (r: R4Row) => r.curso },
   { key: 'centro',          label: 'Centro',          align: 'left',  render: (r: R4Row) => r.centro },
-  { key: 'proyecto',        label: 'Proyecto',        align: 'left',  render: (r: R4Row) => r.proyecto ?? '—' },
+  // hideIfEmpty: la mayoría de egresados no tiene proyecto vinculado ('—');
+  // se oculta la columna si toda la página actual viene vacía.
+  { key: 'proyecto',        label: 'Proyecto',        align: 'left',  hideIfEmpty: true, render: (r: R4Row) => r.proyecto ?? '—' },
   { key: 'estatus',         label: 'Estatus',         align: 'left',  render: (r: R4Row) => r.estatus },
   { key: 'donde_trabaja',   label: 'Empresa / Lugar', align: 'left',  render: (r: R4Row) => r.donde_trabaja ?? '—' },
   { key: 'puesto',          label: 'Puesto',          align: 'left',
@@ -37,7 +46,7 @@ export const r4Definition: ReportDefinition<R4Filters, R4Row> = {
   category: 'estudiantes',
   title: 'Seguimiento post-formación',
   subtitle: 'Pasantía · Trabajando · Emprendiendo · Estudiando',
-  filters: ['project'],
+  filters: ['year', 'project', 'cftp', 'financingSource', 'technicalArea'],
   defaultFilters: {},
   columns,
   variants: {
@@ -49,15 +58,19 @@ export const r4Definition: ReportDefinition<R4Filters, R4Row> = {
         { key: 'estudiando',   label: 'Estudiando',   color: 'warning', format: 'count' },
       ],
     },
-  } as any,
+  },
   export: { excel: 'client', pdf: 'server', csv: 'client' },
   fetcher: async (filters, pagination) => {
     const page = Math.floor((pagination?.offset ?? 0) / (pagination?.limit ?? 25)) + 1;
     const page_size = pagination?.limit ?? 25;
-    const res = await apiGet<{ rows: R4Row[]; total: number; kpis?: any; meta?: any }>(
+    const res = await apiGet<{ rows: R4Row[]; total: number; kpis?: Record<string, number>; meta?: any }>(
       '/reports/r4-seguimiento-post-formacion',
       {
         project: filters.project?.join(','),
+        cftp: filters.cftp?.join(','),
+        financingSource: filters.financingSource?.join(','),
+        technicalArea: filters.technicalArea?.join(','),
+        year: filters.year,
         estatus: filters.estatus,
         page,
         page_size,

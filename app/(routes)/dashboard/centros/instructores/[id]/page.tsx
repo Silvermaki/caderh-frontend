@@ -23,6 +23,7 @@ import {
     Trash2, User, Users,
 } from "lucide-react";
 import InstructorModal from "@/components/centro/instructor-modal";
+import { formatDate } from "@/app/libs/utils";
 
 const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
@@ -307,8 +308,8 @@ export default function InstructorDetailPage() {
                                             <TableCell className="text-sm">{proc.codigo}</TableCell>
                                             <TableCell className="text-sm text-muted-foreground">{proc.centro_nombre}</TableCell>
                                             <TableCell className="text-sm text-muted-foreground">{proc.curso_nombre}</TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">{proc.fecha_inicial ?? "-"}</TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">{proc.fecha_final ?? "-"}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{formatDate(proc.fecha_inicial)}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{formatDate(proc.fecha_final)}</TableCell>
                                             <TableCell className="text-sm">
                                                 <Badge variant="outline">{proc.enrolled_count ?? 0}</Badge>
                                             </TableCell>

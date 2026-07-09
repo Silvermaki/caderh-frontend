@@ -29,6 +29,7 @@ import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
 import KPIBlock from "@/components/project/KPIBlock";
 import InfoSection from "@/components/project/InfoSection";
+import { formatDate } from "@/app/libs/utils";
 
 const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
@@ -46,6 +47,8 @@ const TABS = [
 const NUM_KEYS = ["estudia", "tiene_hijos", "cuantos_hijos", "cantidad_viven", "cantidad_trabajan_viven",
     "cantidad_notrabajan_viven", "ingreso_promedio", "trabajo_actual", "trabajado_ant",
     "autoempleo", "socios", "socios_cantidad", "especial", "riesgo_social", "interno"];
+
+const VIVIENDA_OPTIONS = ["Propia", "Alquilada", "Otros"];
 
 export default function StudentDetailPage() {
     const params = useParams();
@@ -99,6 +102,26 @@ export default function StudentDetailPage() {
 
     useEffect(() => { if (session && studentId) { fetchStudent(); fetchProcesses(); } }, [session, studentId]);
 
+    // El SGC heredado guardó "¿Con quién vive?" como JSON de ids posicionales
+    // (ej. ["1"], a veces con comillas escapadas); los registros nuevos guardan
+    // el label directo. Mismo catálogo que GET /centros/vive-catalogo.
+    const VIVE_LABELS: Record<string, string> = { "1": "Padres", "2": "Solo(a)", "3": "Pareja", "4": "Familiares", "5": "Otros" };
+    const formatVive = (raw: any): string => {
+        if (raw == null) return "";
+        const s = String(raw).trim().replace(/\\/g, "");
+        if (!s || s.toLowerCase() === "null") return "";
+        if (s.startsWith("[")) {
+            try {
+                const arr = JSON.parse(s);
+                if (Array.isArray(arr)) {
+                    const labels = arr.map((v) => VIVE_LABELS[String(v).trim()] ?? String(v).trim()).filter(Boolean);
+                    return labels.join(", ");
+                }
+            } catch { /* JSON malformado: se muestra tal cual */ }
+        }
+        return s;
+    };
+
     const startEditing = (tabKey: string) => {
         if (!student) return;
         const f: Record<string, any> = {};
@@ -120,6 +143,9 @@ export default function StudentDetailPage() {
         for (const key of allKeys) {
             f[key] = NUM_KEYS.includes(key) ? Number(student[key] ?? 0) : (student[key] != null ? String(student[key]) : "");
         }
+        // Normaliza el valor legado de "vive" al label del catálogo para que el
+        // Select lo muestre y, al guardar, quede en el formato nuevo.
+        f.vive = formatVive(f.vive);
         f.departamento_id = student.departamento_id != null ? String(student.departamento_id) : "";
         f.municipio_id = student.municipio_id != null ? String(student.municipio_id) : "";
         f.nivel_escolaridad_id = student.nivel_escolaridad_id != null ? String(student.nivel_escolaridad_id) : "";
@@ -279,6 +305,15 @@ export default function StudentDetailPage() {
             <Label className="text-default-600">{label}</Label>
         </div>
     );
+
+    // Si el valor guardado (dato histórico del SGC) no es una de las opciones,
+    // se incluye como opción extra para mostrarlo y no perderlo al guardar.
+    const viviendaOptions = useMemo(() => {
+        const opts = VIVIENDA_OPTIONS.map((v) => ({ value: v, label: v }));
+        const current = String(form.vivienda ?? "").trim();
+        if (current && !VIVIENDA_OPTIONS.includes(current)) opts.push({ value: current, label: current });
+        return opts;
+    }, [form.vivienda]);
 
     const editButton = (tabKey: string) => isSupervisor && editingTab !== tabKey && (
         <Button size="sm" variant="outline" onClick={() => startEditing(tabKey)}><Pencil className="h-3.5 w-3.5 mr-1.5" />Editar</Button>
@@ -500,7 +535,7 @@ export default function StudentDetailPage() {
                                 {fieldInput("numero_dep", "No. de dependientes", { required: true })}
                                 <div className="md:col-span-2">{fieldSwitch("tiene_hijos", "¿Tiene hijos?")}</div>
                                 {!!form.tiene_hijos && fieldInput("cuantos_hijos", "¿Cuántos hijos?", { type: "number" })}
-                                {fieldInput("vivienda", "Tipo de vivienda")}
+                                {fieldSelect("vivienda", "Tipo de vivienda", viviendaOptions)}
                                 {fieldInput("cantidad_viven", "Cantidad que viven en el hogar", { type: "number" })}
                                 {fieldInput("cantidad_trabajan_viven", "Cantidad que trabajan", { type: "number" })}
                                 {fieldInput("cantidad_notrabajan_viven", "Cantidad que no trabajan", { type: "number" })}
@@ -527,7 +562,7 @@ export default function StudentDetailPage() {
                                 </InfoSection>
                                 <InfoSection title="Hogar">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
-                                        {fieldView("¿Con quién vive?", s.vive, <Users className="h-4 w-4" />)}
+                                        {fieldView("¿Con quién vive?", formatVive(s.vive) || null, <Users className="h-4 w-4" />)}
                                         {fieldView("No. de dependientes", s.numero_dep, <Users className="h-4 w-4" />)}
                                         {boolView("¿Tiene hijos?", s.tiene_hijos, <Users className="h-4 w-4" />)}
                                         {Number(s.tiene_hijos) ? fieldView("¿Cuántos hijos?", s.cuantos_hijos, <Users className="h-4 w-4" />) : null}
@@ -604,8 +639,7 @@ export default function StudentDetailPage() {
                         {editingTab === "additional" ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2">{fieldSwitch("especial", "¿Necesidades especiales?")}</div>
-                                {!!form.especial && fieldInput("discapacidad_id", "Discapacidad")}
-                                <div className="md:col-span-2">{fieldSwitch("riesgo_social", "¿Riesgo social?")}</div>
+                                {!!form.especial && fieldInput("discapacidad_id", "Discapacidad o Enfermedad")}
                                 {fieldInput("etnia_id", "Etnia")}
                                 <div className="md:col-span-2">{fieldSwitch("interno", "¿Interno?")}</div>
                                 <div className="md:col-span-2 mt-4 border-t pt-4">
@@ -622,9 +656,8 @@ export default function StudentDetailPage() {
                                 <InfoSection title="Información Adicional">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
                                         {boolView("¿Necesidades especiales?", s.especial, <AlertTriangle className="h-4 w-4" />)}
-                                        {Number(s.especial) ? fieldView("Discapacidad", s.discapacidad_id, <AlertTriangle className="h-4 w-4" />) : null}
-                                        {boolView("¿Riesgo social?", s.riesgo_social, <Shield className="h-4 w-4" />)}
-                                        {fieldView("Etnia", s.etnia_id, <Users className="h-4 w-4" />)}
+                                        {Number(s.especial) ? fieldView("Discapacidad o Enfermedad", s.discapacidad_id, <AlertTriangle className="h-4 w-4" />) : null}
+                                        {fieldView("Etnia", s.etnia_id && String(s.etnia_id).toLowerCase() !== "null" ? s.etnia_id : null, <Users className="h-4 w-4" />)}
                                         {boolView("¿Interno?", s.interno, <Home className="h-4 w-4" />)}
                                     </div>
                                 </InfoSection>
@@ -666,6 +699,9 @@ export default function StudentDetailPage() {
                                         <TableHead>Código</TableHead>
                                         <TableHead>Centro</TableHead>
                                         <TableHead>Curso</TableHead>
+                                        <TableHead>Horario</TableHead>
+                                        <TableHead>Área Técnica</TableHead>
+                                        <TableHead>Fuente</TableHead>
                                         <TableHead>Fecha Inicio</TableHead>
                                         <TableHead>Fecha Fin</TableHead>
                                         <TableHead>Matriculados</TableHead>
@@ -678,8 +714,11 @@ export default function StudentDetailPage() {
                                             <TableCell className="text-sm">{proc.proceso_codigo}</TableCell>
                                             <TableCell className="text-sm text-muted-foreground">{proc.centro_nombre}</TableCell>
                                             <TableCell className="text-sm text-muted-foreground">{proc.curso_nombre ?? "-"}</TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">{proc.fecha_inicial ?? "-"}</TableCell>
-                                            <TableCell className="text-sm text-muted-foreground">{proc.fecha_final ?? "-"}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.horario || "—"}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.area_nombre || "—"}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{proc.fuente_financiamiento || "—"}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{formatDate(proc.fecha_inicial)}</TableCell>
+                                            <TableCell className="text-sm text-muted-foreground">{formatDate(proc.fecha_final)}</TableCell>
                                             <TableCell className="text-sm">
                                                 <Badge variant="outline">{proc.enrolled_count ?? 0}</Badge>
                                             </TableCell>

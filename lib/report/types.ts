@@ -24,6 +24,12 @@ export interface ColumnDef<TRow> {
   missingInDb?: boolean;
   missingNote?: string;
   plannedSource?: string;
+  /**
+   * Oculta la columna (header + celdas) cuando TODAS las filas de la página
+   * actual traen valor nulo/vacío/'—' para esta key. Útil para columnas como
+   * "Proyecto" que casi siempre vienen vacías y confunden a los revisores.
+   */
+  hideIfEmpty?: boolean;
 }
 
 export interface CompoundColumnDef<TRow> {
@@ -39,13 +45,19 @@ export interface TotalSpec {
   derive?: (totals: Record<string, number>) => number;
 }
 
+/**
+ * Formato de valor para las tarjetas KPI:
+ * 'money' → L 1,234.56 · 'percent' → 12.3% · 'count' (default) → 1,234.
+ */
+export type KpiFormat = 'money' | 'percent' | 'count';
+
 export interface KpiStripSpec {
   cards: Array<{
+    /** Clave dentro de `kpis` que devuelve el backend del reporte. */
     key: string;
     label: string;
     color: 'info' | 'success' | 'accent' | 'destructive' | 'warning';
-    compute: (rows: any[]) => number;
-    stateFilter?: string;
+    format?: KpiFormat;
   }>;
 }
 
@@ -75,6 +87,10 @@ export interface ChartSpec<TRow = any> {
   data: (rows: TRow[]) => Array<Record<string, any>>;
   /** Field name in the derived data used as X axis (or label for donut). */
   xKey: string;
+  /** Título del eje X (qué se mide horizontalmente). No aplica a donut. */
+  xLabel?: string;
+  /** Título del eje Y (qué se mide verticalmente). No aplica a donut. */
+  yLabel?: string;
   /** Series definitions — for bar/line each is a series; for donut, the first one is the value. */
   series: ChartSeries[];
   /** Optional value formatter for tooltips/labels. */
@@ -91,6 +107,8 @@ export interface Page<TRow> {
   rows: TRow[];
   total: number;
   totalsRow?: Record<string, number | string | null>;
+  /** KPIs agregados que calcula el backend (claves según `variants.kpiStrip.cards`). */
+  kpis?: Record<string, number>;
 }
 
 export interface ReportDefinition<TFilters, TRow> {

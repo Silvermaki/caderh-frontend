@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import ExcelActions from "@/components/centro/excel-actions";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/app/libs/utils";
 
 const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
@@ -348,11 +349,11 @@ function PageContent() {
         },
         {
             accessorKey: "fecha_inicial", header: "Fecha Inicio",
-            cell: ({ row }: any) => <span className="text-sm">{row.original.fecha_inicial ?? "-"}</span>,
+            cell: ({ row }: any) => <span className="text-sm">{formatDate(row.original.fecha_inicial)}</span>,
         },
         {
             accessorKey: "fecha_final", header: "Fecha Fin",
-            cell: ({ row }: any) => <span className="text-sm">{row.original.fecha_final ?? "-"}</span>,
+            cell: ({ row }: any) => <span className="text-sm">{formatDate(row.original.fecha_final)}</span>,
         },
     ];
 

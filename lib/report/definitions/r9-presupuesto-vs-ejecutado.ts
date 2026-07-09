@@ -67,6 +67,8 @@ export const r9Definition: ReportDefinition<R9Filters, R9Row> = {
       title: 'Ejecutado por rubro',
       subtitle: 'Suma del gasto ejecutado anual por categoría presupuestal',
       xKey: 'rubroName',
+      xLabel: 'Rubro',
+      yLabel: 'Lempiras (L)',
       valueFormat: (v: number) => `L ${(v / 1000).toFixed(0)}K`,
       series: [
         { key: 'ejecutadoTotal', label: 'Ejecutado', color: 'primary' },

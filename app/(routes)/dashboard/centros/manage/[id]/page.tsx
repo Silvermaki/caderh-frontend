@@ -199,7 +199,7 @@ export default function CentroDetailPage() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = `hoja_de_vida_${inst.nombres}_${inst.apellidos}`.replace(/\s+/g, "_");
+            a.download = `${`hoja_de_vida_${inst.nombres}_${inst.apellidos}`.replace(/\s+/g, "_")}.pdf`;
             a.click();
             URL.revokeObjectURL(url);
         } catch { toast.error("Error al descargar"); }
@@ -736,8 +736,16 @@ export default function CentroDetailPage() {
                                     <TableBody>
                                         {instructors.map((r: any) => (
                                             <TableRow key={r.id}>
-                                                <TableCell className="font-medium">{r.nombres}</TableCell>
-                                                <TableCell>{r.apellidos}</TableCell>
+                                                <TableCell className="font-medium">
+                                                    <Link href={`/dashboard/centros/instructores/${r.id}`} className="text-primary hover:underline">
+                                                        {r.nombres}
+                                                    </Link>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Link href={`/dashboard/centros/instructores/${r.id}`} className="text-primary hover:underline">
+                                                        {r.apellidos}
+                                                    </Link>
+                                                </TableCell>
                                                 <TableCell className="hidden md:table-cell">{r.titulo_obtenido || "-"}</TableCell>
                                                 <TableCell className="hidden md:table-cell">
                                                     {r.pdf ? (

@@ -67,6 +67,8 @@ export const r6Definition: ReportDefinition<R6Filters, R6Row> = {
       title: 'Presupuesto vs Ingresos recibidos por proyecto',
       subtitle: 'Comparación de lo presupuestado anual con los ingresos realmente recibidos',
       xKey: 'projectName',
+      xLabel: 'Proyecto',
+      yLabel: 'Lempiras (L)',
       valueFormat: (v: number) => `L ${(v / 1000).toFixed(0)}K`,
       series: [
         { key: 'presupuestoAnual', label: 'Presupuesto anual', color: 'info' },

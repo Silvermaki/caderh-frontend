@@ -14,6 +14,7 @@ import { MissingDbBanner, type MissingDbItem } from '../missing-db/missing-db-ba
 import { CompoundHeader } from '../variants/compound-header';
 import { ConditionalRedCell } from '../variants/conditional-red-cell';
 import { ReportChart } from '../variants/report-chart';
+import { ReportKpiStrip } from '../variants/report-kpi-strip';
 import { ReportSkeleton } from './report-skeleton';
 import { useReportQuery } from '@/hooks/use-report-query';
 import { useReportExport } from '@/hooks/use-report-export';
@@ -42,6 +43,28 @@ function flatten<TRow>(cols: AnyColumn<TRow>[]): ColumnDef<TRow>[] {
   return cols.flatMap((c) => ('group' in c ? (c as CompoundColumnDef<TRow>).children : [c as ColumnDef<TRow>]));
 }
 
+/** Valor de celda considerado "vacío" para efectos de `hideIfEmpty`. */
+function isEmptyCell(v: unknown): boolean {
+  return v == null || v === '' || v === '—';
+}
+
+/**
+ * Filtra columnas marcadas con `hideIfEmpty` cuando TODAS las filas de la
+ * página actual traen valor vacío para su key. Los grupos compuestos filtran
+ * sus hijas y desaparecen si quedan sin ninguna.
+ */
+function visibleOnly<TRow>(cols: AnyColumn<TRow>[], rows: TRow[]): AnyColumn<TRow>[] {
+  const keep = (c: ColumnDef<TRow>) =>
+    !c.hideIfEmpty || rows.length === 0 || rows.some((r) => !isEmptyCell((r as any)[c.key]));
+  return cols
+    .map((c) =>
+      'group' in c
+        ? ({ ...c, children: (c as CompoundColumnDef<TRow>).children.filter(keep) } as AnyColumn<TRow>)
+        : c
+    )
+    .filter((c) => ('group' in c ? (c as CompoundColumnDef<TRow>).children.length > 0 : keep(c as ColumnDef<TRow>)));
+}
+
 export interface ReportTableShellProps<TFilters extends Record<string, any>, TRow> {
   definition: ReportDefinition<TFilters, TRow>;
   breadcrumbs: Crumb[];
@@ -66,6 +89,14 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
   const query = useReportQuery(definition, filters, pagination);
 
   const flatCols = useMemo(() => flatten(definition.columns), [definition.columns]);
+
+  // Columnas realmente visibles: excluye las `hideIfEmpty` cuando toda la
+  // página actual viene vacía para esa key (header, celdas y totales).
+  const visibleColumns = useMemo(
+    () => visibleOnly(definition.columns, query.data?.rows ?? []),
+    [definition.columns, query.data?.rows]
+  );
+  const visibleFlatCols = useMemo(() => flatten(visibleColumns), [visibleColumns]);
   const missing: MissingDbItem[] = useMemo(
     () =>
       flatCols
@@ -120,6 +151,14 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
 
       {aboveTable}
 
+      {/* Tira de KPIs: solo si la definición la declara y el backend devolvió kpis. */}
+      {definition.variants?.kpiStrip && query.data?.kpis && (
+        <ReportKpiStrip
+          cards={definition.variants.kpiStrip.cards}
+          kpis={query.data.kpis}
+        />
+      )}
+
       {definition.variants?.chart && hasData && (
         <ReportChart
           spec={definition.variants.chart as any}
@@ -138,7 +177,7 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
               </span>
             </h3>
             <span className="text-xs text-muted-foreground">
-              Columnas: <b>{flatCols.length}/{flatCols.length}</b> (fijas)
+              Columnas: <b>{visibleFlatCols.length}/{flatCols.length}</b> (fijas)
             </span>
           </div>
 
@@ -160,7 +199,7 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
                 )}
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <CompoundHeader columns={definition.columns} />
+                    <CompoundHeader columns={visibleColumns} />
                     <tbody>
                       {query.data!.rows.map((row, i) => (
                         <motion.tr
@@ -170,7 +209,7 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
                           transition={{ delay: Math.min(i, 20) * 0.015, duration: 0.18 }}
                           className="border-b border-border hover:bg-primary/5 transition-colors duration-200"
                         >
-                          {flatCols.map((c) => {
+                          {visibleFlatCols.map((c) => {
                             const isRed = definition.variants?.conditionalRed?.when(row) === true
                               && definition.variants.conditionalRed.cells.includes(c.key);
                             if (c.missingInDb) {
@@ -197,11 +236,30 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
                     {query.data!.totalsRow && (
                       <tfoot className="sticky bottom-0 bg-card">
                         <tr className="font-semibold text-foreground">
-                          {flatCols.map((c) => (
-                            <td key={c.key} className={`px-3 py-3 text-${c.align ?? 'left'} tabular-nums border-t-2 border-border`}>
-                              {c.missingInDb ? '—' : query.data!.totalsRow?.[c.key] ?? ''}
-                            </td>
-                          ))}
+                          {visibleFlatCols.map((c, colIdx) => {
+                            const totalsRow = query.data!.totalsRow!;
+                            const raw = totalsRow[c.key];
+                            let content: React.ReactNode;
+                            if (c.missingInDb) {
+                              content = '—';
+                            } else if (raw != null) {
+                              // Formatea el total con el mismo render de la columna
+                              // (moneda, %, etc.); si truena, cae al valor crudo.
+                              try {
+                                content = c.render ? c.render(totalsRow as any) : String(raw);
+                              } catch {
+                                content = String(raw);
+                              }
+                            } else {
+                              // La primera columna sin total actúa de etiqueta de la fila.
+                              content = colIdx === 0 ? 'Total' : '';
+                            }
+                            return (
+                              <td key={c.key} className={`px-3 py-3 text-${c.align ?? 'left'} tabular-nums border-t-2 border-border`}>
+                                {content}
+                              </td>
+                            );
+                          })}
                         </tr>
                       </tfoot>
                     )}

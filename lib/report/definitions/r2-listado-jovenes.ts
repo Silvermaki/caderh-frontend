@@ -22,6 +22,7 @@ export interface R2Row {
   curso: string;
   areaTecnica?: string | null;
   area_tecnica?: string | null;
+  fuentes_financiamiento: string | null;
   anio: number | null;
   trimestre: number | null;
   nombre_completo: string;
@@ -52,6 +53,7 @@ const columns: ColumnDef<R2Row>[] = [
   { key: 'ciudad',           label: 'Ciudad/Zona',    align: 'left',  render: (r) => str(r.ciudad) },
   { key: 'curso',            label: 'Curso',          align: 'left',  render: (r) => str(r.curso) },
   { key: 'area_tecnica',     label: 'Área técnica',   align: 'left',  render: (r) => str(r.area_tecnica) },
+  { key: 'fuentes_financiamiento', label: 'Fuente(s) financiamiento', align: 'left', render: (r) => str(r.fuentes_financiamiento) },
   { key: 'anio',             label: 'Año',            align: 'right', render: (r) => r.anio != null ? String(r.anio) : '—' },
   { key: 'trimestre',        label: 'Trimestre',      align: 'right', render: (r) => r.trimestre != null ? (QUARTER_LABEL[r.trimestre] ?? String(r.trimestre)) : '—' },
   { key: 'nombre_completo',  label: 'Nombre',         align: 'left',  render: (r) => str(r.nombre_completo) },
@@ -111,7 +113,7 @@ export const r2Definition: ReportDefinition<R2Filters, R2Row> = {
   id: 'r2-listado-jovenes',
   code: 'R2',
   category: 'estudiantes',
-  title: 'Listado detallado de jóvenes',
+  title: 'Listado detallado de estudiantes',
   subtitle: 'Tabla plana con filtros por año, trimestre, edad y contexto',
   filters: [
     'year', 'quarter',
@@ -124,13 +126,9 @@ export const r2Definition: ReportDefinition<R2Filters, R2Row> = {
   columns,
   variants: {
     kpiStrip: {
+      // totalRegistros lo calcula el backend sobre el total filtrado (no la página).
       cards: [
-        {
-          key: 'totalRegistros',
-          label: 'Total registros',
-          color: 'info',
-          compute: (rows: R2Row[]) => rows.length,
-        },
+        { key: 'totalRegistros', label: 'Total registros', color: 'info' },
       ],
     },
   },
@@ -138,7 +136,7 @@ export const r2Definition: ReportDefinition<R2Filters, R2Row> = {
   fetcher: async (filters, pagination) => {
     const page = Math.floor((pagination?.offset ?? 0) / (pagination?.limit ?? 25)) + 1;
     const page_size = pagination?.limit ?? 25;
-    const res = await apiGet<{ rows: R2Row[]; total: number; meta?: unknown }>(
+    const res = await apiGet<{ rows: R2Row[]; total: number; kpis?: Record<string, number>; meta?: unknown }>(
       '/reports/r2-listado-jovenes',
       {
         project: filters.project?.join(','),
@@ -155,7 +153,7 @@ export const r2Definition: ReportDefinition<R2Filters, R2Row> = {
         page_size,
       },
     );
-    return { rows: res.rows, total: res.total };
+    return { rows: res.rows, total: res.total, kpis: res.kpis };
   },
 };
 

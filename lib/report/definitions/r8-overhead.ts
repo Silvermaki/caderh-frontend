@@ -75,7 +75,7 @@ export const r8Definition: ReportDefinition<R8Filters, R8Row> = {
       '/reports/r8-overhead',
       { project: filters.project?.join(','), year: filters.year },
     );
-    return { rows: res.rows, total: res.total, totals: res.totals, meta: res.meta };
+    return { rows: res.rows, total: res.total, totalsRow: res.totals, meta: res.meta };
   },
 };
 

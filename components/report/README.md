@@ -11,7 +11,7 @@ Ver `docs/diseno-modulo-reportes.md` para decisiones de diseño y criterios.
 
 ## Variantes
 
-- **KPI strip (R4/R7):** pasar `<KpiStrip>` al prop `aboveTable` del shell.
+- **KPI strip (R1–R4/R7):** declarar `variants.kpiStrip.cards` (key/label/color/format) en la definición; el shell la pinta automáticamente con los `kpis` que devuelve el backend (si falta la clave, la tarjeta no se muestra).
 - **Rojo condicional (R6/R8/R9):** declarar `variants.conditionalRed` con `when` y `cells`.
 - **Compound headers:** mezclar `CompoundColumnDef` en `columns`. El shell + `<CompoundHeader>` lo resuelven.
 - **Jerárquico (R1):** usar `<HierarchicalBody>` en vez del tbody default (por ahora requiere wrapper custom).

@@ -1,6 +1,6 @@
 import React from "react";
 import { Calendar, CalendarRange, Clock } from "lucide-react";
-import { dateToString } from "@/app/libs/utils";
+import { formatDate } from "@/app/libs/utils";
 import { cn } from "@/lib/utils";
 
 interface DatesCardProps {
@@ -35,7 +35,7 @@ const DatesCard = ({ startDate, endDate, className }: DatesCardProps) => {
                 <div>
                     <p className="text-xs text-muted-foreground mb-0.5">Fecha de Inicio</p>
                     <p className="text-sm font-semibold">
-                        {startDate ? dateToString(new Date(startDate)) : "-"}
+                        {formatDate(startDate)}
                     </p>
                 </div>
             </div>
@@ -46,7 +46,7 @@ const DatesCard = ({ startDate, endDate, className }: DatesCardProps) => {
                 <div>
                     <p className="text-xs text-muted-foreground mb-0.5">Fecha de Finalización</p>
                     <p className="text-sm font-semibold">
-                        {endDate ? dateToString(new Date(endDate)) : "-"}
+                        {formatDate(endDate)}
                     </p>
                 </div>
             </div>

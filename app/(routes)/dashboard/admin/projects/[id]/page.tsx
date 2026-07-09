@@ -75,7 +75,7 @@ import {
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { dateToString, timeToString, formatCurrency, prettifyNumber } from "@/app/libs/utils";
+import { dateToString, timeToString, formatCurrency, prettifyNumber, formatDate } from "@/app/libs/utils";
 import { Icon } from "@iconify/react";
 import SkeletonTable from "@/components/skeleton-table";
 import { Progress } from "@/components/ui/progress";
@@ -1808,7 +1808,7 @@ const Page = () => {
                                                 <TableCell>{formatCurrency(Number(r.amount ?? 0))}</TableCell>
                                                 <TableCell>{formatCurrency(consumido)}</TableCell>
                                                 <TableCell className={disponible < 0 ? "text-destructive font-medium" : ""}>{formatCurrency(disponible)}</TableCell>
-                                                <TableCell>{r.disbursement_date ? String(r.disbursement_date).slice(0, 10) : "-"}</TableCell>
+                                                <TableCell>{formatDate(r.disbursement_date)}</TableCell>
                                                 {canEdit && (
                                                     <TableCell>
                                                         <div className="flex gap-1">
@@ -1929,7 +1929,7 @@ const Page = () => {
                                                 <TableCell>{formatCurrency(consumido)}</TableCell>
                                                 <TableCell className={disponible < 0 ? "text-destructive font-medium" : ""}>{formatCurrency(disponible)}</TableCell>
                                                 <TableCell>
-                                                    {r.disbursement_date ? String(r.disbursement_date).slice(0, 10) : "-"}
+                                                    {formatDate(r.disbursement_date)}
                                                 </TableCell>
                                                 {canEdit && (
                                                     <TableCell>

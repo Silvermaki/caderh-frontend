@@ -13,11 +13,12 @@ import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupButton } from "@/components/ui/input-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import SkeletonTable from "@/components/skeleton-table";
 import { usePathname, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
-import { PlusCircle, RefreshCcw, MapPin, Phone, Mail, User, ArrowDown01, ArrowDown10, ArrowDownAZ, ArrowDownZA } from "lucide-react";
+import { PlusCircle, RefreshCcw, MapPin, Phone, Mail, User, ArrowDown01, ArrowDown10, ArrowDownAZ, ArrowDownZA, Download, Loader2 } from "lucide-react";
 import CentroWizard from "@/components/centro/centro-wizard";
 import { Icon } from "@iconify/react";
 import { prettifyNumber } from "@/app/libs/utils";
@@ -40,7 +41,27 @@ function PageContent() {
     const [loading, setLoading] = useState<boolean>(true);
     const [statusFilter, setStatusFilter] = useState<string>("1");
     const [wizardOpen, setWizardOpen] = useState(false);
+    const [exporting, setExporting] = useState(false);
     const userRole = session?.user?.role;
+
+    const exportConsolidado = async (formato: "excel" | "pdf") => {
+        setExporting(true);
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_PROXY}/centros/centros/export/consolidado?formato=${formato}`,
+                { headers: { Authorization: `Bearer ${session?.user?.session}` } },
+            );
+            if (!res.ok) { toast.error("Error al exportar consolidado"); setExporting(false); return; }
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `consolidado-centros.${formato === "pdf" ? "pdf" : "xlsx"}`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch { toast.error("Error al exportar consolidado"); }
+        setExporting(false);
+    };
 
     const getCentros = async (params: string) => {
         setLoading(true);
@@ -247,15 +268,35 @@ function PageContent() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        {userRole !== "USER" && (
-                            <Button
-                                color="success"
-                                onClick={() => setWizardOpen(true)}
-                            >
-                                Crear Centro
-                                <PlusCircle className="h-4 w-4 ml-2" />
-                            </Button>
-                        )}
+                        <div className="flex items-center gap-2">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="outline" disabled={exporting}>
+                                        {exporting
+                                            ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            : <Download className="h-4 w-4 mr-2" />}
+                                        Exportar
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => exportConsolidado("excel")}>
+                                        Excel (.xlsx)
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => exportConsolidado("pdf")}>
+                                        PDF
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            {userRole !== "USER" && (
+                                <Button
+                                    color="success"
+                                    onClick={() => setWizardOpen(true)}
+                                >
+                                    Crear Centro
+                                    <PlusCircle className="h-4 w-4 ml-2" />
+                                </Button>
+                            )}
+                        </div>
                     </div>
                     {loading && <SkeletonTable />}
                     {!loading && (

@@ -47,6 +47,8 @@ export const r7Definition: ReportDefinition<R7Filters, R7Row> = {
       title: 'Ingreso por trimestre',
       subtitle: 'Ingresos recibidos por CADERH y donaciones, apilados por trimestre',
       xKey: 'periodo',
+      xLabel: 'Período',
+      yLabel: 'Lempiras (L)',
       valueFormat: (v: number) => `L ${(v / 1000).toFixed(0)}K`,
       series: [
         { key: 'desembolsado', label: 'Ingresos recibidos por CADERH', color: 'info' },
@@ -59,10 +61,10 @@ export const r7Definition: ReportDefinition<R7Filters, R7Row> = {
           donaciones: r.donaciones ?? 0,
         })),
     },
-  } as any,
+  },
   export: { excel: 'client', pdf: 'server', csv: 'client' },
   fetcher: async (filters, pagination) => {
-    const res = await apiGet<{ rows: R7Row[]; total: number; kpis?: any }>(
+    const res = await apiGet<{ rows: R7Row[]; total: number; kpis?: Record<string, number> }>(
       '/reports/r7-ingreso-consolidado',
       { year: filters.year },
     );

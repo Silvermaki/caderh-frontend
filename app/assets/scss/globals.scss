@@ -70,6 +70,14 @@
     --input: 214.3 31.8% 91.4%;
 
     --radius: 0.5rem;
+
+    // Paleta categórica de gráficas (validada para daltonismo/contraste en
+    // ambos temas): en dark --primary se vuelve un verde casi idéntico a
+    // --success, y las gráficas necesitan una paleta categórica estable.
+    --chart-1: 196 86% 34%;
+    --chart-2: 24.6 95% 53.1%;
+    --chart-3: 142.1 70.6% 45.3%;
+    --chart-4: 188.7 94.5% 42.7%;
   }
 
   .dark {
@@ -123,6 +131,13 @@
     --default-200: 215.3 25% 26.7%;
     --default-100: 217.2 32.6% 17.5%;
     --default-50: 222.2 47.4% 11.2%;
+
+    // Variante dark de la paleta categórica de gráficas (misma razón: en dark
+    // --primary ≈ --success; pasos validados sobre la superficie dark).
+    --chart-1: 198 76% 42%;
+    --chart-2: 20.5 90.2% 48.2%;
+    --chart-3: 142.1 76.2% 36.3%;
+    --chart-4: 192.9 91.4% 36.5%;
   }
 
   * {

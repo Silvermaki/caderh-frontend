@@ -18,7 +18,7 @@ const columns: ColumnDef<R10Row>[] = [
   { key: 'contactoNombre',     label: 'Contacto',           align: 'left',  ...missing, render: () => '—' } as any,
   { key: 'contactoTelefono',   label: 'Teléfono',           align: 'left',  ...missing, render: () => '—' } as any,
   { key: 'contactoCorreo',     label: 'Correo',             align: 'left',  ...missing, render: () => '—' } as any,
-  { key: 'jovenesColocados',   label: 'Jóvenes colocados',  align: 'right', ...missing, render: () => '—' } as any,
+  { key: 'jovenesColocados',   label: 'Estudiantes colocados', align: 'right', ...missing, render: () => '—' } as any,
   { key: 'donacionesRecibidas', label: 'Donaciones',        align: 'right', ...missing, render: () => '—' } as any,
   { key: 'proyectosParticipa', label: 'Proyectos',          align: 'left',  ...missing, render: () => '—' } as any,
 ];

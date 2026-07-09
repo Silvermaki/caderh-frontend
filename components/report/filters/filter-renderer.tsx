@@ -1,8 +1,10 @@
 'use client';
+import { useEffect, useState } from 'react';
 import type { ReportDefinition } from '@/lib/report/types';
 import { FilterGroup } from './filter-group';
 import { DateRangeField, MultiSelectField, NumberRangeField, SingleSelectField } from './filter-controls';
 import { useFilterCatalog } from '@/hooks/use-filter-catalog';
+import { apiGet } from '@/lib/api/reports-client';
 import { FILTER_META } from '@/lib/report/filter-keys';
 
 interface FiltersInput {
@@ -63,10 +65,52 @@ function FinancingSourceField({ filters, setFilter }: FiltersInput) {
 
 // ─── Período ─────────────────────────────────────────────────────────────────
 
+// Fallback histórico: los datos del SGC tienen procesos desde 2019 y con
+// solo 5 años hacia atrás quedaban inaccesibles ("los filtros no funcionan
+// para ver años anteriores" — observación CADERH).
+const FALLBACK_OLDEST_YEAR = 2018;
+
+// Cache a nivel de módulo: el rango de años con datos se consulta al backend
+// una sola vez por sesión (todas las instancias de YearField lo comparten).
+let yearsRangeCache: { min: number; max: number } | null = null;
+let yearsRangePromise: Promise<{ min: number; max: number }> | null = null;
+
+function fetchYearsRange(): Promise<{ min: number; max: number }> {
+  if (!yearsRangePromise) {
+    yearsRangePromise = apiGet<{ min: number; max: number }>('/reports/meta/years')
+      .then((r) => {
+        yearsRangeCache = r;
+        return r;
+      })
+      .catch((e) => {
+        // Permite reintentar en el próximo mount si la petición falló.
+        yearsRangePromise = null;
+        throw e;
+      });
+  }
+  return yearsRangePromise;
+}
+
 function YearField({ filters, setFilter }: FiltersInput) {
   const current = new Date().getFullYear();
-  const options = Array.from({ length: 5 }).map((_, i) => {
-    const y = current - i;
+  const [range, setRange] = useState(yearsRangeCache);
+
+  useEffect(() => {
+    if (yearsRangeCache) return; // ya resuelto: sin refetch ni parpadeo
+    let alive = true;
+    fetchYearsRange()
+      .then((r) => { if (alive) setRange(r); })
+      .catch(() => { /* fallback silencioso al rango 2018..actual */ });
+    return () => { alive = false; };
+  }, []);
+
+  // Mientras carga (o si falla) se usa el comportamiento previo: 2018..actual.
+  const max = range && Number.isFinite(range.max) ? range.max : current;
+  const min = range && Number.isFinite(range.min) && range.min <= max
+    ? range.min
+    : FALLBACK_OLDEST_YEAR;
+  const options = Array.from({ length: Math.max(max - min + 1, 1) }).map((_, i) => {
+    const y = max - i;
     return { value: String(y), label: String(y) };
   });
   return (

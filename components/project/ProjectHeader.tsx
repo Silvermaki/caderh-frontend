@@ -16,7 +16,7 @@ import {
     Banknote,
     AlertCircle,
 } from "lucide-react";
-import { dateToString, formatCurrency } from "@/app/libs/utils";
+import { formatDate, formatCurrency } from "@/app/libs/utils";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import KPIBlock from "./KPIBlock";
@@ -154,11 +154,11 @@ const ProjectHeader = ({
                 <div className="flex flex-wrap gap-x-6 gap-y-1 mt-4 text-sm text-muted-foreground">
                     <span className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 shrink-0" />
-                        Inicio: {startDate ? dateToString(new Date(startDate)) : "-"}
+                        Inicio: {formatDate(startDate)}
                     </span>
                     <span className="flex items-center gap-2">
                         <CalendarRange className="h-4 w-4 shrink-0" />
-                        Fin: {endDate ? dateToString(new Date(endDate)) : "-"}
+                        Fin: {formatDate(endDate)}
                     </span>
                 </div>
             </div>

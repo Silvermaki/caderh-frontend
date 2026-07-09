@@ -299,6 +299,7 @@ const UserModal = ({ user, users, setUsers, loading, isOpen, setIsOpen, reload }
                                                                     </SelectTrigger>
                                                                     <SelectContent className='z-[99990]'>
                                                                         <SelectItem value="USER">Agente</SelectItem>
+                                                                        <SelectItem value="MANAGER">Supervisor</SelectItem>
                                                                         <SelectItem value="ADMIN">Administrador</SelectItem>
                                                                     </SelectContent>
                                                                 </Select>

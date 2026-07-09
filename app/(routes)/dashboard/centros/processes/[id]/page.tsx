@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -30,6 +31,7 @@ import {
 } from "lucide-react";
 import KPIBlock from "@/components/project/KPIBlock";
 import InfoSection from "@/components/project/InfoSection";
+import { formatDate } from "@/app/libs/utils";
 import { Progress } from "@/components/ui/progress";
 import { motion } from "framer-motion";
 
@@ -228,6 +230,7 @@ export default function ProcessDetailPage() {
             dias: p.dias ?? "",
             sede: p.sede != null ? String(p.sede) : "0",
             lugar: p.lugar ?? "",
+            cancelado: !!p.cancelado,
         });
         setErrors({});
         setEditing(true);
@@ -348,6 +351,7 @@ export default function ProcessDetailPage() {
                 tipo_jornada_id: form.tipo_jornada_id ? Number(form.tipo_jornada_id) : null,
                 duracion_horas: form.duracion_horas ? Number(form.duracion_horas) : null,
                 sede: Number(form.sede) || 0,
+                cancelado: !!form.cancelado,
             };
 
             const res = await fetch(`${apiBase}/centros/processes`, {
@@ -655,7 +659,7 @@ export default function ProcessDetailPage() {
                                     {p.curso_nombre && <span className="flex items-center gap-1.5"><BookOpen className="h-4 w-4" />{p.curso_nombre}</span>}
                                     {p.instructor_nombre && <span className="flex items-center gap-1.5"><User className="h-4 w-4" />{p.instructor_nombre}</span>}
                                     {(p.fecha_inicial || p.fecha_final) && (
-                                        <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" />{p.fecha_inicial} - {p.fecha_final}</span>
+                                        <span className="flex items-center gap-1.5"><Calendar className="h-4 w-4" />{formatDate(p.fecha_inicial)} - {formatDate(p.fecha_final)}</span>
                                     )}
                                     {p.duracion_horas && <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" />{p.duracion_horas} horas</span>}
                                 </div>
@@ -672,14 +676,26 @@ export default function ProcessDetailPage() {
                     <div className="mt-5">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                             <KPIBlock icon={Clock} label="Duración" value={`${p.duracion_horas ?? 0} hrs`} iconColor="text-primary" index={0} />
-                            <KPIBlock icon={Users} label="Matriculados" value={String(p.enrolled_count ?? enrollments.length)} iconColor="text-success" index={1} />
+                            <KPIBlock
+                                icon={Users}
+                                label="Matriculados"
+                                value={`${p.enrolled_count ?? enrollments.length} (${p.enrolled_male_count ?? 0} H · ${p.enrolled_female_count ?? 0} M)`}
+                                tooltip={`Hombres: ${p.enrolled_male_count ?? 0} · Mujeres: ${p.enrolled_female_count ?? 0}`}
+                                iconColor="text-success"
+                                index={1}
+                            />
                             <KPIBlock icon={Layers} label="Módulos" value={String(p.module_count ?? courseModules.length)} iconColor="text-warning" index={2} />
                             <KPIBlock icon={Target} label="Proyectos" value={String(p.project_count ?? linkedProjects.length)} iconColor="text-info" index={3} />
                         </div>
                     </div>
 
-                    {/* Progress bar */}
-                    {p.fecha_inicial && p.fecha_final && (() => {
+                    {/* Progress bar / estado */}
+                    {p.cancelado ? (
+                        // El estatus explícito "Cancelado" tiene prioridad sobre el estado derivado por fechas
+                        <div className="mt-4 pb-2">
+                            <Badge color="destructive">Cancelado</Badge>
+                        </div>
+                    ) : p.fecha_inicial && p.fecha_final && (() => {
                         const start = new Date(p.fecha_inicial).getTime();
                         const end = new Date(p.fecha_final).getTime();
                         const now = Date.now();
@@ -760,6 +776,14 @@ export default function ProcessDetailPage() {
                                 </div>
                                 {fieldSelect("sede", "Sede", [{ value: "0", label: "No" }, { value: "1", label: "Sí" }])}
                                 {fieldInput("lugar", "Lugar")}
+                                <div className="md:col-span-2 flex items-center gap-3 py-2">
+                                    <Switch
+                                        checked={!!form.cancelado}
+                                        onCheckedChange={(v) => set("cancelado", v)}
+                                        disabled={saving}
+                                    />
+                                    <Label className="text-default-600">Proceso cancelado</Label>
+                                </div>
                             </div>
                         ) : (
                             <div className="space-y-6">
@@ -772,12 +796,13 @@ export default function ProcessDetailPage() {
                                         {fieldView("Instructor", p.instructor_nombre, <User className="h-4 w-4" />)}
                                         {fieldView("Metodología", p.metodologia_nombre, <Bookmark className="h-4 w-4" />)}
                                         {fieldView("Otra metodología", p.otra_metodologia, <Bookmark className="h-4 w-4" />)}
+                                        {fieldView("Fuente de Financiamiento", p.fuente_financiamiento, <DollarSign className="h-4 w-4" />)}
                                     </div>
                                 </InfoSection>
                                 <InfoSection title="Programación">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
-                                        {fieldView("Fecha inicial", p.fecha_inicial, <Calendar className="h-4 w-4" />)}
-                                        {fieldView("Fecha final", p.fecha_final, <Calendar className="h-4 w-4" />)}
+                                        {fieldView("Fecha inicial", p.fecha_inicial ? formatDate(p.fecha_inicial) : null, <Calendar className="h-4 w-4" />)}
+                                        {fieldView("Fecha final", p.fecha_final ? formatDate(p.fecha_final) : null, <Calendar className="h-4 w-4" />)}
                                         {fieldView("Duración horas", p.duracion_horas, <Clock className="h-4 w-4" />)}
                                         {fieldView("Tipo de jornada", p.tipo_jornada_nombre, <SunMedium className="h-4 w-4" />)}
                                         {fieldView("Horario", p.horario, <CalendarClock className="h-4 w-4" />)}
@@ -999,8 +1024,8 @@ export default function ProcessDetailPage() {
                                                     {proj.project_status === "ACTIVE" ? "Activo" : proj.project_status === "ARCHIVED" ? "Archivado" : proj.project_status}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell className="text-muted-foreground">{proj.start_date ? proj.start_date.slice(0, 10) : "-"}</TableCell>
-                                            <TableCell className="text-muted-foreground">{proj.end_date ? proj.end_date.slice(0, 10) : "-"}</TableCell>
+                                            <TableCell className="text-muted-foreground">{formatDate(proj.start_date)}</TableCell>
+                                            <TableCell className="text-muted-foreground">{formatDate(proj.end_date)}</TableCell>
                                             {isSupervisor && (
                                                 <TableCell>
                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); setUnlinkProjectTarget(proj); }}>
@@ -1223,7 +1248,7 @@ export default function ProcessDetailPage() {
                                                 {(proj.start_date || proj.end_date) && (
                                                     <div className="flex items-center gap-1.5 text-muted-foreground">
                                                         <Calendar className="h-3 w-3 shrink-0" />
-                                                        <span className="truncate">{proj.start_date ?? "—"} → {proj.end_date ?? "—"}</span>
+                                                        <span className="truncate">{proj.start_date ? formatDate(proj.start_date) : "—"} → {proj.end_date ? formatDate(proj.end_date) : "—"}</span>
                                                     </div>
                                                 )}
                                                 {proj.financed_amount != null && Number(proj.financed_amount) > 0 && (
@@ -1318,8 +1343,8 @@ export default function ProcessDetailPage() {
                                         <TableCell className="font-medium">{p.proceso_nombre}</TableCell>
                                         <TableCell className="text-sm">{p.proceso_codigo}</TableCell>
                                         <TableCell className="text-sm text-muted-foreground">{p.centro_nombre}</TableCell>
-                                        <TableCell className="text-sm text-muted-foreground">{p.fecha_inicial ?? "-"}</TableCell>
-                                        <TableCell className="text-sm text-muted-foreground">{p.fecha_final ?? "-"}</TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">{formatDate(p.fecha_inicial)}</TableCell>
+                                        <TableCell className="text-sm text-muted-foreground">{formatDate(p.fecha_final)}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
