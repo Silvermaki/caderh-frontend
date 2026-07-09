@@ -13,6 +13,8 @@ export const r11Definition: ReportDefinition<R11Filters, R11Row> = {
   category: 'directorios',
   title: 'Informe trimestral AC-R-022',
   subtitle: 'Plantilla oficial institucional',
+  pendingModule:
+    'La generación pixel-perfect de la plantilla oficial AC-R-022 está pendiente: necesitamos que CADERH comparta el formato oficial vigente para replicarlo exactamente (celdas, membrete y firmas) en el export a Excel.',
   filters: ['cftp', 'year', 'quarter'],
   defaultFilters: { year: new Date().getFullYear() },
   columns,

@@ -27,6 +27,8 @@ export const r5Definition: ReportDefinition<R5Filters, R5Row> = {
   category: 'estudiantes',
   title: 'Kits de emprendimiento entregados',
   subtitle: 'Pendiente: módulo de kits en desarrollo',
+  pendingModule:
+    'Este reporte se alimentará del módulo de kits de emprendimiento, que aún no se ha desarrollado. Cuando el sistema capture las entregas (joven, emprendimiento, rubro, monto y seguimiento), el reporte se llenará automáticamente.',
   filters: ['project'],
   defaultFilters: {},
   columns,

@@ -864,7 +864,11 @@ const Page = () => {
                                     />
                                 )}
                             </div>
-                            <div className="p-5 flex-1">
+                            {/* Altura FIJA para el plot: ResponsiveContainer con h-full
+                                mide 0 durante el resize de una captura full-page y el
+                                chart sale en blanco. El justify-center absorbe el alto
+                                extra cuando la card hermana estira la fila. */}
+                            <div className="p-5 flex-1 flex flex-col justify-center">
                                 {matriculaMensualEmpty ? (
                                     <ChartEmpty
                                         icon={BarChart3}
@@ -873,7 +877,7 @@ const Page = () => {
                                         className="h-full min-h-[280px]"
                                     />
                                 ) : (
-                                    <div className="h-full min-h-[280px]">
+                                    <div className="h-[280px]">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <BarChart
                                                 data={matriculaMensual}
@@ -1045,7 +1049,9 @@ const Page = () => {
                                     />
                                 )}
                             </div>
-                            <div className="p-5 flex-1">
+                            {/* Altura fija por la misma razón que Matrícula por Mes
+                                (captura full-page vs ResponsiveContainer con h-full). */}
+                            <div className="p-5 flex-1 flex flex-col justify-center">
                                 {monthlySeriesEmpty ? (
                                     <ChartEmpty
                                         icon={TrendingUp}
@@ -1054,7 +1060,7 @@ const Page = () => {
                                         className="h-full min-h-[280px]"
                                     />
                                 ) : (
-                                    <div className="h-full min-h-[280px]">
+                                    <div className="h-[280px]">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <AreaChart
                                                 data={monthlySeries}

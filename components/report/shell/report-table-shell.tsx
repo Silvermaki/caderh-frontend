@@ -189,7 +189,10 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
             {query.isError && <ReportError onRetry={() => query.refetch()} />}
 
             {!query.isLoading && !query.isError && !hasData && (
-              <ReportEmpty onClear={clearAll} />
+              <ReportEmpty
+                onClear={clearAll}
+                pendingNote={definition.pendingModule}
+              />
             )}
 
             {hasData && (

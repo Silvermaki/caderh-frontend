@@ -29,13 +29,18 @@ export default function ReportSlugPage() {
         subtitle={def.subtitle}
         breadcrumbs={crumbs}
         renderForm={() => (
-          <div className="rounded-md border border-primary/20 bg-primary/5 p-6 text-sm text-muted-foreground">
-            Formulario pendiente — plantilla AC-R-022 en desarrollo.
+          <div className="rounded-md border border-border/60 p-6 text-sm text-muted-foreground">
+            <p className="mb-1 font-medium text-foreground">
+              Plantilla pendiente de desarrollo
+            </p>
+            {(def as any).pendingModule ??
+              'Formulario pendiente — plantilla AC-R-022 en desarrollo.'}
           </div>
         )}
         onGenerate={async () => {
           throw new Error('Generación pixel-perfect pendiente de implementación');
         }}
+        disabled={Boolean((def as any).pendingModule)}
       />
     );
   }

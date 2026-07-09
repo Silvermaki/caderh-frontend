@@ -117,6 +117,12 @@ export interface ReportDefinition<TFilters, TRow> {
   category: ReportCategory;
   title: string;
   subtitle: string;
+  /**
+   * Reporte stub: el módulo del que depende aún no existe. Cuando está
+   * definido, el estado vacío explica la dependencia en lugar de sugerir
+   * "limpiar filtros" (que aquí no ayudaría).
+   */
+  pendingModule?: string;
 
   filters: FilterKey[];
   defaultFilters?: Partial<TFilters>;
