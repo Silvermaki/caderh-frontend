@@ -16,7 +16,6 @@ export interface R6Row {
   desembolsoQ2: number;
   desembolsoQ3: number;
   desembolsoQ4: number;
-  desembolsoSinFecha: number;
   totalDesembolsado: number;
   pctEjecucion: number;
   donacionesEspecie: number;
@@ -37,7 +36,6 @@ const columns: ColumnDef<R6Row>[] = [
   { key: 'desembolsoQ2',       label: 'Ingresos Q2',          align: 'right', render: (r) => money(r.desembolsoQ2) },
   { key: 'desembolsoQ3',       label: 'Ingresos Q3',          align: 'right', render: (r) => money(r.desembolsoQ3) },
   { key: 'desembolsoQ4',       label: 'Ingresos Q4',          align: 'right', render: (r) => money(r.desembolsoQ4) },
-  { key: 'desembolsoSinFecha', label: 'Sin fecha',            align: 'right', render: (r) => money(r.desembolsoSinFecha) },
   { key: 'totalDesembolsado',  label: 'Total ingresos recibidos', align: 'right', render: (r) => money(r.totalDesembolsado) },
   { key: 'pctEjecucion',       label: '% Ejecución',          align: 'right', render: (r) => pct(r.pctEjecucion) },
   { key: 'donacionesEspecie',  label: 'Donaciones especie',   align: 'right', render: (r) => money(r.donacionesEspecie) },

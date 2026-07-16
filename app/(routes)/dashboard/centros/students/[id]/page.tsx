@@ -71,6 +71,8 @@ export default function StudentDetailPage() {
     const [departamentos, setDepartamentos] = useState<any[]>([]);
     const [municipios, setMunicipios] = useState<any[]>([]);
     const [nivelEscolaridades, setNivelEscolaridades] = useState<any[]>([]);
+    const [discapacidades, setDiscapacidades] = useState<any[]>([]);
+    const [etnias, setEtnias] = useState<any[]>([]);
     const [viveOptions, setViveOptions] = useState<{ value: string; label: string }[]>([]);
 
     const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -101,6 +103,25 @@ export default function StudentDetailPage() {
     }, [studentId, session?.user?.session]);
 
     useEffect(() => { if (session && studentId) { fetchStudent(); fetchProcesses(); } }, [session, studentId]);
+
+    // Normaliza fechas legadas (Date, ISO con hora, DD/MM/AAAA) a 'YYYY-MM-DD'
+    // para el input type="date"; el backend solo acepta ISO.
+    const parseDateToISO = (raw: any): string => {
+        if (raw == null) return "";
+        const trimmed = String(raw).trim();
+        if (!trimmed) return "";
+        if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return trimmed.slice(0, 10);
+        const dmy = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/.exec(trimmed);
+        if (dmy) {
+            const day = dmy[1].padStart(2, "0");
+            const month = dmy[2].padStart(2, "0");
+            const year = dmy[3].length <= 2 ? `20${dmy[3]}` : dmy[3];
+            return `${year}-${month}-${day}`;
+        }
+        const d = new Date(trimmed);
+        if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+        return "";
+    };
 
     // El SGC heredado guardó "¿Con quién vive?" como JSON de ids posicionales
     // (ej. ["1"], a veces con comillas escapadas); los registros nuevos guardan
@@ -146,9 +167,12 @@ export default function StudentDetailPage() {
         // Normaliza el valor legado de "vive" al label del catálogo para que el
         // Select lo muestre y, al guardar, quede en el formato nuevo.
         f.vive = formatVive(f.vive);
+        f.fecha_nacimiento = parseDateToISO(student.fecha_nacimiento);
         f.departamento_id = student.departamento_id != null ? String(student.departamento_id) : "";
         f.municipio_id = student.municipio_id != null ? String(student.municipio_id) : "";
         f.nivel_escolaridad_id = student.nivel_escolaridad_id != null ? String(student.nivel_escolaridad_id) : "";
+        f.discapacidad_id = student.discapacidad_id != null ? String(student.discapacidad_id) : "";
+        f.etnia_id = student.etnia_id != null ? String(student.etnia_id) : "";
         setForm(f);
         setErrors({});
         setPendingFile(null);
@@ -159,6 +183,12 @@ export default function StudentDetailPage() {
         }
         if (!nivelEscolaridades.length) {
             fetch(`${apiBase}/centros/nivel-escolaridades`, { headers: authHeaders }).then(r => r.json()).then(d => setNivelEscolaridades(d.data ?? []));
+        }
+        if (!discapacidades.length) {
+            fetch(`${apiBase}/centros/discapacidades`, { headers: authHeaders }).then(r => r.json()).then(d => setDiscapacidades(d.data ?? []));
+        }
+        if (!etnias.length) {
+            fetch(`${apiBase}/centros/etnias`, { headers: authHeaders }).then(r => r.json()).then(d => setEtnias(d.data ?? []));
         }
         if (!viveOptions.length) {
             fetch(`${apiBase}/centros/vive-catalogo`, { headers: authHeaders }).then(r => r.json()).then(d => setViveOptions(d.data ?? []));
@@ -200,6 +230,11 @@ export default function StudentDetailPage() {
             const body: any = { id: student.id, ...form, departamento_id: Number(form.departamento_id), municipio_id: Number(form.municipio_id) };
             for (const k of NUM_KEYS) body[k] = Number(body[k]) || 0;
             body.tipo_contrato_ant = Number(body.tipo_contrato_ant) || 0;
+            // Catálogos: id entero o null (nunca strings/arrays/JSON).
+            body.nivel_escolaridad_id = form.nivel_escolaridad_id ? Number(form.nivel_escolaridad_id) : null;
+            body.discapacidad_id = form.discapacidad_id ? Number(form.discapacidad_id) : null;
+            body.etnia_id = form.etnia_id ? Number(form.etnia_id) : null;
+            body.fecha_nacimiento = form.fecha_nacimiento || null;
 
             const res = await fetch(`${apiBase}/centros/students`, {
                 method: "PUT",
@@ -280,10 +315,10 @@ export default function StudentDetailPage() {
         </div>
     );
 
-    const fieldInput = (key: string, label: string, opts?: { required?: boolean; placeholder?: string; type?: string }) => (
+    const fieldInput = (key: string, label: string, opts?: { required?: boolean; placeholder?: string; type?: string; sanitize?: (v: string) => string }) => (
         <div>
             <Label className="mb-1 font-medium text-default-600">{label}{opts?.required ? " *" : ""}</Label>
-            <Input type={opts?.type ?? "text"} disabled={saving} value={form[key] ?? ""} onChange={(e) => set(key, e.target.value)} placeholder={opts?.placeholder ?? label} />
+            <Input type={opts?.type ?? "text"} disabled={saving} value={form[key] ?? ""} onChange={(e) => set(key, opts?.sanitize ? opts.sanitize(e.target.value) : e.target.value)} placeholder={opts?.placeholder ?? label} />
             {errors[key] && <p className="text-destructive text-xs mt-1">{errors[key]}</p>}
         </div>
     );
@@ -423,8 +458,8 @@ export default function StudentDetailPage() {
                         </div>
                         {editingTab === "personal" ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {fieldInput("identidad", "Identidad", { required: true })}
-                                {fieldInput("fecha_nacimiento", "Fecha de nacimiento", { placeholder: "DD/MM/AAAA" })}
+                                {fieldInput("identidad", "Identidad", { required: true, placeholder: "####-####-#####", sanitize: (v) => v.replace(/[^\d-]/g, "") })}
+                                {fieldInput("fecha_nacimiento", "Fecha de nacimiento", { type: "date" })}
                                 {fieldInput("nombres", "Nombres", { required: true })}
                                 {fieldInput("apellidos", "Apellidos", { required: true })}
                                 {fieldSelect("sexo", "Sexo", [{ value: "M", label: "Masculino" }, { value: "F", label: "Femenino" }], { required: true })}
@@ -639,8 +674,8 @@ export default function StudentDetailPage() {
                         {editingTab === "additional" ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2">{fieldSwitch("especial", "¿Necesidades especiales?")}</div>
-                                {!!form.especial && fieldInput("discapacidad_id", "Discapacidad o Enfermedad")}
-                                {fieldInput("etnia_id", "Etnia")}
+                                {!!form.especial && fieldSelect("discapacidad_id", "Discapacidad o Enfermedad", discapacidades.map((d: any) => ({ value: d.id.toString(), label: d.nombre })))}
+                                {fieldSelect("etnia_id", "Etnia", etnias.map((e2: any) => ({ value: e2.id.toString(), label: e2.nombre })))}
                                 <div className="md:col-span-2">{fieldSwitch("interno", "¿Interno?")}</div>
                                 <div className="md:col-span-2 mt-4 border-t pt-4">
                                     <h4 className="text-sm font-semibold text-foreground mb-3">Contacto de referencia</h4>
@@ -656,8 +691,8 @@ export default function StudentDetailPage() {
                                 <InfoSection title="Información Adicional">
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
                                         {boolView("¿Necesidades especiales?", s.especial, <AlertTriangle className="h-4 w-4" />)}
-                                        {Number(s.especial) ? fieldView("Discapacidad o Enfermedad", s.discapacidad_id, <AlertTriangle className="h-4 w-4" />) : null}
-                                        {fieldView("Etnia", s.etnia_id && String(s.etnia_id).toLowerCase() !== "null" ? s.etnia_id : null, <Users className="h-4 w-4" />)}
+                                        {Number(s.especial) ? fieldView("Discapacidad o Enfermedad", s.discapacidad_nombre, <AlertTriangle className="h-4 w-4" />) : null}
+                                        {fieldView("Etnia", s.etnia_nombre, <Users className="h-4 w-4" />)}
                                         {boolView("¿Interno?", s.interno, <Home className="h-4 w-4" />)}
                                     </div>
                                 </InfoSection>

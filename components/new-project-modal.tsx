@@ -188,8 +188,8 @@ const NewProjectModal = ({
 
     // Step 4
     const [expenseItems, setExpenseItems] = useState<
-        { amount: string; description: string; expense_category_id: string }[]
-    >([{ amount: "", description: "", expense_category_id: "" }]);
+        { amount: string; description: string; expense_category_id: string; expense_date: string }[]
+    >([{ amount: "", description: "", expense_category_id: "", expense_date: "" }]);
     const [wizardExpenseCategories, setWizardExpenseCategories] = useState<any[]>([]);
     const [wizardNewCategoryName, setWizardNewCategoryName] = useState("");
     const [wizardCreatingCategory, setWizardCreatingCategory] = useState(false);
@@ -312,7 +312,7 @@ const NewProjectModal = ({
             { financing_source_id: "", amount: "", description: "", disbursement_date: "" },
         ]);
         setDonationItems([{ amount: "", description: "", donor_name: "", donation_type: "CASH", disbursement_date: "" }]);
-        setExpenseItems([{ amount: "", description: "", expense_category_id: "" }]);
+        setExpenseItems([{ amount: "", description: "", expense_category_id: "", expense_date: "" }]);
         setUploadedFiles([]);
         setFileDescription("");
         setFileFilename("");
@@ -379,6 +379,15 @@ const NewProjectModal = ({
             toast.error("Agrega al menos una fuente de financiamiento válida");
             return;
         }
+        if (valid.some((i) => Number(i.amount) <= 0)) {
+            toast.error("El monto de cada fuente debe ser mayor que 0");
+            return;
+        }
+        // La fecha de ingreso ahora es obligatoria en cada fuente.
+        if (valid.some((i) => !i.disbursement_date)) {
+            toast.error("Cada fuente debe indicar la Fecha de Ingreso");
+            return;
+        }
         setIsSubmitting(true);
         try {
             const res = await fetch(
@@ -394,7 +403,7 @@ const NewProjectModal = ({
                             financing_source_id: i.financing_source_id,
                             amount: Number(i.amount),
                             description: i.description || "",
-                            disbursement_date: i.disbursement_date || null,
+                            disbursement_date: i.disbursement_date,
                         })),
                     }),
                 }
@@ -414,12 +423,16 @@ const NewProjectModal = ({
     const onStep3 = async () => {
         // Las donaciones son opcionales al crear el proyecto: se puede avanzar
         // sin ninguna registrada. Solo se valida que las filas parcialmente
-        // llenas indiquen el donante.
+        // llenas indiquen el donante y la fecha de ingreso (ahora obligatoria).
         const valid = donationItems.filter(
-            (i) => i.amount && !isNaN(Number(i.amount)) && i.donation_type && i.donor_name.trim()
+            (i) => i.amount && !isNaN(Number(i.amount)) && i.donation_type && i.donor_name.trim() && i.disbursement_date
         );
-        if (valid.length < donationItems.filter((i) => i.amount || i.donor_name.trim()).length) {
-            toast.error("Cada donación debe indicar el donante");
+        if (valid.length < donationItems.filter((i) => i.amount || i.donor_name.trim() || i.disbursement_date).length) {
+            toast.error("Cada donación debe indicar el donante y la Fecha de Ingreso");
+            return;
+        }
+        if (valid.some((i) => Number(i.amount) <= 0)) {
+            toast.error("El monto de cada donación debe ser mayor que 0");
             return;
         }
         setIsSubmitting(true);
@@ -438,7 +451,7 @@ const NewProjectModal = ({
                             description: i.description || "",
                             donor_name: i.donor_name.trim(),
                             donation_type: i.donation_type,
-                            disbursement_date: i.disbursement_date || null,
+                            disbursement_date: i.disbursement_date,
                         })),
                     }),
                 }
@@ -458,10 +471,19 @@ const NewProjectModal = ({
     const onStep4 = async () => {
         // Los gastos son opcionales al crear el proyecto: se pueden ir
         // registrando gradualmente desde el detalle del proyecto. Solo se
-        // envían las filas con monto válido (la lista puede quedar vacía).
+        // envían las filas con monto válido (la lista puede quedar vacía),
+        // pero toda fila con monto debe indicar la fecha del gasto (NOT NULL).
         const valid = expenseItems.filter(
             (i) => i.amount && !isNaN(Number(i.amount))
         );
+        if (valid.some((i) => Number(i.amount) <= 0)) {
+            toast.error("El monto de cada gasto debe ser mayor que 0");
+            return;
+        }
+        if (valid.some((i) => !i.expense_date)) {
+            toast.error("Cada gasto debe indicar la Fecha del gasto");
+            return;
+        }
         setIsSubmitting(true);
         try {
             const res = await fetch(
@@ -477,6 +499,7 @@ const NewProjectModal = ({
                             amount: Number(i.amount),
                             description: i.description || "",
                             expense_category_id: i.expense_category_id || null,
+                            expense_date: i.expense_date,
                         })),
                     }),
                 }
@@ -640,7 +663,7 @@ const NewProjectModal = ({
     };
 
     const addExpenseItem = () => {
-        setExpenseItems((prev) => [...prev, { amount: "", description: "", expense_category_id: "" }]);
+        setExpenseItems((prev) => [...prev, { amount: "", description: "", expense_category_id: "", expense_date: "" }]);
         setTimeout(
             () =>
                 gastosEndRef.current?.scrollIntoView({
@@ -730,13 +753,14 @@ const NewProjectModal = ({
                 }
                 if (items.length > 0) setDonationItems(items);
             } else if (type === "expenses") {
-                const items: { amount: string; description: string; expense_category_id: string }[] = [];
+                const items: { amount: string; description: string; expense_category_id: string; expense_date: string }[] = [];
                 for (const row of jsonRows) {
                     const monto = Number(row["Monto"]);
                     const desc = String(row["Descripcion"] ?? "").trim();
                     const catId = String(row["Categoria ID"] ?? "").trim();
+                    const fecha = String(row["Fecha del Gasto"] ?? row["Fecha"] ?? "").trim();
                     if (isNaN(monto)) { errorCount++; continue; }
-                    items.push({ amount: String(monto), description: desc, expense_category_id: catId });
+                    items.push({ amount: String(monto), description: desc, expense_category_id: catId, expense_date: fecha });
                     imported++;
                 }
                 if (items.length > 0) setExpenseItems(items);
@@ -1063,7 +1087,7 @@ const NewProjectModal = ({
                                         </div>
                                         <div className="min-w-[160px]">
                                             <Label className="mb-1 text-xs">
-                                                Fecha de Ingreso
+                                                Fecha de Ingreso <span className="text-red-500">*</span>
                                             </Label>
                                             <Input
                                                 type="date"
@@ -1075,6 +1099,9 @@ const NewProjectModal = ({
                                                         e.target.value
                                                     )
                                                 }
+                                                min={watch("start_date") || undefined}
+                                                max={watch("end_date") || undefined}
+                                                required
                                             />
                                         </div>
                                         <Button
@@ -1204,7 +1231,7 @@ const NewProjectModal = ({
                                         </div>
                                         <div className="min-w-[160px]">
                                             <Label className="mb-1 text-xs">
-                                                Fecha de Ingreso
+                                                Fecha de Ingreso <span className="text-red-500">*</span>
                                             </Label>
                                             <Input
                                                 type="date"
@@ -1216,6 +1243,9 @@ const NewProjectModal = ({
                                                         e.target.value
                                                     )
                                                 }
+                                                min={watch("start_date") || undefined}
+                                                max={watch("end_date") || undefined}
+                                                required
                                             />
                                         </div>
                                         <Button
@@ -1318,6 +1348,25 @@ const NewProjectModal = ({
                                                     )
                                                 }
                                                 placeholder="Opcional"
+                                            />
+                                        </div>
+                                        <div className="min-w-[160px]">
+                                            <Label className="mb-1 text-xs">
+                                                Fecha del gasto <span className="text-red-500">*</span>
+                                            </Label>
+                                            <Input
+                                                type="date"
+                                                value={item.expense_date}
+                                                onChange={(e) =>
+                                                    updateExpenseItem(
+                                                        i,
+                                                        "expense_date",
+                                                        e.target.value
+                                                    )
+                                                }
+                                                min={watch("start_date") || undefined}
+                                                max={watch("end_date") || undefined}
+                                                required
                                             />
                                         </div>
                                         <Button

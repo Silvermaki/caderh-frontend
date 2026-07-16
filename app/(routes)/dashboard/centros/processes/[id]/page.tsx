@@ -796,6 +796,7 @@ export default function ProcessDetailPage() {
                                         {fieldView("Instructor", p.instructor_nombre, <User className="h-4 w-4" />)}
                                         {fieldView("Metodología", p.metodologia_nombre, <Bookmark className="h-4 w-4" />)}
                                         {fieldView("Otra metodología", p.otra_metodologia, <Bookmark className="h-4 w-4" />)}
+                                        {/* Nombre resuelto por el backend vía proyectos vinculados (ya no existe procesos.fuente_financiamiento_id) */}
                                         {fieldView("Fuente de Financiamiento", p.fuente_financiamiento, <DollarSign className="h-4 w-4" />)}
                                     </div>
                                 </InfoSection>

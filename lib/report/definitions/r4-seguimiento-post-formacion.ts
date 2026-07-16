@@ -19,6 +19,8 @@ export interface R4Row {
   proyecto: string | null;
   estatus: string;
   donde_trabaja: string | null;
+  puesto: string | null;
+  rangoSalario: string | null;
 }
 
 const columns: ColumnDef<R4Row>[] = [
@@ -32,10 +34,8 @@ const columns: ColumnDef<R4Row>[] = [
   { key: 'proyecto',        label: 'Proyecto',        align: 'left',  hideIfEmpty: true, render: (r: R4Row) => r.proyecto ?? '—' },
   { key: 'estatus',         label: 'Estatus',         align: 'left',  render: (r: R4Row) => r.estatus },
   { key: 'donde_trabaja',   label: 'Empresa / Lugar', align: 'left',  render: (r: R4Row) => r.donde_trabaja ?? '—' },
-  { key: 'puesto',          label: 'Puesto',          align: 'left',
-    missingInDb: true, missingNote: 'Módulo seguimiento pendiente', render: () => '—' } as any,
-  { key: 'rangoSalario',    label: 'Rango salario',   align: 'left',
-    missingInDb: true, missingNote: 'Módulo seguimiento pendiente', render: () => '—' } as any,
+  { key: 'puesto',          label: 'Puesto',          align: 'left',  render: (r: R4Row) => r.puesto ?? '—' },
+  { key: 'rangoSalario',    label: 'Rango salario',   align: 'left',  render: (r: R4Row) => r.rangoSalario ?? '—' },
   { key: 'montoKit',        label: 'Monto kit',       align: 'right',
     missingInDb: true, missingNote: 'Campo no capturado aún',       render: () => '—' } as any,
 ];
@@ -76,7 +76,13 @@ export const r4Definition: ReportDefinition<R4Filters, R4Row> = {
         page_size,
       },
     );
-    return { rows: res.rows, total: res.total, kpis: res.kpis, meta: res.meta };
+    // El backend envía la fila cruda del SQL en snake_case (`rango_salario`);
+    // se mapea a la key camelCase de la columna.
+    const rows = res.rows.map((r: any) => ({
+      ...r,
+      rangoSalario: r.rangoSalario ?? r.rango_salario ?? null,
+    }));
+    return { rows, total: res.total, kpis: res.kpis, meta: res.meta };
   },
 };
 

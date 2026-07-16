@@ -207,11 +207,11 @@ const Page = () => {
     const [editDonationSaving, setEditDonationSaving] = useState(false);
 
     const [addExpenseOpen, setAddExpenseOpen] = useState(false);
-    const [addExpenseForm, setAddExpenseForm] = useState({ amount: "", description: "", expense_category_id: "", origin: "" });
+    const [addExpenseForm, setAddExpenseForm] = useState({ amount: "", description: "", expense_category_id: "", origin: "", expense_date: "" });
     const [addExpenseSaving, setAddExpenseSaving] = useState(false);
 
     const [editExpenseOpen, setEditExpenseOpen] = useState(false);
-    const [editExpenseForm, setEditExpenseForm] = useState({ id: "", amount: "", description: "", expense_category_id: "", origin: "" });
+    const [editExpenseForm, setEditExpenseForm] = useState({ id: "", amount: "", description: "", expense_category_id: "", origin: "", expense_date: "" });
     const [editExpenseSaving, setEditExpenseSaving] = useState(false);
 
     const [expenseCategories, setExpenseCategories] = useState<any[]>([]);
@@ -761,6 +761,14 @@ const Page = () => {
             toast.error("Completa fuente y monto");
             return;
         }
+        if (Number(addSourceForm.amount) <= 0) {
+            toast.error("El monto debe ser mayor que 0");
+            return;
+        }
+        if (!addSourceForm.disbursement_date) {
+            toast.error("La Fecha de Ingreso es obligatoria");
+            return;
+        }
         if (submitLockRef.current) return;
         submitLockRef.current = true;
         setAddSourceSaving(true);
@@ -777,7 +785,7 @@ const Page = () => {
                         financing_source_id: addSourceForm.financing_source_id,
                         amount: Number(addSourceForm.amount),
                         description: addSourceForm.description || "",
-                        disbursement_date: addSourceForm.disbursement_date || null,
+                        disbursement_date: addSourceForm.disbursement_date,
                     }),
                 }
             );
@@ -814,6 +822,14 @@ const Page = () => {
             toast.error("Completa fuente y monto");
             return;
         }
+        if (Number(editSourceForm.amount) <= 0) {
+            toast.error("El monto debe ser mayor que 0");
+            return;
+        }
+        if (!editSourceForm.disbursement_date) {
+            toast.error("La Fecha de Ingreso es obligatoria");
+            return;
+        }
         if (submitLockRef.current) return;
         submitLockRef.current = true;
         setEditSourceSaving(true);
@@ -830,7 +846,7 @@ const Page = () => {
                         financing_source_id: editSourceForm.financing_source_id,
                         amount: Number(editSourceForm.amount),
                         description: editSourceForm.description || "",
-                        disbursement_date: editSourceForm.disbursement_date || null,
+                        disbursement_date: editSourceForm.disbursement_date,
                     }),
                 }
             );
@@ -877,8 +893,16 @@ const Page = () => {
             toast.error("Completa monto y tipo");
             return;
         }
+        if (Number(addDonationForm.amount) <= 0) {
+            toast.error("El monto debe ser mayor que 0");
+            return;
+        }
         if (!addDonationForm.donor_name.trim()) {
             toast.error("El donante es obligatorio");
+            return;
+        }
+        if (!addDonationForm.disbursement_date) {
+            toast.error("La Fecha de Ingreso es obligatoria");
             return;
         }
         if (submitLockRef.current) return;
@@ -898,7 +922,7 @@ const Page = () => {
                         donation_type: addDonationForm.donation_type,
                         donor_name: addDonationForm.donor_name.trim(),
                         description: addDonationForm.description || "",
-                        disbursement_date: addDonationForm.disbursement_date || null,
+                        disbursement_date: addDonationForm.disbursement_date,
                     }),
                 }
             );
@@ -936,8 +960,16 @@ const Page = () => {
             toast.error("Completa monto y tipo");
             return;
         }
+        if (Number(editDonationForm.amount) <= 0) {
+            toast.error("El monto debe ser mayor que 0");
+            return;
+        }
         if (!editDonationForm.donor_name.trim()) {
             toast.error("El donante es obligatorio");
+            return;
+        }
+        if (!editDonationForm.disbursement_date) {
+            toast.error("La Fecha de Ingreso es obligatoria");
             return;
         }
         if (submitLockRef.current) return;
@@ -957,7 +989,7 @@ const Page = () => {
                         donation_type: editDonationForm.donation_type,
                         donor_name: editDonationForm.donor_name.trim(),
                         description: editDonationForm.description || "",
-                        disbursement_date: editDonationForm.disbursement_date || null,
+                        disbursement_date: editDonationForm.disbursement_date,
                     }),
                 }
             );
@@ -1012,6 +1044,14 @@ const Page = () => {
             toast.error("Completa el monto");
             return;
         }
+        if (Number(addExpenseForm.amount) <= 0) {
+            toast.error("El monto debe ser mayor que 0");
+            return;
+        }
+        if (!addExpenseForm.expense_date) {
+            toast.error("La fecha del gasto es obligatoria");
+            return;
+        }
         if (submitLockRef.current) return;
         submitLockRef.current = true;
         setAddExpenseSaving(true);
@@ -1028,6 +1068,7 @@ const Page = () => {
                         amount: Number(addExpenseForm.amount),
                         description: addExpenseForm.description || "",
                         expense_category_id: addExpenseForm.expense_category_id || null,
+                        expense_date: addExpenseForm.expense_date,
                         ...parseExpenseOrigin(addExpenseForm.origin),
                     }),
                 }
@@ -1036,7 +1077,7 @@ const Page = () => {
             if (res.ok) {
                 toast.success("Gasto agregado");
                 setAddExpenseOpen(false);
-                setAddExpenseForm({ amount: "", description: "", expense_category_id: "", origin: "" });
+                setAddExpenseForm({ amount: "", description: "", expense_category_id: "", origin: "", expense_date: "" });
                 fetchStep4();
                 fetchProject();
             } else {
@@ -1063,6 +1104,7 @@ const Page = () => {
             description: row.description ?? "",
             expense_category_id: row.expense_category_id ?? "",
             origin,
+            expense_date: row.expense_date ? String(row.expense_date).slice(0, 10) : "",
         });
         setEditExpenseOpen(true);
     };
@@ -1070,6 +1112,14 @@ const Page = () => {
     const onEditExpense = async () => {
         if (!editExpenseForm.amount) {
             toast.error("Completa el monto");
+            return;
+        }
+        if (Number(editExpenseForm.amount) <= 0) {
+            toast.error("El monto debe ser mayor que 0");
+            return;
+        }
+        if (!editExpenseForm.expense_date) {
+            toast.error("La fecha del gasto es obligatoria");
             return;
         }
         if (submitLockRef.current) return;
@@ -1088,6 +1138,7 @@ const Page = () => {
                         amount: Number(editExpenseForm.amount),
                         description: editExpenseForm.description || "",
                         expense_category_id: editExpenseForm.expense_category_id || null,
+                        expense_date: editExpenseForm.expense_date,
                         ...parseExpenseOrigin(editExpenseForm.origin),
                     }),
                 }
@@ -1234,6 +1285,11 @@ const Page = () => {
             </div>
         );
     }
+
+    // Vigencia del proyecto: el backend rechaza fechas de ingreso/gasto fuera
+    // de start_date..end_date, así que se acota el date picker.
+    const projStart = project.start_date ? String(project.start_date).slice(0, 10) : undefined;
+    const projEnd = project.end_date ? String(project.end_date).slice(0, 10) : undefined;
 
     const financed = Number(project.financed_amount ?? 0);
     const totalExpenses = Number(project.total_expenses ?? 0);
@@ -2019,6 +2075,7 @@ const Page = () => {
                                             <TableHead>Categoría</TableHead>
                                             <TableHead>Origen</TableHead>
                                             <TableHead>Monto</TableHead>
+                                            <TableHead>Fecha del gasto</TableHead>
                                             {canEdit && <TableHead>Acciones</TableHead>}
                                         </TableRow>
                                     </TableHeader>
@@ -2031,6 +2088,7 @@ const Page = () => {
                                                     <TableCell>{cat?.name ?? "-"}</TableCell>
                                                     <TableCell>{originLabelForExpense(r)}</TableCell>
                                                     <TableCell>{formatCurrency(Number(r.amount ?? 0))}</TableCell>
+                                                    <TableCell>{formatDate(r.expense_date)}</TableCell>
                                                     {canEdit && (
                                                         <TableCell>
                                                             <div className="flex gap-1">
@@ -2422,11 +2480,14 @@ const Page = () => {
                                 />
                             </div>
                             <div>
-                                <Label>Fecha de Ingreso</Label>
+                                <Label>Fecha de Ingreso <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="date"
                                     value={addSourceForm.disbursement_date}
                                     onChange={(e) => setAddSourceForm((p) => ({ ...p, disbursement_date: e.target.value }))}
+                                    min={projStart}
+                                    max={projEnd}
+                                    required
                                 />
                             </div>
                             <div className="flex gap-2 justify-end">
@@ -2479,11 +2540,14 @@ const Page = () => {
                                 />
                             </div>
                             <div>
-                                <Label>Fecha de Ingreso</Label>
+                                <Label>Fecha de Ingreso <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="date"
                                     value={editSourceForm.disbursement_date}
                                     onChange={(e) => setEditSourceForm((p) => ({ ...p, disbursement_date: e.target.value }))}
+                                    min={projStart}
+                                    max={projEnd}
+                                    required
                                 />
                             </div>
                             <div className="flex gap-2 justify-end">
@@ -2545,11 +2609,14 @@ const Page = () => {
                                 />
                             </div>
                             <div>
-                                <Label>Fecha de Ingreso</Label>
+                                <Label>Fecha de Ingreso <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="date"
                                     value={addDonationForm.disbursement_date}
                                     onChange={(e) => setAddDonationForm((p) => ({ ...p, disbursement_date: e.target.value }))}
+                                    min={projStart}
+                                    max={projEnd}
+                                    required
                                 />
                             </div>
                             <div className="flex gap-2 justify-end">
@@ -2611,11 +2678,14 @@ const Page = () => {
                                 />
                             </div>
                             <div>
-                                <Label>Fecha de Ingreso</Label>
+                                <Label>Fecha de Ingreso <span className="text-red-500">*</span></Label>
                                 <Input
                                     type="date"
                                     value={editDonationForm.disbursement_date}
                                     onChange={(e) => setEditDonationForm((p) => ({ ...p, disbursement_date: e.target.value }))}
+                                    min={projStart}
+                                    max={projEnd}
+                                    required
                                 />
                             </div>
                             <div className="flex gap-2 justify-end">
@@ -2699,6 +2769,17 @@ const Page = () => {
                                 <p className="text-xs text-muted-foreground mt-1">Se rebaja del saldo de la fuente o donación elegida.</p>
                             </div>
                             <div>
+                                <Label>Fecha del gasto <span className="text-red-500">*</span></Label>
+                                <Input
+                                    type="date"
+                                    value={addExpenseForm.expense_date}
+                                    onChange={(e) => setAddExpenseForm((p) => ({ ...p, expense_date: e.target.value }))}
+                                    min={projStart}
+                                    max={projEnd}
+                                    required
+                                />
+                            </div>
+                            <div>
                                 <Label>Descripción (opcional)</Label>
                                 <Input
                                     value={addExpenseForm.description}
@@ -2768,6 +2849,17 @@ const Page = () => {
                                     </SelectContent>
                                 </Select>
                                 <p className="text-xs text-muted-foreground mt-1">Se rebaja del saldo de la fuente o donación elegida.</p>
+                            </div>
+                            <div>
+                                <Label>Fecha del gasto <span className="text-red-500">*</span></Label>
+                                <Input
+                                    type="date"
+                                    value={editExpenseForm.expense_date}
+                                    onChange={(e) => setEditExpenseForm((p) => ({ ...p, expense_date: e.target.value }))}
+                                    min={projStart}
+                                    max={projEnd}
+                                    required
+                                />
                             </div>
                             <div>
                                 <Label>Descripción (opcional)</Label>

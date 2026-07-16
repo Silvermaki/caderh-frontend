@@ -1,12 +1,13 @@
 import type { AnyColumn, ColumnDef, CompoundColumnDef } from '@/lib/report/types';
 import { MissingDbHeader } from '../missing-db/missing-db-header';
+import { SHOW_PENDING_HINTS } from '@/lib/report/pending-hints';
 
 function isCompound<T>(c: AnyColumn<T>): c is CompoundColumnDef<T> {
   return 'group' in c;
 }
 
 function renderLabel<T>(c: ColumnDef<T>) {
-  if (c.missingInDb) {
+  if (c.missingInDb && SHOW_PENDING_HINTS) {
     return <MissingDbHeader label={c.label} note={c.missingNote} source={c.plannedSource} />;
   }
   return c.label;

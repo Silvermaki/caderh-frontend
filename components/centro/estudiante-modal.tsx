@@ -97,7 +97,8 @@ const EstudianteModal = ({
                 celular: estudiante.celular ?? "",
                 sexo: estudiante.sexo ?? "",
                 estado_civil: estudiante.estado_civil ?? "",
-                fecha_nacimiento: estudiante.fecha_nacimiento ?? "",
+                // DATE del backend ('YYYY-MM-DD' o ISO con hora) → valor del input date.
+                fecha_nacimiento: estudiante.fecha_nacimiento ? String(estudiante.fecha_nacimiento).slice(0, 10) : "",
                 sangre: estudiante.sangre ?? "",
                 vive: estudiante.vive ?? "",
                 numero_dep: estudiante.numero_dep ?? "",
@@ -155,7 +156,7 @@ const EstudianteModal = ({
                         </div>
                         <div>
                             <Label htmlFor="est-fecha_nacimiento" className="mb-1 font-medium text-default-600">Fecha nacimiento</Label>
-                            <Input disabled={isSubmitting} {...register("fecha_nacimiento")} id="est-fecha_nacimiento" placeholder="DD/MM/AAAA" />
+                            <Input type="date" disabled={isSubmitting} {...register("fecha_nacimiento")} id="est-fecha_nacimiento" />
                         </div>
                         <div>
                             <Label htmlFor="est-nombres" className="mb-1 font-medium text-default-600">Nombres *</Label>

@@ -82,6 +82,8 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
     const [departamentos, setDepartamentos] = useState<any[]>([]);
     const [municipios, setMunicipios] = useState<any[]>([]);
     const [nivelEscolaridades, setNivelEscolaridades] = useState<any[]>([]);
+    const [discapacidades, setDiscapacidades] = useState<any[]>([]);
+    const [etnias, setEtnias] = useState<any[]>([]);
     const [viveOptions, setViveOptions] = useState<{ value: string; label: string }[]>([]);
 
     const [ingresoFocused, setIngresoFocused] = useState(false);
@@ -150,6 +152,8 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
         if (!isOpen || !session) return;
         fetch(`${apiBase}/centros/departamentos`, { headers: authHeaders }).then((r) => r.json()).then((d) => setDepartamentos(d.data ?? []));
         fetch(`${apiBase}/centros/nivel-escolaridades`, { headers: authHeaders }).then((r) => r.json()).then((d) => setNivelEscolaridades(d.data ?? []));
+        fetch(`${apiBase}/centros/discapacidades`, { headers: authHeaders }).then((r) => r.json()).then((d) => setDiscapacidades(d.data ?? []));
+        fetch(`${apiBase}/centros/etnias`, { headers: authHeaders }).then((r) => r.json()).then((d) => setEtnias(d.data ?? []));
         fetch(`${apiBase}/centros/vive-catalogo`, { headers: authHeaders }).then((r) => r.json()).then((d) => setViveOptions(d.data ?? []));
     }, [isOpen, session?.user?.session]);
 
@@ -223,6 +227,11 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                 "autoempleo", "socios", "socios_cantidad", "especial", "riesgo_social", "interno"]) {
                 body[numKey] = Number(body[numKey]) || 0;
             }
+            // Catálogos: id entero o null (nunca strings/arrays/JSON).
+            body.nivel_escolaridad_id = form.nivel_escolaridad_id ? Number(form.nivel_escolaridad_id) : null;
+            body.discapacidad_id = form.discapacidad_id ? Number(form.discapacidad_id) : null;
+            body.etnia_id = form.etnia_id ? Number(form.etnia_id) : null;
+            body.fecha_nacimiento = form.fecha_nacimiento || null;
             if (isEdit) body.id = student.id;
             if (!centroId) body.centro_id = Number(effectiveCentroId);
 
@@ -242,7 +251,7 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
         setSubmitting(false);
     };
 
-    const fieldInput = (key: string, label: string, opts?: { required?: boolean; placeholder?: string; type?: string; readOnly?: boolean; className?: string }) => (
+    const fieldInput = (key: string, label: string, opts?: { required?: boolean; placeholder?: string; type?: string; readOnly?: boolean; className?: string; sanitize?: (v: string) => string }) => (
         <div>
             <Label className="mb-1 font-medium text-default-600">{label}{opts?.required ? " *" : ""}</Label>
             <Input
@@ -250,7 +259,7 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                 disabled={submitting}
                 readOnly={opts?.readOnly}
                 value={form[key] ?? ""}
-                onChange={(e) => set(key, e.target.value)}
+                onChange={(e) => set(key, opts?.sanitize ? opts.sanitize(e.target.value) : e.target.value)}
                 placeholder={opts?.placeholder ?? label}
                 className={opts?.className}
             />
@@ -337,7 +346,7 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                             {errors.centro_id && <p className="text-destructive text-xs mt-1">{errors.centro_id}</p>}
                         </div>
                     )}
-                    {fieldInput("identidad", "Identidad", { required: true, placeholder: "Número de identidad" })}
+                    {fieldInput("identidad", "Identidad", { required: true, placeholder: "####-####-#####", sanitize: (v) => v.replace(/[^\d-]/g, "") })}
                     <div>
                         <Label className="mb-1 font-medium text-default-600">Fecha de nacimiento</Label>
                         <Input
@@ -451,8 +460,8 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
             case 4: return (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="md:col-span-2">{fieldSwitch("especial", "¿Necesidades especiales?")}</div>
-                    {!!form.especial && fieldInput("discapacidad_id", "Discapacidad o Enfermedad")}
-                    {fieldInput("etnia_id", "Etnia")}
+                    {!!form.especial && fieldSelect("discapacidad_id", "Discapacidad o Enfermedad", discapacidades.map((d: any) => ({ value: d.id.toString(), label: d.nombre })))}
+                    {fieldSelect("etnia_id", "Etnia", etnias.map((e: any) => ({ value: e.id.toString(), label: e.nombre })))}
                     <div className="md:col-span-2">{fieldSwitch("interno", "¿Interno?")}</div>
                     <div className="md:col-span-2 mt-4 border-t pt-4">
                         <h4 className="text-sm font-semibold text-foreground mb-3">Contacto de referencia</h4>

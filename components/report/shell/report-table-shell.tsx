@@ -11,6 +11,7 @@ import { ScopeBar } from '../filters/scope-bar';
 import { FilterDrawer } from '../filters/filter-drawer';
 import { ExportMenu } from '../export/export-menu';
 import { MissingDbBanner, type MissingDbItem } from '../missing-db/missing-db-banner';
+import { SHOW_PENDING_HINTS } from '@/lib/report/pending-hints';
 import { CompoundHeader } from '../variants/compound-header';
 import { ConditionalRedCell } from '../variants/conditional-red-cell';
 import { ReportChart } from '../variants/report-chart';
@@ -147,7 +148,7 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
         {renderFilters(filters, setFilter)}
       </FilterDrawer>
 
-      <MissingDbBanner missing={missing} />
+      {SHOW_PENDING_HINTS && <MissingDbBanner missing={missing} />}
 
       {aboveTable}
 
@@ -217,7 +218,12 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
                               && definition.variants.conditionalRed.cells.includes(c.key);
                             if (c.missingInDb) {
                               return (
-                                <td key={c.key} className="px-3 py-2 text-right text-muted-foreground bg-warning/5">—</td>
+                                <td
+                                  key={c.key}
+                                  className={`px-3 py-2 text-${c.align ?? 'left'} text-muted-foreground${SHOW_PENDING_HINTS ? ' bg-warning/5' : ''}`}
+                                >
+                                  —
+                                </td>
                               );
                             }
                             if (isRed) {
