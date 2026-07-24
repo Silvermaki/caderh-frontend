@@ -6,6 +6,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Download, Upload, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
+import { ImportResultModal, type ImportResult } from "./import-result-modal";
 
 const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
@@ -28,6 +29,8 @@ interface ExcelActionsProps {
 export default function ExcelActions({ centroId, entity, onSuccess, disabled }: ExcelActionsProps) {
     const { data: session } = useSession() as any;
     const [importing, setImporting] = useState(false);
+    const [resultOpen, setResultOpen] = useState(false);
+    const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
     const meta = ENTITY_LABELS[entity];
     const isDisabled = disabled || !centroId;
@@ -71,10 +74,12 @@ export default function ExcelActions({ centroId, entity, onSuccess, disabled }: 
                 if (json.deleted > 0) parts.push(`${json.deleted} eliminados`);
                 const summary = parts.length ? parts.join(", ") : "Sin cambios";
 
-                if (json.warnings?.length > 0) {
-                    toast(`${summary}. ${json.warnings.length} registro(s) protegido(s) no eliminado(s).`, { icon: "⚠️", duration: 6000 });
-                } else if (json.errors?.length > 0) {
-                    toast.error(`${summary}. ${json.errors.length} error(es) encontrado(s).`, { duration: 6000 });
+                // Con errores o advertencias: modal con el detalle fila por
+                // fila y la corrección sugerida (un toast no alcanza para
+                // explicar qué corregir). Éxito limpio: toast como siempre.
+                if (json.errors?.length > 0 || json.warnings?.length > 0) {
+                    setImportResult(json);
+                    setResultOpen(true);
                 } else {
                     toast.success(summary);
                 }
@@ -135,6 +140,12 @@ export default function ExcelActions({ centroId, entity, onSuccess, disabled }: 
                     : <Upload className="h-4 w-4 mr-2" />}
                 Importar Excel
             </Button>
+            <ImportResultModal
+                open={resultOpen}
+                onOpenChange={setResultOpen}
+                entityLabel={meta.label}
+                result={importResult}
+            />
         </span>
     );
 }

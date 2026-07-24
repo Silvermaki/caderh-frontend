@@ -29,6 +29,7 @@ import { useSession } from "next-auth/react";
 import toast from "react-hot-toast";
 import { Loader2, PlusCircle, Trash2, Upload, FileText, Download } from "lucide-react";
 import * as XLSX from "xlsx";
+import { excelValueToIsoDate } from "@/lib/excel-date";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
@@ -732,7 +733,7 @@ const NewProjectModal = ({
                     const fsId = String(row["Fuente ID"] ?? "").trim();
                     const monto = Number(row["Monto"]);
                     const desc = String(row["Descripcion"] ?? "").trim();
-                    const fecha = String(row["Fecha de Ingreso"] ?? row["Fecha Desembolso"] ?? "").trim();
+                    const fecha = excelValueToIsoDate(row["Fecha de Ingreso"] ?? row["Fecha Desembolso"]) ?? "";
                     if (!fsId || isNaN(monto)) { errorCount++; continue; }
                     items.push({ financing_source_id: fsId, amount: String(monto), description: desc, disbursement_date: fecha });
                     imported++;
@@ -746,7 +747,7 @@ const NewProjectModal = ({
                     const donor = String(row["Donante"] ?? "").trim();
                     const tipoRaw = String(row["Tipo"] ?? "").trim().toUpperCase();
                     const dtype = DONATION_TYPE_MAP[tipoRaw];
-                    const fecha = String(row["Fecha de Ingreso"] ?? row["Fecha Desembolso"] ?? "").trim();
+                    const fecha = excelValueToIsoDate(row["Fecha de Ingreso"] ?? row["Fecha Desembolso"]) ?? "";
                     if (isNaN(monto) || !dtype || !donor) { errorCount++; continue; }
                     items.push({ amount: String(monto), description: desc, donor_name: donor, donation_type: dtype, disbursement_date: fecha });
                     imported++;
@@ -758,7 +759,7 @@ const NewProjectModal = ({
                     const monto = Number(row["Monto"]);
                     const desc = String(row["Descripcion"] ?? "").trim();
                     const catId = String(row["Categoria ID"] ?? "").trim();
-                    const fecha = String(row["Fecha del Gasto"] ?? row["Fecha"] ?? "").trim();
+                    const fecha = excelValueToIsoDate(row["Fecha del Gasto"] ?? row["Fecha"]) ?? "";
                     if (isNaN(monto)) { errorCount++; continue; }
                     items.push({ amount: String(monto), description: desc, expense_category_id: catId, expense_date: fecha });
                     imported++;
