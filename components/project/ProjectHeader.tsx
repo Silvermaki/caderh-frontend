@@ -15,6 +15,7 @@ import {
     Package,
     Banknote,
     AlertCircle,
+    Gift,
 } from "lucide-react";
 import { formatDate, formatCurrency } from "@/app/libs/utils";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,9 @@ interface ProjectHeaderProps {
     startDate: string | null;
     endDate: string | null;
     accomplishments: any[];
+    /** Presupuesto General: fuentes + donaciones en efectivo. */
     financed: number;
+    /** Presupuesto Ejecutado: gastos pagados con el presupuesto en efectivo. */
     totalExpenses: number;
     remaining: number;
     /** % de ejecución financiera (efectivo). Sin tope; null = no determinable
@@ -43,6 +46,10 @@ interface ProjectHeaderProps {
     inKindAvailable?: number;
     /** Disponible neto de efectivo (donado − gastos imputados). */
     cashAvailable?: number;
+    /** Suma de donaciones tipo beneficio (BENEFIT). */
+    benefitDonations?: number;
+    /** Disponible neto de beneficios (donado − gastos imputados). */
+    benefitAvailable?: number;
     /** Presupuesto total planificado (referencia; no suma a ingresos). */
     totalBudget?: number | null;
     /** Categoría del proyecto (PROJECT o AGREEMENT). */
@@ -65,6 +72,8 @@ const ProjectHeader = ({
     cashDonations,
     inKindAvailable,
     cashAvailable,
+    benefitDonations,
+    benefitAvailable,
     totalBudget,
     projectCategory,
 }: ProjectHeaderProps) => {
@@ -86,18 +95,21 @@ const ProjectHeader = ({
             icon: DollarSign,
             label: "Presupuesto General",
             value: formatCurrency(financed),
+            tooltip: "Ingresos en efectivo: fuentes de financiamiento + donaciones en efectivo. Las donaciones en suministros y beneficios no suman al presupuesto.",
             iconColor: "text-success",
         },
         {
             icon: TrendingUp,
             label: "Presupuesto Ejecutado",
             value: formatCurrency(totalExpenses),
+            tooltip: "Gastos pagados con el presupuesto: generales, contra una fuente o contra una donación en efectivo. Los gastos imputados a suministros o beneficios se rebajan de esas donaciones.",
             iconColor: "text-warning",
         },
         {
             icon: Wallet,
             label: "Presupuesto Disponible",
             value: formatCurrency(remaining),
+            tooltip: "Presupuesto general menos presupuesto ejecutado.",
             iconColor: "text-primary",
         },
         ...(overExecution > 0 ? [{
@@ -110,14 +122,21 @@ const ProjectHeader = ({
             icon: Package,
             label: "Donaciones en Especie",
             value: formatCurrency(inKindAvailable ?? inKindDonations ?? 0),
-            tooltip: `Monto disponible: donaciones en especie recibidas menos los gastos imputados a ellas. Total recibido: ${formatCurrency(inKindDonations ?? 0)}.`,
+            tooltip: `Monto disponible: suministros donados menos los gastos imputados a ellos. Total recibido: ${formatCurrency(inKindDonations ?? 0)}. No suma al presupuesto general.`,
             iconColor: "text-muted-foreground",
         },
+        ...(benefitDonations != null && benefitDonations > 0 ? [{
+            icon: Gift,
+            label: "Beneficios",
+            value: formatCurrency(benefitAvailable ?? benefitDonations),
+            tooltip: `Monto disponible: beneficios donados menos los gastos imputados a ellos. Total recibido: ${formatCurrency(benefitDonations)}. No suma al presupuesto general.`,
+            iconColor: "text-info",
+        }] : []),
         {
             icon: Banknote,
             label: "Donaciones en Efectivo",
             value: formatCurrency(cashAvailable ?? cashDonations ?? 0),
-            tooltip: `Monto disponible: donaciones en efectivo recibidas menos los gastos imputados a ellas. Total recibido: ${formatCurrency(cashDonations ?? 0)}.`,
+            tooltip: `Monto disponible: donaciones en efectivo recibidas menos los gastos imputados a ellas. Total recibido: ${formatCurrency(cashDonations ?? 0)}. Forma parte del presupuesto general.`,
             iconColor: "text-success",
         },
         {
@@ -167,7 +186,9 @@ const ProjectHeader = ({
             <div className="px-6 pb-2">
                 <div className={cn(
                     "grid grid-cols-1 sm:grid-cols-2 gap-3",
-                    kpiCards.length >= 8 ? "lg:grid-cols-8" : kpiCards.length === 7 ? "lg:grid-cols-7" : "lg:grid-cols-6"
+                    // 9 tarjetas (total + sobre ejecución + beneficios) no caben
+                    // legibles en una fila: van en dos.
+                    kpiCards.length >= 9 ? "lg:grid-cols-5" : kpiCards.length === 8 ? "lg:grid-cols-8" : kpiCards.length === 7 ? "lg:grid-cols-7" : "lg:grid-cols-6"
                 )}>
                     {kpiCards.map((card, i) => (
                         <KPIBlock key={card.label} {...card} index={i} />

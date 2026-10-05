@@ -678,12 +678,15 @@ const Page = () => {
             value: formatCurrency(finanzas?.ingresosRecibidos ?? 0),
             icon: DollarSign,
             trend: null,
+            // Criterio CADERH: suministros y beneficios no son ingreso.
+            sub: "fuentes + donaciones en efectivo",
         },
         {
             label: "Gastos",
             value: formatCurrency(finanzas?.gastos ?? 0),
             icon: TrendingUp,
             trend: null,
+            sub: "pagados con efectivo",
         },
         {
             label: "% Ejecución Financiera",

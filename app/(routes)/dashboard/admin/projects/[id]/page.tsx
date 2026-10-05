@@ -87,6 +87,7 @@ import InfoSection from "@/components/project/InfoSection";
 import ObjectivesList from "@/components/project/ObjectivesList";
 import DatesCard from "@/components/project/DatesCard";
 import AchievementsList from "@/components/project/AchievementsList";
+import { computeProjectFinance } from "@/lib/project-finance";
 
 const CurrencyInput = ({
     value,
@@ -1291,19 +1292,10 @@ const Page = () => {
     const projStart = project.start_date ? String(project.start_date).slice(0, 10) : undefined;
     const projEnd = project.end_date ? String(project.end_date).slice(0, 10) : undefined;
 
-    const financed = Number(project.financed_amount ?? 0);
-    const totalExpenses = Number(project.total_expenses ?? 0);
-    // % de ejecución financiera (criterio CADERH): gastos ejecutados en
-    // efectivo ÷ ingresos recibidos en efectivo × 100. La especie queda fuera.
-    // Sin tope en el valor mostrado (>100% = sobre-ejecución, igual que R6/R7);
-    // null cuando hay gastos en efectivo pero ningún ingreso en efectivo (N/D).
-    const cashIncome = Number(project.cash_income ?? 0);
-    const cashExpenses = Number(project.cash_expenses ?? 0);
-    const executedPct = cashIncome > 0
-        ? Math.round((cashExpenses / cashIncome) * 100)
-        : (cashExpenses > 0 ? null : 0);
-    const remaining = Math.max(0, financed - totalExpenses);
-    const progressColor = executedPct == null || executedPct >= 90 ? "destructive" : executedPct >= 70 ? "warning" : "success";
+    // Cifras del header: mismas que el listado (helper compartido, totales del
+    // backend). Solo el efectivo suma al presupuesto; suministros y beneficios
+    // se muestran aparte con su disponible.
+    const finance = computeProjectFinance(project);
     const totalFuentes = financingSources.reduce((s, r) => s + Number(r.amount ?? 0), 0);
     const totalDonaciones = donations.reduce((s, r) => s + Number(r.amount ?? 0), 0);
     const totalGastos = expenses.reduce((s, r) => s + Number(r.amount ?? 0), 0);
@@ -1370,22 +1362,16 @@ const Page = () => {
         return "General";
     };
 
-    // Gastos imputados a donaciones, agrupados por tipo, para rebajar las cards
-    // de resumen (efectivo/especie/beneficio) y mostrar el disponible neto.
-    const consumedByDonationType: Record<string, number> = { CASH: 0, SUPPLY: 0, BENEFIT: 0 };
-    for (const e of expenses as any[]) {
-        if (e.project_donation_id) {
-            const don = donations.find((d: any) => d.id === e.project_donation_id);
-            if (don) {
-                const t = String(don.donation_type).toUpperCase();
-                consumedByDonationType[t] = (consumedByDonationType[t] ?? 0) + Number(e.amount ?? 0);
-            }
-        }
-    }
-    const cashConsumed = consumedByDonationType.CASH ?? 0;
-    const inKindConsumed = consumedByDonationType.SUPPLY ?? 0;
-    const cashAvailable = cashDonations - cashConsumed;
-    const inKindAvailable = inKindDonations - inKindConsumed;
+    // Gastos imputados a suministros/beneficios: no salen del presupuesto, se
+    // rebajan de esas donaciones. Se desglosan en la pestaña Gastos para que
+    // su total cuadre con el "Presupuesto Ejecutado" del header.
+    const nonCashExpenses = (expenses as any[])
+        .filter((e) => {
+            const don = e.project_donation_id ? donations.find((d: any) => d.id === e.project_donation_id) : null;
+            const t = don ? String(don.donation_type).toUpperCase() : "";
+            return t === "SUPPLY" || t === "BENEFIT";
+        })
+        .reduce((s, e) => s + Number(e.amount ?? 0), 0);
 
     const isSupervisor = userRole === 'ADMIN' || userRole === 'MANAGER';
     const canEdit = isSupervisor || (userRole === 'USER' && Array.isArray(project?.assigned_agents) && project.assigned_agents.some((a: any) => a.id === userId));
@@ -1439,15 +1425,17 @@ const Page = () => {
                 startDate={project.start_date}
                 endDate={project.end_date}
                 accomplishments={project.accomplishments}
-                financed={financed}
-                totalExpenses={totalExpenses}
-                remaining={remaining}
-                executedPct={executedPct}
-                progressColor={progressColor}
-                inKindDonations={inKindDonations}
-                cashDonations={cashDonations}
-                inKindAvailable={inKindAvailable}
-                cashAvailable={cashAvailable}
+                financed={finance.financed}
+                totalExpenses={finance.totalExpenses}
+                remaining={finance.remaining}
+                executedPct={finance.executedPct}
+                progressColor={finance.progressColor}
+                inKindDonations={finance.inKindDonations}
+                cashDonations={finance.cashDonations}
+                inKindAvailable={finance.inKindAvailable}
+                cashAvailable={finance.cashAvailable}
+                benefitDonations={finance.benefitDonations}
+                benefitAvailable={finance.benefitAvailable}
                 totalBudget={project.total_budget != null ? Number(project.total_budget) : null}
                 projectCategory={project.project_category}
             />
@@ -2022,6 +2010,9 @@ const Page = () => {
                                 <h3 className="text-lg font-semibold">Gastos del Proyecto</h3>
                                 <span className="text-sm text-muted-foreground">
                                     Total: {formatCurrency(totalGastos)}
+                                    {nonCashExpenses > 0 && (
+                                        <> · Del presupuesto: {formatCurrency(totalGastos - nonCashExpenses)} · De suministros/beneficios: {formatCurrency(nonCashExpenses)}</>
+                                    )}
                                 </span>
                             </div>
                             <div className="flex gap-2">
@@ -2766,7 +2757,7 @@ const Page = () => {
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                <p className="text-xs text-muted-foreground mt-1">Se rebaja del saldo de la fuente o donación elegida.</p>
+                                <p className="text-xs text-muted-foreground mt-1">Se rebaja del saldo de la fuente o donación elegida. Si es una donación en especie o beneficio, no cuenta como presupuesto ejecutado.</p>
                             </div>
                             <div>
                                 <Label>Fecha del gasto <span className="text-red-500">*</span></Label>
@@ -2848,7 +2839,7 @@ const Page = () => {
                                         ))}
                                     </SelectContent>
                                 </Select>
-                                <p className="text-xs text-muted-foreground mt-1">Se rebaja del saldo de la fuente o donación elegida.</p>
+                                <p className="text-xs text-muted-foreground mt-1">Se rebaja del saldo de la fuente o donación elegida. Si es una donación en especie o beneficio, no cuenta como presupuesto ejecutado.</p>
                             </div>
                             <div>
                                 <Label>Fecha del gasto <span className="text-red-500">*</span></Label>

@@ -21,6 +21,7 @@ import { Icon } from "@iconify/react";
 import { prettifyNumber } from "@/app/libs/utils";
 import NewProjectModal from "@/components/new-project-modal";
 import ProjectHeader from "@/components/project/ProjectHeader";
+import { computeProjectFinance } from "@/lib/project-finance";
 import { Suspense } from "react";
 
 function PageContent() {
@@ -245,22 +246,8 @@ function PageContent() {
                     {!loading && (
                         <div className="grid grid-cols-1 gap-4">
                             {projects.map((p) => {
-                                const financed = Number(p.financed_amount ?? 0);
-                                const expenses = Number(p.total_expenses ?? 0);
-                                const inKindDonations = Number((p as any).in_kind_donations ?? 0);
-                                const cashDonations = Number((p as any).cash_donations ?? 0);
-                                // % de ejecución financiera (criterio CADERH):
-                                // gastos en efectivo ÷ ingresos en efectivo.
-                                // Sin tope (>100% = sobre-ejecución); null = N/D.
-                                const cashIncome = Number((p as any).cash_income ?? 0);
-                                const cashExpenses = Number((p as any).cash_expenses ?? 0);
-                                const executedPct =
-                                    cashIncome > 0
-                                        ? Math.round((cashExpenses / cashIncome) * 100)
-                                        : (cashExpenses > 0 ? null : 0);
-                                const remaining = Math.max(0, financed - expenses);
-                                const progressColor: "destructive" | "warning" | "success" =
-                                    executedPct == null || executedPct >= 90 ? "destructive" : executedPct >= 70 ? "warning" : "success";
+                                // Mismas cifras que el detalle (helper compartido).
+                                const finance = computeProjectFinance(p);
                                 return (
                                     <Link
                                         key={p.id}
@@ -273,13 +260,17 @@ function PageContent() {
                                             startDate={p.start_date}
                                             endDate={p.end_date}
                                             accomplishments={p.accomplishments}
-                                            financed={financed}
-                                            totalExpenses={expenses}
-                                            remaining={remaining}
-                                            executedPct={executedPct}
-                                            progressColor={progressColor}
-                                            inKindDonations={inKindDonations}
-                                            cashDonations={cashDonations}
+                                            financed={finance.financed}
+                                            totalExpenses={finance.totalExpenses}
+                                            remaining={finance.remaining}
+                                            executedPct={finance.executedPct}
+                                            progressColor={finance.progressColor}
+                                            inKindDonations={finance.inKindDonations}
+                                            inKindAvailable={finance.inKindAvailable}
+                                            cashDonations={finance.cashDonations}
+                                            cashAvailable={finance.cashAvailable}
+                                            benefitDonations={finance.benefitDonations}
+                                            benefitAvailable={finance.benefitAvailable}
                                             projectCategory={p.project_category}
                                             interactive
                                         />

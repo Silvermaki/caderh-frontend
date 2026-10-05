@@ -578,7 +578,7 @@ export const docsModules: DocModule[] = [
               src: "/docs/proyectos/crear-proyecto/proy-01-listado.png",
               alt: "Listado de proyectos con tarjetas mostrando presupuesto y porcentaje ejecutado",
               caption:
-                "Cada tarjeta resume el proyecto: presupuesto, ejecutado, disponible, donaciones y el % de ejecución financiera (gastos en efectivo ÷ ingresos en efectivo; la especie no participa).",
+                "Cada tarjeta resume el proyecto: presupuesto general (fuentes + donaciones en efectivo), ejecutado, disponible, el disponible de cada tipo de donación y el % de ejecución financiera (ejecutado ÷ presupuesto general; suministros y beneficios no participan).",
             },
           },
           {
@@ -681,7 +681,7 @@ export const docsModules: DocModule[] = [
               variant: "success",
               title: "Resultado esperado",
               text:
-                "El proyecto aparece en la lista con presupuesto general, ejecutado y disponible calculados automáticamente a partir de fuentes, donaciones y gastos iniciales.",
+                "El proyecto aparece en la lista con presupuesto general, ejecutado y disponible calculados automáticamente a partir de fuentes, donaciones en efectivo y gastos iniciales. Las donaciones en suministros y beneficios se muestran aparte.",
             },
           },
         ],
@@ -721,9 +721,9 @@ export const docsModules: DocModule[] = [
             bullets: [
               "Nombre, categoría y descripción.",
               "Fechas de inicio y fin.",
-              "Presupuesto general, ejecutado y disponible.",
-              "Donaciones en especie y efectivo.",
-              "Logros completados y el % de ejecución financiera (gastos ejecutados en efectivo ÷ ingresos recibidos en efectivo; las donaciones en especie no participan de este indicador).",
+              "Presupuesto general (fuentes + donaciones en efectivo), ejecutado y disponible. Las donaciones en suministros y beneficios no suman al presupuesto.",
+              "Donaciones en especie, beneficios (si el proyecto los tiene) y efectivo, cada una con su disponible: lo recibido menos los gastos imputados a ella.",
+              "Logros completados y el % de ejecución financiera (presupuesto ejecutado ÷ presupuesto general, es decir, gastos en efectivo ÷ ingresos en efectivo).",
             ],
             screenshot: {
               src: "/docs/proyectos/ver-detalle/proy-10-detalle-general.png",
@@ -895,10 +895,11 @@ export const docsModules: DocModule[] = [
             id: "llenar-gasto",
             title: "Llena el gasto",
             body:
-              "Tres campos a considerar:",
+              "Campos a considerar:",
             bullets: [
               "Monto — el valor del gasto en lempiras. No lleva el símbolo \"L\", solo el número.",
               "Categoría — elige una existente o crea una nueva con \"Nueva categoría...\".",
+              "Origen del gasto — de qué fuente o donación sale. Si eliges una donación en especie o beneficio, el gasto se rebaja de esa donación y no cuenta como presupuesto ejecutado; si lo dejas en \"General\", se paga con el presupuesto.",
               "Descripción — anota qué se compró o pagó. Aparecerá en los reportes de ejecución.",
             ],
             callout: {
@@ -912,7 +913,7 @@ export const docsModules: DocModule[] = [
             id: "agregar",
             title: 'Pulsa "Agregar" para registrar el gasto',
             body:
-              'El gasto se suma al total ejecutado del proyecto. Si el total ejecutado supera al presupuesto general, aparecerá la métrica "SOBRE EJECUCIÓN" en el panel superior — eso es señal de revisar el plan.',
+              'Si el gasto es general o sale de una fuente o de una donación en efectivo, se suma al presupuesto ejecutado; si sale de una donación en especie o beneficio, se rebaja del disponible de esa donación. Si el ejecutado supera al presupuesto general, aparecerá la métrica "SOBRE EJECUCIÓN" en el panel superior — eso es señal de revisar el plan.',
             callout: {
               variant: "warning",
               title: "Los gastos no se pueden borrar",

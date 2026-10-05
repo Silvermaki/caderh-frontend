@@ -19,6 +19,7 @@ export interface R6Row {
   totalDesembolsado: number;
   pctEjecucion: number;
   donacionesEspecie: number;
+  donacionesBeneficio: number;
   donacionesEfectivo: number;
   gastosEjecutados: number;
   saldoDisponible: number;
@@ -39,6 +40,7 @@ const columns: ColumnDef<R6Row>[] = [
   { key: 'totalDesembolsado',  label: 'Total ingresos recibidos', align: 'right', render: (r) => money(r.totalDesembolsado) },
   { key: 'pctEjecucion',       label: '% Ejecución',          align: 'right', render: (r) => pct(r.pctEjecucion) },
   { key: 'donacionesEspecie',  label: 'Donaciones especie',   align: 'right', render: (r) => money(r.donacionesEspecie) },
+  { key: 'donacionesBeneficio', label: 'Beneficios',          align: 'right', render: (r) => money(r.donacionesBeneficio) },
   { key: 'donacionesEfectivo', label: 'Donaciones efectivo',  align: 'right', render: (r) => money(r.donacionesEfectivo) },
   { key: 'gastosEjecutados',   label: 'Gastos ejecutados',    align: 'right', render: (r) => money(r.gastosEjecutados) },
   { key: 'saldoDisponible',    label: 'Saldo disponible',     align: 'right', render: (r) => money(r.saldoDisponible) },
@@ -49,7 +51,7 @@ export const r6Definition: ReportDefinition<R6Filters, R6Row> = {
   code: 'R6',
   category: 'ingresos',
   title: 'Ingreso total por proyecto',
-  subtitle: 'Presupuesto vs ingresos recibidos trimestrales, con % de ejecución',
+  subtitle: 'Presupuesto (fuentes + donaciones en efectivo) vs ingresos recibidos trimestrales, con % de ejecución. Suministros y beneficios no suman al presupuesto.',
   filters: ['project', 'year'],
   defaultFilters: { year: new Date().getFullYear() },
   columns,
