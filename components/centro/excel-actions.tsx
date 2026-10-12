@@ -70,6 +70,7 @@ export default function ExcelActions({ centroId, entity, onSuccess, disabled }: 
             if (res.ok) {
                 const parts: string[] = [];
                 if (json.created > 0) parts.push(`${json.created} creados`);
+                if (json.reactivated > 0) parts.push(`${json.reactivated} reactivados`);
                 if (json.updated > 0) parts.push(`${json.updated} actualizados`);
                 if (json.deleted > 0) parts.push(`${json.deleted} eliminados`);
                 const summary = parts.length ? parts.join(", ") : "Sin cambios";

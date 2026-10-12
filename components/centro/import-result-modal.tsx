@@ -23,6 +23,8 @@ export interface ImportRowWarning {
 
 export interface ImportResult {
   created?: number;
+  /** Personas dadas de baja que el archivo trae de vuelta (mismo registro). */
+  reactivated?: number;
   updated?: number;
   deleted?: number;
   errors?: ImportRowError[];
@@ -70,6 +72,7 @@ export function ImportResultModal({
     if (!result) return [];
     const c: Array<{ label: string; className: string; icon: React.ElementType }> = [];
     if ((result.created ?? 0) > 0) c.push({ label: `${result.created} creados`, className: 'bg-success/10 text-success', icon: CheckCircle2 });
+    if ((result.reactivated ?? 0) > 0) c.push({ label: `${result.reactivated} reactivados`, className: 'bg-success/10 text-success', icon: CheckCircle2 });
     if ((result.updated ?? 0) > 0) c.push({ label: `${result.updated} actualizados`, className: 'bg-info/10 text-info', icon: CheckCircle2 });
     if ((result.deleted ?? 0) > 0) c.push({ label: `${result.deleted} eliminados`, className: 'bg-muted/40 text-muted-foreground', icon: ShieldAlert });
     if (warnings.length > 0) c.push({ label: `${warnings.length} advertencias`, className: 'bg-warning/10 text-warning', icon: AlertTriangle });
