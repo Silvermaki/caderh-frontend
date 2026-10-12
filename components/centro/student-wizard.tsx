@@ -5,8 +5,10 @@ import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { DatePicker, localDateToIso } from "@/components/ui/date-picker";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Stepper, Step, StepLabel } from "@/components/ui/steps";
 import toast from "react-hot-toast";
@@ -25,6 +27,23 @@ const STEPS = [
 ];
 
 const VIVIENDA_OPTIONS = ["Propia", "Alquilada", "Otros"];
+
+// Valores exactos que acepta el backend (CHECK de la migración 1772350000000).
+const TIPO_CONTRATO_OPTIONS = ["Permanente", "Temporal", "Por eventos", "Ninguno"];
+
+// Topes de texto del backend (normalizeTextoLimitado).
+const DETALLE_DISCAPACIDAD_MAX = 300;
+const OBSERVACIONES_MAX = 1000;
+
+// Catálogo de discapacidades: "Otra" exige especificarla y "Ninguna" no lleva
+// detalle. Se compara sin tildes ni mayúsculas.
+const nombrePlano = (v: any) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+const esDiscapacidadNinguna = (nombre?: string) => /^(ningun[ao]s?|no aplica|no tiene)$/.test(nombrePlano(nombre));
+const esDiscapacidadOtra = (nombre?: string) => /^otr[ao]s?$/.test(nombrePlano(nombre));
+
+// Fecha de nacimiento: misma regla que el backend (1930 a hoy - 10 años).
+const HOY = new Date();
+const FECHA_NACIMIENTO_MAX = localDateToIso(new Date(HOY.getFullYear() - 10, HOY.getMonth(), HOY.getDate()));
 
 const parseDateToISO = (raw: string | null | undefined): string => {
     if (!raw || typeof raw !== "string") return "";
@@ -102,8 +121,9 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
         beneficios_empleo: "", beneficios_empleo_otro: "",
         autoempleo: 0, autoempleo_dedicacion: "", autoempleo_otro: "", autoempleo_tiempo: "",
         dias_semana_trabajo: "", horas_dia_trabajo: "", socios: 0, socios_cantidad: 0,
-        especial: 0, discapacidad_id: "", riesgo_social: 0, etnia_id: "", interno: 0,
+        especial: 0, discapacidad_id: "", discapacidad_detalle: "", riesgo_social: 0, etnia_id: "", interno: 0,
         nombre_r: "", telefono_r: "", datos_r: "", parentesco_r: "", adicional_r: "",
+        observaciones: "",
     });
 
     const [form, setForm] = useState<Record<string, any>>(defaultForm());
@@ -112,6 +132,22 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
     const set = (key: string, value: any) => {
         setForm((prev) => ({ ...prev, [key]: value }));
         setErrors((prev) => { const n = { ...prev }; delete n[key]; return n; });
+    };
+
+    // Detalle de la discapacidad: visible si hay una distinta de "Ninguna";
+    // obligatorio si es "Otra".
+    const nombreDiscapacidad = (id: any) => discapacidades.find((d: any) => String(d.id) === String(id))?.nombre;
+    const muestraDetalleDiscapacidad = !!Number(form.especial) && !!form.discapacidad_id && !esDiscapacidadNinguna(nombreDiscapacidad(form.discapacidad_id));
+    const detalleDiscapacidadObligatorio = muestraDetalleDiscapacidad && esDiscapacidadOtra(nombreDiscapacidad(form.discapacidad_id));
+
+    // Sin discapacidad (switch apagado o "Ninguna") el detalle se limpia.
+    const setEspecial = (v: boolean) => {
+        set("especial", v ? 1 : 0);
+        if (!v) set("discapacidad_detalle", "");
+    };
+    const setDiscapacidad = (v: string) => {
+        set("discapacidad_id", v);
+        set("discapacidad_detalle", esDiscapacidadNinguna(nombreDiscapacidad(v)) ? "" : form.discapacidad_detalle);
     };
 
     useEffect(() => {
@@ -204,6 +240,11 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
         } else if (step === 2) {
             if (!form.vive) e.vive = "Requerido";
             if (!form.numero_dep.toString().trim()) e.numero_dep = "Requerido";
+        } else if (step === 4) {
+            if (detalleDiscapacidadObligatorio && !String(form.discapacidad_detalle ?? "").trim()) {
+                e.discapacidad_detalle = "Requerido al elegir \"Otra\"";
+                toast.error("Especifique la discapacidad: es obligatorio cuando se elige \"Otra\".");
+            }
         }
         setErrors(e);
         return Object.keys(e).length === 0;
@@ -223,7 +264,7 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
 
             const body: any = { ...form, departamento_id: Number(form.departamento_id), municipio_id: Number(form.municipio_id) };
             for (const numKey of ["estudia", "tiene_hijos", "cuantos_hijos", "cantidad_viven", "cantidad_trabajan_viven",
-                "cantidad_notrabajan_viven", "ingreso_promedio", "trabajo_actual", "trabajado_ant", "tipo_contrato_ant",
+                "cantidad_notrabajan_viven", "ingreso_promedio", "trabajo_actual", "trabajado_ant",
                 "autoempleo", "socios", "socios_cantidad", "especial", "riesgo_social", "interno"]) {
                 body[numKey] = Number(body[numKey]) || 0;
             }
@@ -232,6 +273,11 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
             body.discapacidad_id = form.discapacidad_id ? Number(form.discapacidad_id) : null;
             body.etnia_id = form.etnia_id ? Number(form.etnia_id) : null;
             body.fecha_nacimiento = form.fecha_nacimiento || null;
+            // Texto exacto del catálogo o null. Detalle y observaciones se envían
+            // siempre: el backend solo los escribe si vienen en el body.
+            body.tipo_contrato_ant = form.tipo_contrato_ant || null;
+            body.discapacidad_detalle = String(form.discapacidad_detalle ?? "").trim() || null;
+            body.observaciones = String(form.observaciones ?? "").trim() || null;
             if (isEdit) body.id = student.id;
             if (!centroId) body.centro_id = Number(effectiveCentroId);
 
@@ -281,10 +327,10 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
         </div>
     );
 
-    const fieldSelect = (key: string, label: string, options: { value: string; label: string }[], opts?: { required?: boolean; disabled?: boolean; placeholder?: string }) => (
+    const fieldSelect = (key: string, label: string, options: { value: string; label: string }[], opts?: { required?: boolean; disabled?: boolean; placeholder?: string; onChange?: (v: string) => void }) => (
         <div>
             <Label className="mb-1 font-medium text-default-600">{label}{opts?.required ? " *" : ""}</Label>
-            <Select value={form[key] ?? ""} onValueChange={(v) => set(key, v)} disabled={submitting || opts?.disabled}>
+            <Select value={form[key] ?? ""} onValueChange={(v) => (opts?.onChange ? opts.onChange(v) : set(key, v))} disabled={submitting || opts?.disabled}>
                 <SelectTrigger><SelectValue placeholder={opts?.placeholder ?? "Seleccionar"} /></SelectTrigger>
                 <SelectContent>
                     {options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
@@ -294,14 +340,22 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
         </div>
     );
 
-    const fieldSwitch = (key: string, label: string) => (
+    const fieldSwitch = (key: string, label: string, onChange?: (v: boolean) => void) => (
         <div className="flex items-center gap-3 py-2">
             <Switch
                 checked={form[key] === 1 || form[key] === true}
-                onCheckedChange={(v) => set(key, v ? 1 : 0)}
+                onCheckedChange={(v) => (onChange ? onChange(v) : set(key, v ? 1 : 0))}
                 disabled={submitting}
             />
             <Label className="text-default-600">{label}</Label>
+        </div>
+    );
+
+    // Error a la izquierda y contador a la derecha (campos con tope de caracteres).
+    const fieldFooter = (key: string, max: number) => (
+        <div className="flex items-start justify-between gap-2 mt-1">
+            {errors[key] ? <p className="text-destructive text-xs">{errors[key]}</p> : <span />}
+            <span className="text-xs text-muted-foreground tabular-nums shrink-0">{String(form[key] ?? "").length}/{max}</span>
         </div>
     );
 
@@ -349,11 +403,15 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                     {fieldInput("identidad", "Identidad", { required: true, placeholder: "####-####-#####", sanitize: (v) => v.replace(/[^\d-]/g, "") })}
                     <div>
                         <Label className="mb-1 font-medium text-default-600">Fecha de nacimiento</Label>
-                        <Input
-                            type="date"
+                        <DatePicker
+                            value={form.fecha_nacimiento || null}
+                            onChange={(v) => set("fecha_nacimiento", v ?? "")}
                             disabled={submitting}
-                            value={form.fecha_nacimiento ?? ""}
-                            onChange={(e) => set("fecha_nacimiento", e.target.value)}
+                            minDate="1930-01-01"
+                            maxDate={FECHA_NACIMIENTO_MAX}
+                            fromYear={1930}
+                            toYear={HOY.getFullYear() - 10}
+                            clearable
                         />
                         {errors.fecha_nacimiento && <p className="text-destructive text-xs mt-1">{errors.fecha_nacimiento}</p>}
                     </div>
@@ -442,7 +500,7 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                     </>}
                     <div className="md:col-span-2">{fieldSwitch("trabajado_ant", "¿Ha trabajado antes?")}</div>
                     {!!form.trabajado_ant && fieldInput("tiempo_ant", "Tiempo trabajado")}
-                    {fieldInput("tipo_contrato_ant", "Tipo de contrato")}
+                    {fieldSelect("tipo_contrato_ant", "Tipo de contrato", TIPO_CONTRATO_OPTIONS.map((v) => ({ value: v, label: v })))}
                     {fieldInput("beneficios_empleo", "Beneficios del empleo")}
                     {fieldInput("beneficios_empleo_otro", "Otros beneficios")}
                     <div className="md:col-span-2">{fieldSwitch("autoempleo", "¿Autoempleo?")}</div>
@@ -459,10 +517,37 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
             );
             case 4: return (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="md:col-span-2">{fieldSwitch("especial", "¿Necesidades especiales?")}</div>
-                    {!!form.especial && fieldSelect("discapacidad_id", "Discapacidad o Enfermedad", discapacidades.map((d: any) => ({ value: d.id.toString(), label: d.nombre })))}
+                    <div className="md:col-span-2">{fieldSwitch("especial", "¿Necesidades especiales?", setEspecial)}</div>
+                    {!!form.especial && fieldSelect("discapacidad_id", "Discapacidad o Enfermedad", discapacidades.map((d: any) => ({ value: d.id.toString(), label: d.nombre })), { onChange: setDiscapacidad })}
+                    {muestraDetalleDiscapacidad && (
+                        <div>
+                            <Label className="mb-1 font-medium text-default-600">
+                                {detalleDiscapacidadObligatorio ? "Especifique la discapacidad *" : "Detalle de la discapacidad"}
+                            </Label>
+                            <Input
+                                disabled={submitting}
+                                value={form.discapacidad_detalle ?? ""}
+                                maxLength={DETALLE_DISCAPACIDAD_MAX}
+                                onChange={(e) => set("discapacidad_detalle", e.target.value)}
+                                placeholder={detalleDiscapacidadObligatorio ? "Describa la discapacidad o su razón" : "Detalle (opcional)"}
+                            />
+                            {fieldFooter("discapacidad_detalle", DETALLE_DISCAPACIDAD_MAX)}
+                        </div>
+                    )}
                     {fieldSelect("etnia_id", "Etnia", etnias.map((e: any) => ({ value: e.id.toString(), label: e.nombre })))}
                     <div className="md:col-span-2">{fieldSwitch("interno", "¿Interno?")}</div>
+                    <div className="md:col-span-2">
+                        <Label className="mb-1 font-medium text-default-600">Observaciones</Label>
+                        <Textarea
+                            disabled={submitting}
+                            value={form.observaciones ?? ""}
+                            maxLength={OBSERVACIONES_MAX}
+                            onChange={(e) => set("observaciones", e.target.value)}
+                            placeholder="Información adicional del joven"
+                            rows={3}
+                        />
+                        {fieldFooter("observaciones", OBSERVACIONES_MAX)}
+                    </div>
                     <div className="md:col-span-2 mt-4 border-t pt-4">
                         <h4 className="text-sm font-semibold text-foreground mb-3">Contacto de referencia</h4>
                     </div>
@@ -471,7 +556,7 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                     {fieldInput("datos_r", "Datos adicionales")}
                     {fieldInput("parentesco_r", "Parentesco")}
                     <div className="md:col-span-2">
-                        {fieldInput("adicional_r", "Información adicional")}
+                        {fieldInput("adicional_r", "Información adicional del contacto")}
                     </div>
                 </div>
             );

@@ -23,7 +23,7 @@ export function FilterGroup({ label, activeCount = 0, defaultOpen = true, childr
         <span className="inline-flex items-center gap-2">
           {label}
           {activeCount > 0 && (
-            <span className="rounded-full bg-info/10 text-info-foreground text-[10px] font-semibold px-1.5 py-0.5 normal-case tracking-normal">
+            <span className="rounded-full bg-primary/10 text-primary text-[10px] font-semibold px-1.5 py-0.5 normal-case tracking-normal">
               {activeCount}
             </span>
           )}

@@ -18,6 +18,7 @@ import {
 import * as XLSX from "xlsx";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/lib/utils";
+import { excelValueToIsoDate } from "@/lib/excel-date";
 
 const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
 
@@ -30,13 +31,19 @@ interface ModuleItem {
 interface CourseItem {
     _id: number; nombre: string; codigo_programa: string; objetivo: string;
     codigo: string; taller: number; modules: ModuleItem[];
+    // Área técnica: id elegido en el formulario, o nombre leído del Excel
+    // (lo resuelve el servidor).
+    area_id: string; area: string;
 }
+interface AreaItem { id: number; nombre: string; }
 interface InstructorItem {
     _id: number; nombres: string; apellidos: string; titulo_obtenido: string; otros_titulos: string;
 }
+// Departamento, municipio y catálogos van por NOMBRE (los resuelve el servidor);
+// los *_id solo llegan de plantillas viejas.
 interface StudentItem {
     _id: number; identidad: string; nombres: string; apellidos: string; sexo: string;
-    departamento_id: number; municipio_id: number; vive: string; numero_dep: string;
+    vive: string; numero_dep: string;
     [key: string]: any;
 }
 
@@ -44,6 +51,44 @@ const emptyModule = (): ModuleItem => ({ codigo: "", nombre: "", horas_teoricas:
 
 let _nextId = 1;
 const nextId = () => _nextId++;
+
+// Texto comparable, mismo criterio que plano() del backend: sin tildes,
+// minúsculas y sin signos ("Mecánica_Automotriz" → "mecanica automotriz").
+const plano = (v: any) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+
+// Área del curso: la elegida en el formulario o la del Excel resuelta contra el catálogo.
+const areaDeCurso = (c: Pick<CourseItem, "area_id" | "area">, areas: AreaItem[]) =>
+    areas.find((a) => String(a.id) === c.area_id) ?? (c.area ? areas.find((a) => plano(a.nombre) === plano(c.area)) : undefined);
+
+// Primera hoja del Excel como filas. Los encabezados obligatorios de las
+// plantillas llevan "*" ("Identidad*"): se quita para leer row["Identidad"].
+// __fila es el número de fila en Excel (1 = encabezados), para los mensajes.
+const readExcelRows = (data: any): Record<string, any>[] => {
+    const wb = XLSX.read(data, { type: "array" });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows: any[] = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    return rows.map((row) => {
+        const clean: Record<string, any> = { __fila: (row.__rowNum__ ?? 0) + 1 };
+        for (const [key, val] of Object.entries(row)) clean[key.replace(/\*\s*$/, "").trim()] = val;
+        return clean;
+    });
+};
+
+// Celda como texto recortado ("" si está vacía).
+const cell = (row: Record<string, any>, col: string) => String(row[col] ?? "").trim();
+
+// Celda para el payload: vacía → null; los números se envían tal cual (el
+// servidor normaliza banderas, cantidades y fechas seriales de Excel).
+const cellOrNull = (row: Record<string, any>, col: string) => {
+    const v = row[col];
+    if (typeof v === "number") return v;
+    const s = String(v ?? "").trim();
+    return s || null;
+};
+
+// Resumen de filas omitidas (máximo 3 en el aviso).
+const avisoFilas = (errors: string[]) =>
+    errors.slice(0, 3).join("\n") + (errors.length > 3 ? `\n… y ${errors.length - 3} más` : "");
 
 // ─── ExcelDropzone ───────────────────────────────────────────────────────────
 
@@ -103,6 +148,7 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
     const [courses, setCourses] = useState<CourseItem[]>([]);
     const [courseModalOpen, setCourseModalOpen] = useState(false);
     const [editingCourse, setEditingCourse] = useState<CourseItem | null>(null);
+    const [areas, setAreas] = useState<AreaItem[]>([]);
 
     // ─── Step 3: Instructors ───
     const [instructors, setInstructors] = useState<InstructorItem[]>([]);
@@ -119,6 +165,7 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
     useEffect(() => {
         if (!isOpen || !session) return;
         fetch(`${apiBase}/centros/departamentos`, { headers: authHeadersRaw }).then(r => r.json()).then(d => setDepartamentos(d.data ?? [])).catch(() => {});
+        fetch(`${apiBase}/centros/areas?all=true`, { headers: authHeadersRaw }).then(r => r.json()).then(d => setAreas(d.data ?? [])).catch(() => {});
     }, [isOpen, session?.user?.session]);
 
     useEffect(() => {
@@ -199,24 +246,30 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const wb = XLSX.read(e.target?.result, { type: "array" });
-                const sheet = wb.Sheets[wb.SheetNames[0]];
-                const rows: any[] = XLSX.utils.sheet_to_json(sheet);
-                let imported = 0;
+                const rows = readExcelRows(e.target?.result);
+                const nuevos: CourseItem[] = [];
+                const errors: string[] = [];
                 for (const row of rows) {
-                    const nombre = (row["Nombre"] ?? "").toString().trim();
-                    const codigo_programa = (row["Codigo Programa"] ?? "").toString().trim();
-                    const objetivo = (row["Objetivo"] ?? "").toString().trim();
-                    if (!nombre || !codigo_programa || !objetivo) continue;
-                    setCourses(prev => [...prev, {
+                    const nombre = cell(row, "Nombre");
+                    const codigo_programa = cell(row, "Codigo Programa");
+                    const objetivo = cell(row, "Objetivo");
+                    const faltan = [!nombre && "Nombre", !codigo_programa && "Codigo Programa", !objetivo && "Objetivo"].filter(Boolean);
+                    if (faltan.length) { errors.push(`Fila ${row.__fila}: falta ${faltan.join(", ")}`); continue; }
+                    nuevos.push({
                         _id: nextId(), nombre, codigo_programa, objetivo,
-                        codigo: (row["Codigo"] ?? "").toString().trim(),
-                        taller: (row["Taller"] ?? "1").toString().trim() === "0" ? 0 : 1,
+                        codigo: cell(row, "Codigo"),
+                        taller: cell(row, "Taller") === "0" ? 0 : 1,
+                        // Área por nombre; si falta o no existe, el curso queda
+                        // marcado en la lista para elegirla al editarlo.
+                        area_id: "", area: cell(row, "Area Tecnica"),
                         modules: [],
-                    }]);
-                    imported++;
+                    });
                 }
-                toast.success(`${imported} curso(s) importado(s)`);
+                setCourses(prev => [...prev, ...nuevos]);
+                toast.success(`${nuevos.length} curso(s) importado(s)`);
+                const sinArea = nuevos.filter((c) => (areas.length ? !areaDeCurso(c, areas) : !c.area)).length;
+                if (sinArea) errors.push(`${sinArea} curso(s) sin un área técnica válida: edítelos para elegirla`);
+                if (errors.length > 0) toast(avisoFilas(errors), { duration: 6000, icon: "⚠️" });
             } catch { toast.error("Error al leer el archivo"); }
         };
         reader.readAsArrayBuffer(file);
@@ -227,64 +280,114 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const wb = XLSX.read(e.target?.result, { type: "array" });
-                const sheet = wb.Sheets[wb.SheetNames[0]];
-                const rows: any[] = XLSX.utils.sheet_to_json(sheet);
-                let imported = 0;
+                const rows = readExcelRows(e.target?.result);
+                const nuevos: InstructorItem[] = [];
+                const errors: string[] = [];
                 for (const row of rows) {
-                    const nombres = (row["Nombres"] ?? "").toString().trim();
-                    const apellidos = (row["Apellidos"] ?? "").toString().trim();
-                    if (!nombres || !apellidos) continue;
-                    setInstructors(prev => [...prev, {
+                    const nombres = cell(row, "Nombres");
+                    const apellidos = cell(row, "Apellidos");
+                    const faltan = [!nombres && "Nombres", !apellidos && "Apellidos"].filter(Boolean);
+                    if (faltan.length) { errors.push(`Fila ${row.__fila}: falta ${faltan.join(", ")}`); continue; }
+                    nuevos.push({
                         _id: nextId(), nombres, apellidos,
-                        titulo_obtenido: (row["Titulo Obtenido"] ?? "").toString().trim(),
-                        otros_titulos: (row["Otros Titulos"] ?? "").toString().trim(),
-                    }]);
-                    imported++;
+                        titulo_obtenido: cell(row, "Titulo Obtenido"),
+                        otros_titulos: cell(row, "Otros Titulos"),
+                    });
                 }
-                toast.success(`${imported} instructor(es) importado(s)`);
+                setInstructors(prev => [...prev, ...nuevos]);
+                toast.success(`${nuevos.length} instructor(es) importado(s)`);
+                if (errors.length > 0) toast(avisoFilas(errors), { duration: 6000, icon: "⚠️" });
             } catch { toast.error("Error al leer el archivo"); }
         };
         reader.readAsArrayBuffer(file);
     };
 
     // ─── Excel import: Students ───
+    // Mismo mapeo de columnas que parseStudentsExcel del backend. Departamento,
+    // municipio y catálogos van por nombre (los resuelve el servidor); las
+    // columnas "… ID" de plantillas viejas se siguen aceptando.
     const importStudentsExcel = (file: File) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const wb = XLSX.read(e.target?.result, { type: "array" });
-                const sheet = wb.Sheets[wb.SheetNames[0]];
-                const rows: any[] = XLSX.utils.sheet_to_json(sheet);
-                let imported = 0;
+                const rows = readExcelRows(e.target?.result);
+                const nuevos: StudentItem[] = [];
                 const errors: string[] = [];
                 for (const row of rows) {
-                    const identidad = (row["Identidad"] ?? "").toString().trim();
-                    const nombres = (row["Nombres"] ?? "").toString().trim();
-                    const apellidos = (row["Apellidos"] ?? "").toString().trim();
-                    const sexo = (row["Sexo"] ?? "").toString().trim();
-                    const departamento_id = Number(row["Departamento ID"]) || 0;
-                    const municipio_id = Number(row["Municipio ID"]) || 0;
-                    const vive = (row["Vive"] ?? "").toString().trim();
-                    const numero_dep = (row["Num. Dependientes"] ?? "").toString().trim();
-                    if (!identidad || !nombres || !apellidos || !sexo || !departamento_id || !municipio_id || !vive || !numero_dep) {
-                        errors.push(`Fila con identidad "${identidad || "vacía"}": faltan campos requeridos`);
+                    const identidad = cell(row, "Identidad");
+                    const nombres = cell(row, "Nombres");
+                    const apellidos = cell(row, "Apellidos");
+                    const sexo = cell(row, "Sexo");
+                    const departamento = cell(row, "Departamento");
+                    const departamentoId = cell(row, "Departamento ID");
+                    const municipio = cell(row, "Municipio");
+                    const municipioId = cell(row, "Municipio ID");
+                    const vive = cell(row, "Vive");
+                    const numero_dep = cell(row, "Num. Dependientes");
+                    const faltan = [
+                        !identidad && "Identidad", !nombres && "Nombres", !apellidos && "Apellidos", !sexo && "Sexo",
+                        !departamento && !departamentoId && "Departamento", !municipio && !municipioId && "Municipio",
+                        !vive && "Vive", !numero_dep && "Num. Dependientes",
+                    ].filter(Boolean);
+                    if (faltan.length) {
+                        errors.push(`Fila ${row.__fila}${identidad ? ` (${identidad})` : ""}: falta ${faltan.join(", ")}`);
                         continue;
                     }
-                    setStudents(prev => [...prev, {
-                        _id: nextId(), identidad, nombres, apellidos, sexo,
-                        departamento_id, municipio_id, vive, numero_dep,
-                        estado_civil: (row["Estado Civil"] ?? "").toString().trim() || null,
-                        fecha_nacimiento: (row["Fecha Nacimiento"] ?? "").toString().trim() || null,
-                        direccion: (row["Direccion"] ?? "").toString().trim() || null,
-                        email: (row["Email"] ?? "").toString().trim() || null,
-                        telefono: (row["Telefono"] ?? "").toString().trim() || null,
-                        celular: (row["Celular"] ?? "").toString().trim() || null,
-                    }]);
-                    imported++;
+                    const opt = (col: string) => cellOrNull(row, col);
+                    // Catálogo por nombre + ID solo si la plantilla vieja lo trae.
+                    const catalogo = (campo: string, col: string) => ({
+                        [campo]: opt(col),
+                        ...(cell(row, `${col} ID`) ? { [`${campo}_id`]: cell(row, `${col} ID`) } : {}),
+                    });
+                    const fecha = row["Fecha Nacimiento"];
+                    nuevos.push({
+                        _id: nextId(), identidad, nombres, apellidos, sexo, vive, numero_dep,
+                        ...catalogo("departamento", "Departamento"),
+                        ...catalogo("municipio", "Municipio"),
+                        estado_civil: opt("Estado Civil"),
+                        // ISO si se reconoce; si no, el valor tal cual para que el servidor explique el error.
+                        fecha_nacimiento: excelValueToIsoDate(fecha) ?? cellOrNull(row, "Fecha Nacimiento"),
+                        sangre: opt("Tipo Sangre"),
+                        direccion: opt("Direccion"),
+                        email: opt("Email"), telefono: opt("Telefono"), celular: opt("Celular"),
+                        facebook: opt("Facebook"), instagram: opt("Instagram"), twitter: opt("Twitter"),
+                        estudia: opt("Estudia"),
+                        ...catalogo("nivel_escolaridad", "Nivel Escolaridad"),
+                        tiene_hijos: opt("Tiene Hijos"), cuantos_hijos: opt("Cuantos Hijos"),
+                        vivienda: opt("Vivienda"),
+                        cantidad_viven: opt("Cant. Viven"),
+                        cantidad_trabajan_viven: opt("Cant. Trabajan"),
+                        cantidad_notrabajan_viven: opt("Cant. No Trabajan"),
+                        ingreso_promedio: opt("Ingreso Promedio"),
+                        trabajo_actual: opt("Trabajo Actual"),
+                        donde_trabaja: opt("Donde Trabaja"), puesto: opt("Puesto"),
+                        trabajado_ant: opt("Trabajado Ant."),
+                        tiempo_ant: opt("Tiempo Ant."),
+                        tipo_contrato_ant: opt("Tipo Contrato Ant."),
+                        beneficios_empleo: opt("Beneficios Empleo"),
+                        beneficios_empleo_otro: opt("Beneficios Empleo Otro"),
+                        autoempleo: opt("Autoempleo"),
+                        autoempleo_dedicacion: opt("Autoempleo Dedicacion"),
+                        autoempleo_otro: opt("Autoempleo Otro"),
+                        autoempleo_tiempo: opt("Autoempleo Tiempo"),
+                        dias_semana_trabajo: opt("Dias Semana Trabajo"),
+                        horas_dia_trabajo: opt("Horas Dia Trabajo"),
+                        socios: opt("Socios"), socios_cantidad: opt("Socios Cantidad"),
+                        especial: opt("Especial"),
+                        ...catalogo("discapacidad", "Discapacidad"),
+                        ...catalogo("etnia", "Etnia"),
+                        interno: opt("Interno"),
+                        nombre_r: opt("Nombre Ref."), telefono_r: opt("Telefono Ref."),
+                        datos_r: opt("Datos Ref."), parentesco_r: opt("Parentesco Ref."),
+                        adicional_r: opt("Adicional Ref."),
+                        // Columnas nuevas: solo si existen en el archivo (plantillas viejas no las traen).
+                        ...("Detalle Discapacidad" in row ? { discapacidad_detalle: opt("Detalle Discapacidad") } : {}),
+                        ...("Observaciones" in row ? { observaciones: opt("Observaciones") } : {}),
+                    });
                 }
-                toast.success(`${imported} estudiante(s) importado(s)`);
-                if (errors.length > 0) toast(errors.slice(0, 3).join("\n"), { duration: 6000, icon: "⚠️" });
+                setStudents(prev => [...prev, ...nuevos]);
+                toast.success(`${nuevos.length} estudiante(s) importado(s)`);
+                if (errors.length > 0) toast(avisoFilas(errors), { duration: 6000, icon: "⚠️" });
             } catch { toast.error("Error al leer el archivo"); }
         };
         reader.readAsArrayBuffer(file);
@@ -294,8 +397,21 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
     // Candado síncrono anti doble-envío: evita crear el centro dos veces si el
     // segundo click llega antes del re-render que deshabilita el botón.
     const submitLockRef = useRef(false);
+
+    // Todo curso necesita área técnica: sin ella el servidor lo descarta y el
+    // centro se crearía sin ese curso.
+    const validateCoursesAreas = (): boolean => {
+        const sinArea = courses.filter((c) => (areas.length ? !areaDeCurso(c, areas) : !c.area_id && !c.area));
+        if (sinArea.length === 0) return true;
+        toast.error(sinArea.length === 1
+            ? `El curso "${sinArea[0].nombre}" no tiene un área técnica válida. Edítelo para elegirla.`
+            : `${sinArea.length} cursos no tienen un área técnica válida. Edítelos para elegirla.`);
+        return false;
+    };
+
     const handleSubmit = async () => {
         if (!validateStep1()) { setStep(1); return; }
+        if (!validateCoursesAreas()) { setStep(2); return; }
         if (submitLockRef.current) return;
         submitLockRef.current = true;
         setIsSubmitting(true);
@@ -307,6 +423,8 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
                 courses: courses.map(c => ({
                     nombre: c.nombre, codigo_programa: c.codigo_programa, objetivo: c.objetivo,
                     codigo: c.codigo ? Number(c.codigo) : null, taller: c.taller,
+                    // Área elegida en el formulario (id) o nombre del Excel (lo resuelve el servidor).
+                    ...(c.area_id ? { area_id: Number(c.area_id) } : { area: c.area || null }),
                     modules: c.modules.map(m => ({
                         ...m, horas_teoricas: m.horas_teoricas, horas_practicas: m.horas_practicas,
                         tipo_evaluacion: Number(m.tipo_evaluacion) || 1,
@@ -346,6 +464,7 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
     // ─── Navigation ───
     const goNext = () => {
         if (step === 1 && !validateStep1()) return;
+        if (step === 2 && !validateCoursesAreas()) return;
         setStep(prev => Math.min(prev + 1, 4));
     };
     const goBack = () => setStep(prev => Math.max(prev - 1, 1));
@@ -457,28 +576,40 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
                                             <TableRow>
                                                 <TableHead>Nombre</TableHead>
                                                 <TableHead>Cód. Programa</TableHead>
+                                                <TableHead>Área Técnica</TableHead>
                                                 <TableHead>Módulos</TableHead>
                                                 <TableHead className="w-[80px]">Acciones</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {courses.map((c) => (
-                                                <TableRow key={c._id}>
-                                                    <TableCell className="font-medium">{c.nombre}</TableCell>
-                                                    <TableCell className="text-sm text-muted-foreground">{c.codigo_programa}</TableCell>
-                                                    <TableCell className="text-sm">{c.modules.length}</TableCell>
-                                                    <TableCell>
-                                                        <div className="flex gap-1">
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingCourse(c); setCourseModalOpen(true); }}>
-                                                                <Pencil className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setCourses(prev => prev.filter(x => x._id !== c._id))}>
-                                                                <Trash2 className="h-3.5 w-3.5" />
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))}
+                                            {courses.map((c) => {
+                                                const area = areaDeCurso(c, areas);
+                                                return (
+                                                    <TableRow key={c._id}>
+                                                        <TableCell className="font-medium">{c.nombre}</TableCell>
+                                                        <TableCell className="text-sm text-muted-foreground">{c.codigo_programa}</TableCell>
+                                                        <TableCell className="text-sm">
+                                                            {area ? area.nombre : !areas.length ? (c.area || "—") : (
+                                                                // Sin área o con un nombre que no está en el catálogo.
+                                                                <span className="text-destructive">
+                                                                    {c.area ? `"${c.area}" no está en el catálogo` : "Sin área"} · edítelo para elegirla
+                                                                </span>
+                                                            )}
+                                                        </TableCell>
+                                                        <TableCell className="text-sm">{c.modules.length}</TableCell>
+                                                        <TableCell>
+                                                            <div className="flex gap-1">
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setEditingCourse(c); setCourseModalOpen(true); }}>
+                                                                    <Pencil className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setCourses(prev => prev.filter(x => x._id !== c._id))}>
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
                                         </TableBody>
                                     </Table>
                                 </ScrollArea>
@@ -576,7 +707,8 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
                                 <div className="flex-1">
                                     <ExcelDropzone disabled={isSubmitting} onFile={importStudentsExcel} label="Arrastra un Excel de estudiantes o haz clic para importar" />
                                     <p className="text-xs text-muted-foreground mt-3 text-center">
-                                        Descarga el formato para conocer las columnas requeridas. Columnas obligatorias: Identidad, Nombres, Apellidos, Sexo, Departamento ID, Municipio ID, Vive, Num. Dependientes.
+                                        Descarga el formato para conocer las columnas. Obligatorias (marcadas con *): Identidad, Nombres, Apellidos, Sexo, Departamento, Municipio, Vive, Num. Dependientes.
+                                        Departamento, municipio y demás catálogos se escriben por nombre, como en las listas desplegables del formato.
                                     </p>
                                 </div>
                             ) : (
@@ -637,6 +769,7 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
                 isOpen={courseModalOpen}
                 setIsOpen={setCourseModalOpen}
                 editing={editingCourse}
+                areas={areas}
                 onSave={(course) => {
                     if (editingCourse) {
                         setCourses(prev => prev.map(c => c._id === editingCourse._id ? { ...course, _id: editingCourse._id } : c));
@@ -667,9 +800,10 @@ export default function CentroWizard({ isOpen, setIsOpen, reloadList }: CentroWi
 
 // ─── Course Sub-Modal ────────────────────────────────────────────────────────
 
-function CourseSubModal({ isOpen, setIsOpen, editing, onSave }: {
+function CourseSubModal({ isOpen, setIsOpen, editing, areas, onSave }: {
     isOpen: boolean; setIsOpen: (v: boolean) => void;
     editing: CourseItem | null;
+    areas: AreaItem[];
     onSave: (c: CourseItem) => void;
 }) {
     const [nombre, setNombre] = useState("");
@@ -677,6 +811,7 @@ function CourseSubModal({ isOpen, setIsOpen, editing, onSave }: {
     const [objetivo, setObjetivo] = useState("");
     const [codigo, setCodigo] = useState("");
     const [taller, setTaller] = useState("1");
+    const [areaId, setAreaId] = useState("");
     const [modules, setModules] = useState<ModuleItem[]>([]);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -686,8 +821,11 @@ function CourseSubModal({ isOpen, setIsOpen, editing, onSave }: {
                 setNombre(editing.nombre); setCodigoPrograma(editing.codigo_programa);
                 setObjetivo(editing.objetivo); setCodigo(editing.codigo);
                 setTaller(String(editing.taller)); setModules([...editing.modules]);
+                // Importado del Excel: se preselecciona el área si el nombre está en el catálogo.
+                const area = areaDeCurso(editing, areas);
+                setAreaId(area ? String(area.id) : "");
             } else {
-                setNombre(""); setCodigoPrograma(""); setObjetivo(""); setCodigo(""); setTaller("1"); setModules([]);
+                setNombre(""); setCodigoPrograma(""); setObjetivo(""); setCodigo(""); setTaller("1"); setAreaId(""); setModules([]);
             }
             setErrors({});
         }
@@ -697,6 +835,7 @@ function CourseSubModal({ isOpen, setIsOpen, editing, onSave }: {
         const e: Record<string, string> = {};
         if (!nombre.trim()) e.nombre = "Requerido";
         if (!codigoPrograma.trim()) e.codigo_programa = "Requerido";
+        if (!areaId) e.area_id = "Requerido";
         if (!objetivo.trim()) e.objetivo = "Requerido";
         setErrors(e);
         return Object.keys(e).length === 0;
@@ -704,7 +843,8 @@ function CourseSubModal({ isOpen, setIsOpen, editing, onSave }: {
 
     const save = () => {
         if (!validate()) return;
-        onSave({ _id: 0, nombre: nombre.trim(), codigo_programa: codigoPrograma.trim(), objetivo: objetivo.trim(), codigo: codigo.trim(), taller: Number(taller), modules });
+        // El área elegida reemplaza al nombre leído del Excel.
+        onSave({ _id: 0, nombre: nombre.trim(), codigo_programa: codigoPrograma.trim(), objetivo: objetivo.trim(), codigo: codigo.trim(), taller: Number(taller), area_id: areaId, area: "", modules });
     };
 
     const updateModule = (idx: number, key: string, value: string) => {
@@ -715,17 +855,15 @@ function CourseSubModal({ isOpen, setIsOpen, editing, onSave }: {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
-                const wb = XLSX.read(e.target?.result, { type: "array" });
-                const sheet = wb.Sheets[wb.SheetNames[0]];
-                const rows: any[] = XLSX.utils.sheet_to_json(sheet);
+                const rows = readExcelRows(e.target?.result);
                 const imported: ModuleItem[] = [];
                 for (const row of rows) {
-                    const cod = (row["Codigo"] ?? "").toString().trim();
-                    const nom = (row["Nombre"] ?? "").toString().trim();
-                    const ht = (row["Horas Teoricas"] ?? "").toString().trim();
-                    const hp = (row["Horas Practicas"] ?? "").toString().trim();
+                    const cod = cell(row, "Codigo");
+                    const nom = cell(row, "Nombre");
+                    const ht = cell(row, "Horas Teoricas");
+                    const hp = cell(row, "Horas Practicas");
                     if (!cod || !nom || !ht || !hp) continue;
-                    let te = (row["Tipo Evaluacion"] ?? "1").toString().trim().toUpperCase();
+                    let te = (cell(row, "Tipo Evaluacion") || "1").toUpperCase();
                     if (te === "TEORICA" || te === "TEÓRICA") te = "1";
                     else if (te === "PRACTICA" || te === "PRÁCTICA") te = "2";
                     else if (te === "MIXTA") te = "3";
@@ -754,6 +892,20 @@ function CourseSubModal({ isOpen, setIsOpen, editing, onSave }: {
                                 <Label className="mb-1 font-medium text-default-600">Código de Programa *</Label>
                                 <Input value={codigoPrograma} onChange={(e) => { setCodigoPrograma(e.target.value); setErrors(p => { const n = { ...p }; delete n.codigo_programa; return n; }); }} placeholder="Código del programa" />
                                 {errors.codigo_programa && <p className="text-destructive text-xs mt-1">{errors.codigo_programa}</p>}
+                            </div>
+                            <div className="md:col-span-2">
+                                <Label className="mb-1 font-medium text-default-600">Área técnica *</Label>
+                                <Select value={areaId} onValueChange={(v) => { setAreaId(v); setErrors(p => { const n = { ...p }; delete n.area_id; return n; }); }}>
+                                    <SelectTrigger><SelectValue placeholder={areas.length ? "Seleccionar área" : "Cargando áreas..."} /></SelectTrigger>
+                                    <SelectContent>
+                                        {areas.map((a) => <SelectItem key={a.id} value={String(a.id)}>{a.nombre}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                {errors.area_id && <p className="text-destructive text-xs mt-1">{errors.area_id}</p>}
+                                {/* Nombre del Excel que no se encontró en el catálogo. */}
+                                {!areaId && editing?.area && areas.length > 0 && !errors.area_id && (
+                                    <p className="text-xs text-muted-foreground mt-1">En el Excel: &quot;{editing.area}&quot; (no está en el catálogo)</p>
+                                )}
                             </div>
                             <div>
                                 <Label className="mb-1 font-medium text-default-600">Código</Label>

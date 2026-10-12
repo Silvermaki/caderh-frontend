@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { DatePicker } from "@/components/ui/date-picker";
 import ExcelActions from "@/components/centro/excel-actions";
 import { cn } from "@/lib/utils";
 import { formatDate } from "@/app/libs/utils";
@@ -78,6 +79,8 @@ function PageContent() {
     // Centro popover in dialog
     const [centroOpen, setCentroOpen] = useState(false);
     const [centroSearch, setCentroSearch] = useState("");
+    // Último código sugerido: al cambiar de centro solo se reemplaza un código vacío o igual a él
+    const codigoSugeridoRef = useRef("");
 
     // Dependent selects
     const [courses, setCourses] = useState<any[]>([]);
@@ -191,6 +194,26 @@ function PageContent() {
         })();
     }, [form.centro_id]);
 
+    // Código sugerido del centro elegido ("0001", "0002"…); nunca pisa lo que escribió el usuario
+    useEffect(() => {
+        if (!form.centro_id) return;
+        const centroId = form.centro_id;
+        let cancelado = false;
+        (async () => {
+            try {
+                const res = await fetch(`${apiBase}/centros/centros/${centroId}/procesos/next-code`, { headers: authHeaders });
+                if (!res.ok) return;
+                const d = await res.json();
+                const sugerido = d.data?.codigo ? String(d.data.codigo) : "";
+                if (cancelado || !sugerido) return;
+                const anterior = codigoSugeridoRef.current;
+                codigoSugeridoRef.current = sugerido;
+                setForm((prev) => (!prev.codigo || prev.codigo === anterior ? { ...prev, codigo: sugerido } : prev));
+            } catch { /* silent */ }
+        })();
+        return () => { cancelado = true; };
+    }, [form.centro_id]);
+
     const fetchMetodologias = async () => {
         try {
             const res = await fetch(`${apiBase}/centros/metodologias`, { headers: authHeaders });
@@ -249,6 +272,7 @@ function PageContent() {
 
     const openCreateDialog = () => {
         setForm({ ...emptyForm });
+        codigoSugeridoRef.current = "";
         setCourses([]);
         setInstructors([]);
         setWizardStep(0);
@@ -581,11 +605,13 @@ function PageContent() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <Label className="mb-1 text-xs">Fecha Inicio *</Label>
-                                <Input type="date" value={form.fecha_inicial} onChange={(e) => setField("fecha_inicial", e.target.value)} disabled={submitting} />
+                                <DatePicker value={form.fecha_inicial} maxDate={form.fecha_final || undefined}
+                                    onChange={(v) => setField("fecha_inicial", v ?? "")} disabled={submitting} />
                             </div>
                             <div>
                                 <Label className="mb-1 text-xs">Fecha Fin *</Label>
-                                <Input type="date" value={form.fecha_final} onChange={(e) => setField("fecha_final", e.target.value)} disabled={submitting} />
+                                <DatePicker value={form.fecha_final} minDate={form.fecha_inicial || undefined}
+                                    onChange={(v) => setField("fecha_final", v ?? "")} disabled={submitting} />
                             </div>
 
                             <div>

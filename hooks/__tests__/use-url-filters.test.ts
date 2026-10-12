@@ -56,4 +56,35 @@ describe('useUrlFilters', () => {
     });
     expect(mockPush).toHaveBeenCalled();
   });
+
+  it('reads every declared filter param with its type', () => {
+    mockParams = new URLSearchParams('project=a,b&age_min=18&from=2026-01-01&estatus=TRABAJANDO');
+    const { result } = renderHook(() =>
+      useUrlFilters<Record<string, any>>({}, ['project', 'age', 'dateRange', 'youthStatus'])
+    );
+    expect(result.current.filters).toEqual({
+      project: ['a', 'b'], age_min: 18, from: '2026-01-01', estatus: ['TRABAJANDO'],
+    });
+  });
+
+  it('an empty param removes the default ("sin filtro")', () => {
+    mockParams = new URLSearchParams('from=&to=');
+    const { result } = renderHook(() =>
+      useUrlFilters<Record<string, any>>({ from: '2026-01-01', to: '2026-12-31' }, ['dateRange'])
+    );
+    expect(result.current.filters).toEqual({});
+  });
+
+  it('clearing a filter with default writes an empty param; without default removes it', () => {
+    mockParams = new URLSearchParams('project=a');
+    const { result } = renderHook(() =>
+      useUrlFilters<Record<string, any>>({ from: '2026-01-01', to: '2026-12-31' }, ['dateRange', 'project'])
+    );
+    act(() => {
+      result.current.setFilters({ from: undefined, to: undefined, project: [] });
+    });
+    const url = mockPush.mock.calls[0][0] as string;
+    expect(url).toContain('from=&to=');
+    expect(url).not.toContain('project');
+  });
 });

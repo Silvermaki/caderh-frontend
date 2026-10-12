@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { DatePicker, localDateToIso } from "@/components/ui/date-picker";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -50,6 +52,23 @@ const NUM_KEYS = ["estudia", "tiene_hijos", "cuantos_hijos", "cantidad_viven", "
 
 const VIVIENDA_OPTIONS = ["Propia", "Alquilada", "Otros"];
 
+// Valores exactos que acepta el backend (CHECK de la migración 1772350000000).
+const TIPO_CONTRATO_OPTIONS = ["Permanente", "Temporal", "Por eventos", "Ninguno"];
+
+// Topes de texto del backend (normalizeTextoLimitado).
+const DETALLE_DISCAPACIDAD_MAX = 300;
+const OBSERVACIONES_MAX = 1000;
+
+// Catálogo de discapacidades: "Otra" exige especificarla y "Ninguna" no lleva
+// detalle. Se compara sin tildes ni mayúsculas.
+const nombrePlano = (v: any) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+const esDiscapacidadNinguna = (nombre?: string) => /^(ningun[ao]s?|no aplica|no tiene)$/.test(nombrePlano(nombre));
+const esDiscapacidadOtra = (nombre?: string) => /^otr[ao]s?$/.test(nombrePlano(nombre));
+
+// Fecha de nacimiento: misma regla que el backend (1930 a hoy - 10 años).
+const HOY = new Date();
+const FECHA_NACIMIENTO_MAX = localDateToIso(new Date(HOY.getFullYear() - 10, HOY.getMonth(), HOY.getDate()));
+
 export default function StudentDetailPage() {
     const params = useParams();
     const router = useRouter();
@@ -62,6 +81,9 @@ export default function StudentDetailPage() {
     const [student, setStudent] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [editingTab, setEditingTab] = useState<string | null>(null);
+    // Pestaña activa controlada: al guardar se recarga el estudiante y, sin
+    // esto, la vista volvía a "Datos Personales".
+    const [activeTab, setActiveTab] = useState("personal");
     const [form, setForm] = useState<Record<string, any>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [saving, setSaving] = useState(false);
@@ -105,7 +127,7 @@ export default function StudentDetailPage() {
     useEffect(() => { if (session && studentId) { fetchStudent(); fetchProcesses(); } }, [session, studentId]);
 
     // Normaliza fechas legadas (Date, ISO con hora, DD/MM/AAAA) a 'YYYY-MM-DD'
-    // para el input type="date"; el backend solo acepta ISO.
+    // para el DatePicker; el backend solo acepta ISO.
     const parseDateToISO = (raw: any): string => {
         if (raw == null) return "";
         const trimmed = String(raw).trim();
@@ -158,8 +180,8 @@ export default function StudentDetailPage() {
             "beneficios_empleo", "beneficios_empleo_otro",
             "autoempleo", "autoempleo_dedicacion", "autoempleo_otro", "autoempleo_tiempo",
             "dias_semana_trabajo", "horas_dia_trabajo", "socios", "socios_cantidad",
-            "especial", "discapacidad_id", "riesgo_social", "etnia_id", "interno",
-            "nombre_r", "telefono_r", "datos_r", "parentesco_r", "adicional_r",
+            "especial", "discapacidad_id", "discapacidad_detalle", "riesgo_social", "etnia_id", "interno",
+            "nombre_r", "telefono_r", "datos_r", "parentesco_r", "adicional_r", "observaciones",
         ];
         for (const key of allKeys) {
             f[key] = NUM_KEYS.includes(key) ? Number(student[key] ?? 0) : (student[key] != null ? String(student[key]) : "");
@@ -206,6 +228,25 @@ export default function StudentDetailPage() {
         setErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
     };
 
+    // Detalle de la discapacidad: visible si hay una distinta de "Ninguna";
+    // obligatorio si es "Otra". Mientras carga el catálogo se usa el nombre
+    // que ya trae el estudiante.
+    const nombreDiscapacidad = (id: any): string | undefined =>
+        discapacidades.find((d: any) => String(d.id) === String(id))?.nombre
+        ?? (student && String(student.discapacidad_id ?? "") === String(id) ? student.discapacidad_nombre : undefined);
+    const muestraDetalleDiscapacidad = !!Number(form.especial) && !!form.discapacidad_id && !esDiscapacidadNinguna(nombreDiscapacidad(form.discapacidad_id));
+    const detalleDiscapacidadObligatorio = muestraDetalleDiscapacidad && esDiscapacidadOtra(nombreDiscapacidad(form.discapacidad_id));
+
+    // Sin discapacidad (switch apagado o "Ninguna") el detalle se limpia.
+    const setEspecial = (v: boolean) => {
+        set("especial", v ? 1 : 0);
+        if (!v) set("discapacidad_detalle", "");
+    };
+    const setDiscapacidad = (v: string) => {
+        set("discapacidad_id", v);
+        set("discapacidad_detalle", esDiscapacidadNinguna(nombreDiscapacidad(v)) ? "" : form.discapacidad_detalle);
+    };
+
     const cancelEditing = () => { setEditingTab(null); setErrors({}); setPendingFile(null); };
 
     const saveTab = async () => {
@@ -221,6 +262,11 @@ export default function StudentDetailPage() {
         } else if (editingTab === "education") {
             if (!form.vive) e.vive = "Requerido";
             if (!form.numero_dep?.toString().trim()) e.numero_dep = "Requerido";
+        } else if (editingTab === "additional") {
+            if (detalleDiscapacidadObligatorio && !String(form.discapacidad_detalle ?? "").trim()) {
+                e.discapacidad_detalle = "Requerido al elegir \"Otra\"";
+                toast.error("Especifique la discapacidad: es obligatorio cuando se elige \"Otra\".");
+            }
         }
         setErrors(e);
         if (Object.keys(e).length > 0) return;
@@ -229,12 +275,16 @@ export default function StudentDetailPage() {
         try {
             const body: any = { id: student.id, ...form, departamento_id: Number(form.departamento_id), municipio_id: Number(form.municipio_id) };
             for (const k of NUM_KEYS) body[k] = Number(body[k]) || 0;
-            body.tipo_contrato_ant = Number(body.tipo_contrato_ant) || 0;
             // Catálogos: id entero o null (nunca strings/arrays/JSON).
             body.nivel_escolaridad_id = form.nivel_escolaridad_id ? Number(form.nivel_escolaridad_id) : null;
             body.discapacidad_id = form.discapacidad_id ? Number(form.discapacidad_id) : null;
             body.etnia_id = form.etnia_id ? Number(form.etnia_id) : null;
             body.fecha_nacimiento = form.fecha_nacimiento || null;
+            // Texto exacto del catálogo o null. Detalle y observaciones se envían
+            // siempre: el backend solo los escribe si vienen en el body.
+            body.tipo_contrato_ant = form.tipo_contrato_ant || null;
+            body.discapacidad_detalle = String(form.discapacidad_detalle ?? "").trim() || null;
+            body.observaciones = String(form.observaciones ?? "").trim() || null;
 
             const res = await fetch(`${apiBase}/centros/students`, {
                 method: "PUT",
@@ -295,12 +345,13 @@ export default function StudentDetailPage() {
         onDropRejected: (r) => { const err = r[0]?.errors[0]; toast.error(err?.code === "file-too-large" ? "El archivo excede 10MB" : err?.message ?? "Archivo rechazado"); },
     });
 
-    const fieldView = (label: string, value: any, icon?: React.ReactNode) => (
+    // multiline: texto largo con saltos de línea (observaciones, detalle).
+    const fieldView = (label: string, value: any, icon?: React.ReactNode, multiline?: boolean) => (
         <div className="flex items-start gap-3">
             {icon && <div className="mt-0.5 text-muted-foreground">{icon}</div>}
-            <div>
+            <div className={cn(multiline && "min-w-0")}>
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">{label}</p>
-                <p className="text-sm text-foreground font-medium">{value || "-"}</p>
+                <p className={cn("text-sm text-foreground font-medium", multiline && "whitespace-pre-wrap break-words")}>{value || "-"}</p>
             </div>
         </div>
     );
@@ -323,10 +374,10 @@ export default function StudentDetailPage() {
         </div>
     );
 
-    const fieldSelect = (key: string, label: string, options: { value: string; label: string }[], opts?: { required?: boolean; disabled?: boolean; placeholder?: string }) => (
+    const fieldSelect = (key: string, label: string, options: { value: string; label: string }[], opts?: { required?: boolean; disabled?: boolean; placeholder?: string; onChange?: (v: string) => void }) => (
         <div>
             <Label className="mb-1 font-medium text-default-600">{label}{opts?.required ? " *" : ""}</Label>
-            <Select value={form[key] ?? ""} onValueChange={(v) => set(key, v)} disabled={saving || opts?.disabled}>
+            <Select value={form[key] ?? ""} onValueChange={(v) => (opts?.onChange ? opts.onChange(v) : set(key, v))} disabled={saving || opts?.disabled}>
                 <SelectTrigger><SelectValue placeholder={opts?.placeholder ?? "Seleccionar"} /></SelectTrigger>
                 <SelectContent>{options.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
             </Select>
@@ -334,10 +385,18 @@ export default function StudentDetailPage() {
         </div>
     );
 
-    const fieldSwitch = (key: string, label: string) => (
+    const fieldSwitch = (key: string, label: string, onChange?: (v: boolean) => void) => (
         <div className="flex items-center gap-3 py-2">
-            <Switch checked={!!form[key]} onCheckedChange={(v) => set(key, v ? 1 : 0)} disabled={saving} />
+            <Switch checked={!!form[key]} onCheckedChange={(v) => (onChange ? onChange(v) : set(key, v ? 1 : 0))} disabled={saving} />
             <Label className="text-default-600">{label}</Label>
+        </div>
+    );
+
+    // Error a la izquierda y contador a la derecha (campos con tope de caracteres).
+    const fieldFooter = (key: string, max: number) => (
+        <div className="flex items-start justify-between gap-2 mt-1">
+            {errors[key] ? <p className="text-destructive text-xs">{errors[key]}</p> : <span />}
+            <span className="text-xs text-muted-foreground tabular-nums shrink-0">{String(form[key] ?? "").length}/{max}</span>
         </div>
     );
 
@@ -445,7 +504,7 @@ export default function StudentDetailPage() {
 
             {/* Tabs */}
             <Card className="mt-4">
-                <Tabs defaultValue="personal" className="w-full">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                     <TabsList className="w-full justify-start gap-8 border-b border-default-200 rounded-none bg-transparent p-0 h-auto min-h-0 px-6 pt-4 pb-0">
                         {TABS.map((t) => <TabsTrigger key={t.key} value={t.key} className={TAB_CLASS}>{t.label}{t.key === "processes" && processes.length > 0 ? ` (${processes.length})` : ""}</TabsTrigger>)}
                     </TabsList>
@@ -459,7 +518,20 @@ export default function StudentDetailPage() {
                         {editingTab === "personal" ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {fieldInput("identidad", "Identidad", { required: true, placeholder: "####-####-#####", sanitize: (v) => v.replace(/[^\d-]/g, "") })}
-                                {fieldInput("fecha_nacimiento", "Fecha de nacimiento", { type: "date" })}
+                                <div>
+                                    <Label className="mb-1 font-medium text-default-600">Fecha de nacimiento</Label>
+                                    <DatePicker
+                                        value={form.fecha_nacimiento || null}
+                                        onChange={(v) => set("fecha_nacimiento", v ?? "")}
+                                        disabled={saving}
+                                        minDate="1930-01-01"
+                                        maxDate={FECHA_NACIMIENTO_MAX}
+                                        fromYear={1930}
+                                        toYear={HOY.getFullYear() - 10}
+                                        clearable
+                                    />
+                                    {errors.fecha_nacimiento && <p className="text-destructive text-xs mt-1">{errors.fecha_nacimiento}</p>}
+                                </div>
                                 {fieldInput("nombres", "Nombres", { required: true })}
                                 {fieldInput("apellidos", "Apellidos", { required: true })}
                                 {fieldSelect("sexo", "Sexo", [{ value: "M", label: "Masculino" }, { value: "F", label: "Femenino" }], { required: true })}
@@ -624,7 +696,7 @@ export default function StudentDetailPage() {
                                 {!!form.trabajo_actual && <>{fieldInput("donde_trabaja", "¿Dónde trabaja?")}{fieldInput("puesto", "Puesto")}</>}
                                 <div className="md:col-span-2">{fieldSwitch("trabajado_ant", "¿Ha trabajado antes?")}</div>
                                 {!!form.trabajado_ant && fieldInput("tiempo_ant", "Tiempo trabajado")}
-                                {fieldInput("tipo_contrato_ant", "Tipo de contrato")}
+                                {fieldSelect("tipo_contrato_ant", "Tipo de contrato", TIPO_CONTRATO_OPTIONS.map((v) => ({ value: v, label: v })))}
                                 {fieldInput("beneficios_empleo", "Beneficios del empleo")}
                                 {fieldInput("beneficios_empleo_otro", "Otros beneficios")}
                                 <div className="md:col-span-2">{fieldSwitch("autoempleo", "¿Autoempleo?")}</div>
@@ -673,10 +745,37 @@ export default function StudentDetailPage() {
                         </div>
                         {editingTab === "additional" ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="md:col-span-2">{fieldSwitch("especial", "¿Necesidades especiales?")}</div>
-                                {!!form.especial && fieldSelect("discapacidad_id", "Discapacidad o Enfermedad", discapacidades.map((d: any) => ({ value: d.id.toString(), label: d.nombre })))}
+                                <div className="md:col-span-2">{fieldSwitch("especial", "¿Necesidades especiales?", setEspecial)}</div>
+                                {!!form.especial && fieldSelect("discapacidad_id", "Discapacidad o Enfermedad", discapacidades.map((d: any) => ({ value: d.id.toString(), label: d.nombre })), { onChange: setDiscapacidad })}
+                                {muestraDetalleDiscapacidad && (
+                                    <div>
+                                        <Label className="mb-1 font-medium text-default-600">
+                                            {detalleDiscapacidadObligatorio ? "Especifique la discapacidad *" : "Detalle de la discapacidad"}
+                                        </Label>
+                                        <Input
+                                            disabled={saving}
+                                            value={form.discapacidad_detalle ?? ""}
+                                            maxLength={DETALLE_DISCAPACIDAD_MAX}
+                                            onChange={(e) => set("discapacidad_detalle", e.target.value)}
+                                            placeholder={detalleDiscapacidadObligatorio ? "Describa la discapacidad o su razón" : "Detalle (opcional)"}
+                                        />
+                                        {fieldFooter("discapacidad_detalle", DETALLE_DISCAPACIDAD_MAX)}
+                                    </div>
+                                )}
                                 {fieldSelect("etnia_id", "Etnia", etnias.map((e2: any) => ({ value: e2.id.toString(), label: e2.nombre })))}
                                 <div className="md:col-span-2">{fieldSwitch("interno", "¿Interno?")}</div>
+                                <div className="md:col-span-2">
+                                    <Label className="mb-1 font-medium text-default-600">Observaciones</Label>
+                                    <Textarea
+                                        disabled={saving}
+                                        value={form.observaciones ?? ""}
+                                        maxLength={OBSERVACIONES_MAX}
+                                        onChange={(e) => set("observaciones", e.target.value)}
+                                        placeholder="Información adicional del joven"
+                                        rows={3}
+                                    />
+                                    {fieldFooter("observaciones", OBSERVACIONES_MAX)}
+                                </div>
                                 <div className="md:col-span-2 mt-4 border-t pt-4">
                                     <h4 className="text-sm font-semibold text-foreground mb-3">Contacto de referencia</h4>
                                 </div>
@@ -684,7 +783,7 @@ export default function StudentDetailPage() {
                                 {fieldInput("telefono_r", "Teléfono")}
                                 {fieldInput("datos_r", "Datos adicionales")}
                                 {fieldInput("parentesco_r", "Parentesco")}
-                                <div className="md:col-span-2">{fieldInput("adicional_r", "Información adicional")}</div>
+                                <div className="md:col-span-2">{fieldInput("adicional_r", "Información adicional del contacto")}</div>
                             </div>
                         ) : (
                             <div className="space-y-6">
@@ -692,8 +791,10 @@ export default function StudentDetailPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-5">
                                         {boolView("¿Necesidades especiales?", s.especial, <AlertTriangle className="h-4 w-4" />)}
                                         {Number(s.especial) ? fieldView("Discapacidad o Enfermedad", s.discapacidad_nombre, <AlertTriangle className="h-4 w-4" />) : null}
+                                        {Number(s.especial) && s.discapacidad_detalle ? fieldView("Detalle de la discapacidad", s.discapacidad_detalle, <AlertTriangle className="h-4 w-4" />, true) : null}
                                         {fieldView("Etnia", s.etnia_nombre, <Users className="h-4 w-4" />)}
                                         {boolView("¿Interno?", s.interno, <Home className="h-4 w-4" />)}
+                                        <div className="md:col-span-3">{fieldView("Observaciones", s.observaciones, <FileText className="h-4 w-4" />, true)}</div>
                                     </div>
                                 </InfoSection>
                                 <InfoSection title="Contacto de Referencia">
@@ -702,7 +803,7 @@ export default function StudentDetailPage() {
                                         {fieldView("Teléfono", s.telefono_r, <Phone className="h-4 w-4" />)}
                                         {fieldView("Datos adicionales", s.datos_r, <FileText className="h-4 w-4" />)}
                                         {fieldView("Parentesco", s.parentesco_r, <Users className="h-4 w-4" />)}
-                                        {fieldView("Información adicional", s.adicional_r, <FileText className="h-4 w-4" />)}
+                                        {fieldView("Información adicional del contacto", s.adicional_r, <FileText className="h-4 w-4" />)}
                                     </div>
                                 </InfoSection>
                             </div>

@@ -14,12 +14,14 @@ export interface ScopeBarProps {
   onOpen: () => void;
   onRemove: (key: string) => void;
   onClearAll: () => void;
+  /** Texto del botón general ("Restablecer" si el reporte tiene filtros por defecto). */
+  clearLabel?: string;
 }
 
-export function ScopeBar({ activeCount, chips, onOpen, onRemove, onClearAll }: ScopeBarProps) {
+export function ScopeBar({ activeCount, chips, onOpen, onRemove, onClearAll, clearLabel = 'Limpiar todo' }: ScopeBarProps) {
   const hasActive = activeCount > 0;
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 mb-4">
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 mb-4">
       <button
         type="button"
         onClick={onOpen}
@@ -68,7 +70,7 @@ export function ScopeBar({ activeCount, chips, onOpen, onRemove, onClearAll }: S
           onClick={onClearAll}
           className="text-xs text-destructive hover:underline underline-offset-2"
         >
-          Limpiar todo
+          {clearLabel}
         </button>
       )}
     </div>

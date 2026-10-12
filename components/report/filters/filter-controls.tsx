@@ -3,8 +3,7 @@
 import type { ReactNode } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
+import { DatePicker } from '@/components/ui/date-picker';
 import { MultiSelect } from '@/components/ui/multi-select';
 import {
   Select,
@@ -13,7 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { format } from 'date-fns';
 
 // ---------------------------------------------------------------------------
 // FilterField (wrapper)
@@ -41,6 +39,9 @@ export function FilterField({
 // SingleSelectField — value: string
 // ---------------------------------------------------------------------------
 
+// Opción "sin filtro" del Select (Radix no admite value=""): se traduce a ''.
+const NONE = '__none__';
+
 export function SingleSelectField({
   label,
   options,
@@ -48,6 +49,7 @@ export function SingleSelectField({
   onChange,
   description,
   placeholder = 'Seleccionar…',
+  clearLabel,
 }: {
   label: string;
   options: { value: string; label: string }[];
@@ -55,14 +57,20 @@ export function SingleSelectField({
   onChange: (v: string) => void;
   description?: string;
   placeholder?: string;
+  /** Si se da, agrega una primera opción que quita el filtro (p. ej. "Todos los años"). */
+  clearLabel?: string;
 }) {
   return (
     <FilterField label={label} description={description}>
-      <Select value={value || undefined} onValueChange={onChange}>
+      <Select
+        value={value || (clearLabel ? NONE : undefined)}
+        onValueChange={(v) => onChange(v === NONE ? '' : v)}
+      >
         <SelectTrigger>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
+          {clearLabel && <SelectItem value={NONE}>{clearLabel}</SelectItem>}
           {options.map((o) => (
             <SelectItem key={o.value} value={o.value}>
               {o.label}
@@ -84,12 +92,14 @@ export function MultiSelectField({
   value,
   onChange,
   description,
+  placeholder = 'Todos',
 }: {
   label: string;
   options: { value: string; label: string }[];
   value: string[];
   onChange: (v: string[]) => void;
   description?: string;
+  placeholder?: string;
 }) {
   return (
     <FilterField label={label} description={description}>
@@ -98,6 +108,7 @@ export function MultiSelectField({
         options={options}
         defaultValue={value}
         onValueChange={onChange}
+        placeholder={placeholder}
         modalPopover
       />
     </FilterField>
@@ -105,8 +116,14 @@ export function MultiSelectField({
 }
 
 // ---------------------------------------------------------------------------
-// DateRangeField — value: {from?, to?}
+// DateRangeField — value: {from?, to?} como 'YYYY-MM-DD'
+// "Desde" y "Hasta" por separado, con mes/año elegibles y atajos: elegir
+// varios años (pedido CADERH 18/08 para R2) no exige recorrer mes por mes.
 // ---------------------------------------------------------------------------
+
+function yearRange(y: number) {
+  return { from: `${y}-01-01`, to: `${y}-12-31` };
+}
 
 export function DateRangeField({
   label,
@@ -115,38 +132,86 @@ export function DateRangeField({
   description,
 }: {
   label: string;
-  value: { from?: Date; to?: Date };
-  onChange: (v: { from?: Date; to?: Date }) => void;
+  value: { from?: string; to?: string };
+  onChange: (v: { from?: string; to?: string }) => void;
   description?: string;
 }) {
-  const display =
-    value.from && value.to
-      ? `${format(value.from, 'PP')} — ${format(value.to, 'PP')}`
-      : value.from
-        ? format(value.from, 'PP')
-        : 'Seleccionar rango';
-
+  const y = new Date().getFullYear();
+  const presets = [
+    { label: 'Este año', range: yearRange(y) },
+    { label: 'Año pasado', range: yearRange(y - 1) },
+    { label: `${y - 1}–${y}`, range: { from: `${y - 1}-01-01`, to: `${y}-12-31` } },
+  ];
   return (
     <FilterField label={label} description={description}>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full justify-start text-left font-normal"
-          >
-            {display}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="range"
-            selected={value.from || value.to ? { from: value.from, to: value.to } : undefined}
-            onSelect={(range) => onChange(range ?? {})}
-            numberOfMonths={2}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-1">
+          <span className="text-xs text-muted-foreground">Desde</span>
+          <DatePicker
+            value={value.from}
+            maxDate={value.to}
+            clearable
+            placeholder="Sin límite"
+            onChange={(v) => onChange({ ...value, from: v })}
           />
-        </PopoverContent>
-      </Popover>
+        </div>
+        <div className="space-y-1">
+          <span className="text-xs text-muted-foreground">Hasta</span>
+          <DatePicker
+            value={value.to}
+            minDate={value.from}
+            clearable
+            placeholder="Sin límite"
+            onChange={(v) => onChange({ ...value, to: v })}
+          />
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-1 pt-1">
+        {presets.map((p) => {
+          const active = value.from === p.range.from && value.to === p.range.to;
+          return (
+            <Button
+              key={p.label}
+              type="button"
+              size="sm"
+              variant={active ? undefined : 'outline'}
+              className="h-7 px-2 text-xs"
+              onClick={() => onChange(p.range)}
+            >
+              {p.label}
+            </Button>
+          );
+        })}
+        {(value.from || value.to) && (
+          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => onChange({})}>
+            Todo el período
+          </Button>
+        )}
+      </div>
+    </FilterField>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// DateField — value: 'YYYY-MM-DD'
+// ---------------------------------------------------------------------------
+
+export function DateField({
+  label,
+  value,
+  onChange,
+  description,
+  placeholder,
+}: {
+  label: string;
+  value?: string;
+  onChange: (v: string | undefined) => void;
+  description?: string;
+  placeholder?: string;
+}) {
+  return (
+    <FilterField label={label} description={description}>
+      <DatePicker value={value} onChange={onChange} clearable placeholder={placeholder} />
     </FilterField>
   );
 }
@@ -156,6 +221,8 @@ export function DateRangeField({
 // ---------------------------------------------------------------------------
 
 const parse = (s: string) => (s === '' ? undefined : Number(s));
+// Nota: los <Input type="number"> del rango de edad son el control del
+// proyecto para números (shadcn Input), no un select nativo.
 
 export function NumberRangeField({
   label,

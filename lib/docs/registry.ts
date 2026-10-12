@@ -1076,7 +1076,7 @@ export const docsModules: DocModule[] = [
     slug: "reportes",
     title: "Reportes",
     summary:
-      "Corre los reportes R1–R11, filtra por trimestre y exporta a Excel/PDF.",
+      "Corre los reportes R1–R11 con los filtros propios de cada uno y exporta a Excel, CSV o PDF.",
     icon: BarChart3,
     visibleTo: ["ADMIN", "MANAGER", "USER"],
     actions: [],
@@ -1512,7 +1512,7 @@ export const docsModules: DocModule[] = [
             id: "paso-5-adicional",
             title: 'Paso 5 — "Información Adicional"',
             body:
-              "Datos extras como pertenencia a grupos étnicos, condición de discapacidad, situación de movilidad, etc. Cierra con \"Crear\" y el estudiante queda registrado en el centro.",
+              "Datos extras como pertenencia a grupos étnicos, condición de discapacidad, situación de movilidad, etc. Si eliges la discapacidad \"Otra\", especifícala en el campo de detalle (es obligatorio). Al final está \"Observaciones\" para cualquier nota sobre el joven (hasta 1000 caracteres). Cierra con \"Crear\" y el estudiante queda registrado en el centro.",
             callout: {
               variant: "success",
               title: "Resultado esperado",
@@ -1579,9 +1579,10 @@ export const docsModules: DocModule[] = [
               "Llena los datos del programa:",
             bullets: [
               "Centro * — a qué centro pertenece este curso.",
-              "Código — número correlativo del curso dentro del centro.",
+              "Código — número correlativo del curso dentro del centro. El sistema sugiere el siguiente libre; puedes cambiarlo.",
               'Nombre * — ej. "AFINADOR DE MOTORES", "Panadería Básica".',
               'Código de programa * — código corto del área (ej. "MA" para Mecánica Automotriz, "RF" para Refrigeración).',
+              "Área técnica * — la disciplina del curso. Es obligatoria: los reportes agrupan la matrícula por área.",
               'Taller — Sí si el curso requiere taller físico/práctico, No si es solo teórico.',
               "Objetivo * — descripción del objetivo del curso. Aparece en reportes y certificados.",
             ],
@@ -1597,6 +1598,12 @@ export const docsModules: DocModule[] = [
               text:
                 "Los reportes pueden cortar avance por módulo. Si te interesa medir \"cuántos estudiantes terminaron el módulo X\", divide el curso en módulos significativos.",
             },
+          },
+          {
+            id: "duplicar-curso",
+            title: "Atajo: duplica un curso parecido",
+            body:
+              'Si el curso nuevo se parece a uno existente (mismo programa en otro centro, o una versión nueva), usa "Duplicar" en el listado de cursos o "Duplicar curso" en su detalle. Se abre el asistente con todo copiado —nombre, programa, área, objetivo y módulos— para que solo ajustes lo que cambia. El código no se copia: el sistema sugiere el siguiente libre del centro.',
           },
           {
             id: "guardar",
@@ -1718,6 +1725,117 @@ export const docsModules: DocModule[] = [
           { moduleSlug: "centros", actionSlug: "crear-curso" },
           { moduleSlug: "centros", actionSlug: "crear-estudiante" },
           { moduleSlug: "proyectos", actionSlug: "vincular-beneficiarios" },
+          { moduleSlug: "centros", actionSlug: "cierre-cursos" },
+        ],
+      },
+      {
+        slug: "cierre-cursos",
+        title: "Registrar quién egresó o desertó (cierre de cursos)",
+        summary:
+          "Al terminar un curso, marca por lista a los egresados y a los desertores (con fecha y motivo). Es la base del % de retención y del seguimiento.",
+        roles: {
+          ADMIN: { level: "full" },
+          MANAGER: { level: "full" },
+          USER: { level: "partial", note: "Puede consultar las listas y descargarlas, pero no registrar cambios." },
+        },
+        steps: [
+          {
+            id: "abrir-cierre",
+            title: 'Abre Centros → Egresados, pestaña "Cierre de cursos"',
+            body:
+              'La lista arranca mostrando las matrículas de cursos ya terminados que aún no tienen resultado ("Sin cierre"). Las tarjetas de arriba resumen cuántas hay sin cierre, cuántos egresados y cuántos desertores; al pulsar una tarjeta filtras la lista.',
+          },
+          {
+            id: "filtrar-proceso",
+            title: "Elige el proceso educativo",
+            body:
+              'Lo más práctico es cerrar un curso a la vez: en el filtro "Proceso educativo" busca por código, curso o centro. También puedes filtrar por centro, año de inicio, proyecto o buscar a un estudiante por nombre o DNI.',
+          },
+          {
+            id: "marcar-egresados",
+            title: "Marca a los egresados",
+            body:
+              'Marca la casilla del encabezado para seleccionar la página (o "Marcar los N de la lista" para todos), desmarca a quienes no terminaron y pulsa "Marcar egresados". Si dejas la fecha vacía se usa la fecha de fin de cada curso.',
+            callout: {
+              variant: "tip",
+              title: "Un clic en la fila también la marca",
+              text: "No hace falta apuntar a la casilla: pulsar cualquier parte de la fila la selecciona o la quita.",
+            },
+          },
+          {
+            id: "marcar-desertores",
+            title: "Marca a los desertores",
+            body:
+              'Selecciona a quienes dejaron el curso y pulsa "Marcar desertores". La fecha y el motivo (falta de interés, falta de dinero, migración, cambio de domicilio u otro) son obligatorios.',
+          },
+          {
+            id: "cierre-excel",
+            title: "Alternativa: trabaja la lista en Excel",
+            body:
+              '"Descargar lista" baja las matrículas filtradas con la columna Resultado para completar (Egresó, Desertó o Pendiente) y, para los desertores, la fecha y el motivo. Súbela con "Subir lista": solo se tocan las filas con resultado y los errores se muestran fila por fila.',
+            callout: {
+              variant: "warning",
+              title: "Corregir un resultado",
+              text:
+                '"Quitar resultado" devuelve las matrículas a "Sin cierre". A un egresado que ya tiene seguimiento o pasantía no se le puede quitar el egreso: borra primero esos registros.',
+            },
+          },
+        ],
+        related: [
+          { moduleSlug: "centros", actionSlug: "seguimiento-egresados" },
+          { moduleSlug: "centros", actionSlug: "crear-proceso" },
+        ],
+      },
+      {
+        slug: "seguimiento-egresados",
+        title: "Registrar el seguimiento de los egresados",
+        summary:
+          "En cada levantamiento, registra si los egresados trabajan, emprenden, estudian, buscan empleo o están en pasantía. Alimenta el reporte R4.",
+        roles: {
+          ADMIN: { level: "full" },
+          MANAGER: { level: "full" },
+          USER: { level: "partial", note: "Puede consultar el seguimiento y descargarlo, pero no registrarlo." },
+        },
+        steps: [
+          {
+            id: "abrir-seguimiento",
+            title: 'Abre Centros → Egresados, pestaña "Seguimiento de egresados"',
+            body:
+              "Aquí aparecen solo los egresados (los que marcaste en el cierre), con su último estatus. Las tarjetas muestran cuántos están trabajando, emprendiendo, estudiando, buscando empleo, en pasantía o sin seguimiento; si hay cursos terminados sin cierre, un aviso te lleva a cerrarlos.",
+          },
+          {
+            id: "fecha-corte",
+            title: "Entiende la fecha de corte",
+            body:
+              "Cada registro de seguimiento lleva una fecha de corte: la del levantamiento (por ejemplo, la llamada de octubre). Un joven tiene un registro por fecha de corte, así se conserva su historial. El reporte R4 muestra el estatus de cada egresado a la fecha de corte que elijas.",
+          },
+          {
+            id: "registrar-varios",
+            title: "Registra el mismo estatus a varios",
+            body:
+              'Selecciona a los egresados y pulsa "Registrar seguimiento": elige la fecha de corte, el estatus y, según el estatus, la empresa y el puesto, el negocio y su rubro (con el kit de emprendimiento), o la institución y la carrera.',
+          },
+          {
+            id: "subir-corte",
+            title: "Para datos distintos por joven, usa Excel",
+            body:
+              '"Descargar lista" trae a los egresados con su último estatus ya escrito: cambia solo lo que se movió y súbela con "Subir corte" indicando la fecha de corte. Las filas con estatus vacío se omiten y nada se borra.',
+          },
+          {
+            id: "historial",
+            title: "Historial y pasantía de un egresado",
+            body:
+              "Pulsa a un egresado para abrir su panel: ves todos sus cortes, puedes corregir o borrar uno, registrar un corte nuevo (parte del último) y guardar su pasantía (empresa, fechas, estado, % de avance y beneficio).",
+            callout: {
+              variant: "success",
+              title: "Resultado esperado",
+              text:
+                "El reporte R4 · Seguimiento post-formación cuenta a cada egresado en un solo estatus (el de su último seguimiento hasta la fecha de corte), así los totales suman el número de egresados.",
+            },
+          },
+        ],
+        related: [
+          { moduleSlug: "centros", actionSlug: "cierre-cursos" },
         ],
       },
     ],

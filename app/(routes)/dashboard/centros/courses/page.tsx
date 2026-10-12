@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef, Suspense } from "react";
 import { Breadcrumbs, BreadcrumbItem } from "@/components/ui/breadcrumbs";
 import DataTable from "@/components/ui/service-datatable";
 import { Button } from "@/components/ui/button";
-import { ArrowUpDown, Search, ChevronsUpDown } from "lucide-react";
+import { ArrowUpDown, Search, ChevronsUpDown, Copy, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import SkeletonTable from "@/components/skeleton-table";
@@ -13,8 +13,9 @@ import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import ExcelActions from "@/components/centro/excel-actions";
-import CourseWizardModal from "@/components/centro/course-wizard-modal";
+import CourseWizardModal, { type CourseWizardInitialData } from "@/components/centro/course-wizard-modal";
 import { cn } from "@/lib/utils";
 
 const apiBase = process.env.NEXT_PUBLIC_API_PROXY;
@@ -46,12 +47,25 @@ function PageContent() {
     const [centroSelectWidth, setCentroSelectWidth] = useState(256);
     const centroMeasureRef = useRef<HTMLSpanElement>(null);
 
+    const [areas, setAreas] = useState<{ id: number; nombre: string }[]>([]);
+    const [areaFilter, setAreaFilter] = useState("all");
+
     const [wizardOpen, setWizardOpen] = useState(false);
+    // Duplicar: curso origen + módulos para precargar el asistente
+    const [duplicateData, setDuplicateData] = useState<CourseWizardInitialData | null>(null);
+    const [duplicatingId, setDuplicatingId] = useState<number | null>(null);
 
     const fetchCentros = async () => {
         try {
             const res = await fetch(`${apiBase}/centros/centros?all=true`, { headers: authHeaders });
             if (res.ok) { const d = await res.json(); setCentros(d.data ?? []); }
+        } catch { /* silent */ }
+    };
+
+    const fetchAreas = async () => {
+        try {
+            const res = await fetch(`${apiBase}/centros/areas?all=true`, { headers: authHeaders });
+            if (res.ok) { const d = await res.json(); setAreas(d.data ?? []); }
         } catch { /* silent */ }
     };
 
@@ -75,6 +89,8 @@ function PageContent() {
         });
         const cid = overrides.centro_id ?? centroFilter;
         if (cid && cid !== "all") p.set("centro_id", cid);
+        const aid = overrides.area_id ?? areaFilter;
+        if (aid && aid !== "all") p.set("area_id", aid);
         return p.toString();
     };
 
@@ -103,6 +119,31 @@ function PageContent() {
     const onRefresh = () => { window.history.replaceState(null, "", pathname); getDataInit(""); };
     const reloadList = () => fetchCourses(buildParams());
 
+    const openCreateWizard = () => { setDuplicateData(null); setWizardOpen(true); };
+
+    // Duplicar: carga los módulos del curso y abre el asistente precargado (sin código)
+    const duplicateCourse = async (course: any) => {
+        if (duplicatingId !== null) return;
+        setDuplicatingId(course.id);
+        try {
+            const res = await fetch(`${apiBase}/centros/courses/${course.id}/modules`, { headers: authHeaders });
+            if (res.ok) {
+                const d = await res.json();
+                setDuplicateData({
+                    centro_id: course.centro_id,
+                    nombre: course.nombre,
+                    codigo_programa: course.codigo_programa,
+                    taller: course.taller,
+                    objetivo: course.objetivo,
+                    area_id: course.area_id,
+                    modules: d.data ?? [],
+                });
+                setWizardOpen(true);
+            } else toast.error("Error al cargar los módulos del curso");
+        } catch { toast.error("Error al cargar los módulos del curso"); }
+        setDuplicatingId(null);
+    };
+
     const longestCentroLabel = useMemo(() => {
         const labels = ["Todos los centros", ...centros.map((c) => c.nombre)];
         return labels.reduce((a, b) => (a.length >= b.length ? a : b), "");
@@ -123,7 +164,7 @@ function PageContent() {
         return list.filter((item) => item.label.toLowerCase().includes(q));
     }, [centros, centroFilterSearch]);
 
-    useEffect(() => { if (session) { fetchCentros(); getDataInit(searchInit); } }, [session]);
+    useEffect(() => { if (session) { fetchCentros(); fetchAreas(); getDataInit(searchInit); } }, [session]);
     useEffect(() => { if (courses.length > 0) getDataPagination(0); }, [limit]);
 
     /* ── Table columns ── */
@@ -132,6 +173,26 @@ function PageContent() {
             {label}<ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
     );
+
+    // Acción de fila (solo supervisores): el wrapper evita abrir el detalle del curso
+    const actionsColumn: any[] = isSupervisor ? [{
+        id: "actions", enableHiding: false,
+        cell: ({ row }: any) => (
+            <div className="text-end" onClick={(e) => e.stopPropagation()}>
+                <Button
+                    variant="ghost" size="sm"
+                    className="h-8 bg-transparent text-primary hover:bg-primary/80 hover:text-primary-foreground rounded-md px-3 font-semibold"
+                    disabled={duplicatingId !== null}
+                    onClick={() => duplicateCourse(row.original)}
+                >
+                    {duplicatingId === row.original.id
+                        ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+                        : <Copy className="h-4 w-4 mr-1.5" />}
+                    Duplicar
+                </Button>
+            </div>
+        ),
+    }] : [];
 
     const columns: any[] = [
         {
@@ -151,6 +212,10 @@ function PageContent() {
             ),
         },
         {
+            accessorKey: "area_nombre", header: "Área técnica",
+            cell: ({ row }: any) => <span className="text-sm text-muted-foreground">{row.original.area_nombre ?? "—"}</span>,
+        },
+        {
             accessorKey: "codigo_programa", header: "Cód. Programa",
             cell: ({ row }: any) => <span className="text-sm">{row.original.codigo_programa ?? "-"}</span>,
         },
@@ -158,6 +223,7 @@ function PageContent() {
             accessorKey: "total_horas", header: "Total Horas",
             cell: ({ row }: any) => <span className="text-sm">{row.original.total_horas ?? "-"}</span>,
         },
+        ...actionsColumn,
     ];
 
     const mobileColumns: any[] = [
@@ -171,6 +237,7 @@ function PageContent() {
                 </div>
             ),
         },
+        ...actionsColumn,
     ];
 
     return (
@@ -243,6 +310,19 @@ function PageContent() {
                         </PopoverContent>
                     </Popover>
                 </div>
+                <div className="w-[200px]">
+                    <Label className="mb-1 text-xs font-medium text-muted-foreground">Área técnica</Label>
+                    <Select
+                        value={areaFilter}
+                        onValueChange={(v) => { setAreaFilter(v); setOffset(0); fetchCourses(buildParams({ area_id: v, offset: 0 })); }}
+                    >
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Todas las áreas" /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Todas las áreas</SelectItem>
+                            {areas.map((a) => <SelectItem key={a.id} value={String(a.id)}>{a.nombre}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
                 {isSupervisor && (
                     <div className="flex items-end pb-0.5">
                         <ExcelActions centroId={centroFilter !== "all" ? centroFilter : null} entity="courses" onSuccess={reloadList} />
@@ -256,7 +336,7 @@ function PageContent() {
                     {!loading && (
                         <DataTable
                             insertString={isSupervisor ? "Crear Curso" : undefined}
-                            onInsert={isSupervisor ? () => setWizardOpen(true) : undefined}
+                            onInsert={isSupervisor ? openCreateWizard : undefined}
                             search={search} setSearch={setSearch}
                             className={loading ? "hidden" : ""} data={courses}
                             columns={isMobile ? mobileColumns : columns}
@@ -270,8 +350,8 @@ function PageContent() {
                 </CardContent>
             </Card>
 
-            {/* ── Course Wizard ── */}
-            <CourseWizardModal isOpen={wizardOpen} setIsOpen={setWizardOpen} reloadList={reloadList} centros={centros} />
+            {/* ── Course Wizard (crear / duplicar) ── */}
+            <CourseWizardModal isOpen={wizardOpen} setIsOpen={setWizardOpen} reloadList={reloadList} centros={centros} initialData={duplicateData} />
         </div>
     );
 }

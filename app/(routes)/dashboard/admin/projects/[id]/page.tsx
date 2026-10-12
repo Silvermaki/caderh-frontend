@@ -151,6 +151,9 @@ const CurrencyInput = ({
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
+// Tope del backend para GET /centros/processes (limit máximo).
+const PROCESS_SEARCH_LIMIT = 100;
+
 const Page = () => {
     const params = useParams();
     const router = useRouter();
@@ -242,6 +245,7 @@ const Page = () => {
     const [unlinkProcessTarget, setUnlinkProcessTarget] = useState<any>(null);
     const [unlinkingProcess, setUnlinkingProcess] = useState(false);
     const [availableProcessesLoading, setAvailableProcessesLoading] = useState(false);
+    const [availableProcessesTotal, setAvailableProcessesTotal] = useState<number | null>(null);
     const [beneficiaryStats, setBeneficiaryStats] = useState<any>(null);
     const [beneficiaryStatsLoading, setBeneficiaryStatsLoading] = useState(false);
 
@@ -486,20 +490,45 @@ const Page = () => {
         setBeneficiaryStatsLoading(false);
     };
 
-    const openLinkProcessDialog = async () => {
-        setLinkProcessDialogOpen(true);
+    // Procesos para vincular: la búsqueda la resuelve el servidor (hay cientos;
+    // código, nombre, curso o centro) con una pausa de 300 ms entre teclas.
+    // Un proceso puede estar vinculado a varios proyectos: no se bloquea.
+    const openLinkProcessDialog = () => {
         setLinkProcessSearch("");
         setSelectedProcessIds([]);
-        setAvailableProcessesLoading(true);
-        try {
-            const res = await fetch(
-                `${process.env.NEXT_PUBLIC_API_PROXY}/centros/processes?limit=100&offset=0`,
-                { headers: { Authorization: `Bearer ${session?.user?.session}` } }
-            );
-            if (res.ok) { const json = await res.json(); setAvailableProcesses(json.data ?? []); }
-        } catch { /* silent */ }
-        setAvailableProcessesLoading(false);
+        setAvailableProcesses([]);
+        setAvailableProcessesTotal(null);
+        setLinkProcessDialogOpen(true);
     };
+
+    useEffect(() => {
+        if (!linkProcessDialogOpen || !session) return;
+        let vivo = true;
+        const q = linkProcessSearch.trim();
+        setAvailableProcessesLoading(true);
+        const t = setTimeout(async () => {
+            try {
+                const params = new URLSearchParams({ limit: String(PROCESS_SEARCH_LIMIT), offset: "0" });
+                if (q) params.set("search", q);
+                const res = await fetch(
+                    `${process.env.NEXT_PUBLIC_API_PROXY}/centros/processes?${params}`,
+                    { headers: { Authorization: `Bearer ${session?.user?.session}` } }
+                );
+                const json = res.ok ? await res.json() : null;
+                if (!vivo) return;
+                if (!res.ok) toast.error("Error al buscar procesos");
+                setAvailableProcesses(json?.data ?? []);
+                setAvailableProcessesTotal(typeof json?.count === "number" ? json.count : null);
+            } catch {
+                if (!vivo) return;
+                toast.error("Error al buscar procesos");
+                setAvailableProcesses([]);
+                setAvailableProcessesTotal(null);
+            }
+            setAvailableProcessesLoading(false);
+        }, q ? 300 : 0);
+        return () => { vivo = false; clearTimeout(t); };
+    }, [linkProcessDialogOpen, linkProcessSearch, session?.user?.session]);
 
     const submitLinkProcesses = async () => {
         if (!selectedProcessIds.length) return;
@@ -541,14 +570,12 @@ const Page = () => {
         setUnlinkingProcess(false);
     };
 
+    // Los ya vinculados a ESTE proyecto se muestran marcados y no se pueden elegir.
     const linkedProcessIds = new Set(linkedProcesses.map((p: any) => p.id));
-    const filteredAvailableProcesses = availableProcesses
-        .filter((p: any) => !linkedProcessIds.has(p.id))
-        .filter((p: any) => {
-            if (!linkProcessSearch.trim()) return true;
-            const q = linkProcessSearch.toLowerCase();
-            return (p.nombre ?? "").toLowerCase().includes(q) || (p.codigo ?? "").toLowerCase().includes(q) || (p.centro_nombre ?? "").toLowerCase().includes(q) || (p.curso_nombre ?? "").toLowerCase().includes(q);
-        });
+    const linkSearchText = linkProcessSearch.trim();
+    // El servidor devuelve como máximo PROCESS_SEARCH_LIMIT: si hay más, se pide afinar.
+    const moreProcessesThanShown = availableProcesses.length >= PROCESS_SEARCH_LIMIT
+        && (availableProcessesTotal == null || availableProcessesTotal > availableProcesses.length);
 
     const reloadAll = () => {
         fetchProject();
@@ -2874,47 +2901,69 @@ const Page = () => {
                 <DialogContent size="5xl" className="p-0 gap-0 overflow-hidden max-h-[90vh]">
                     <div className="px-6 pt-6 pb-3">
                         <DialogTitle>Vincular Proceso Educativo</DialogTitle>
-                        <p className="text-sm text-muted-foreground mt-1">Selecciona los procesos educativos a vincular con este proyecto.</p>
+                        <p className="text-sm text-muted-foreground mt-1">Selecciona los procesos educativos a vincular con este proyecto. Un proceso puede estar vinculado a varios proyectos.</p>
                     </div>
-                    <div className="px-4 pb-2 border-b">
-                        <div className="flex items-center gap-2 rounded-md border bg-background px-3">
-                            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-                            <input
-                                type="text"
-                                placeholder="Buscar por nombre, código, centro o curso..."
+                    <div className="px-4 pb-3 border-b">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                            <Input
+                                autoFocus
                                 value={linkProcessSearch}
                                 onChange={(e) => setLinkProcessSearch(e.target.value)}
-                                className="flex h-10 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+                                placeholder="Buscar por código, nombre, curso o centro..."
+                                className="h-10 pl-9 pr-9"
                             />
+                            {availableProcessesLoading && (
+                                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                            )}
                         </div>
                     </div>
                     <div className="overflow-y-auto px-4 py-3" style={{ maxHeight: "calc(90vh - 200px)" }}>
-                        {availableProcessesLoading ? (
-                            <div className="py-12 text-center text-sm text-muted-foreground">Cargando...</div>
-                        ) : filteredAvailableProcesses.length === 0 ? (
-                            <div className="py-12 text-center text-sm text-muted-foreground">No hay procesos disponibles.</div>
+                        {moreProcessesThanShown && (
+                            <p className="mb-3 text-xs text-muted-foreground">
+                                Mostrando los primeros {PROCESS_SEARCH_LIMIT}{availableProcessesTotal ? ` de ${availableProcessesTotal}` : ""}; afina la búsqueda para encontrar otros.
+                            </p>
+                        )}
+                        {availableProcessesLoading && availableProcesses.length === 0 ? (
+                            <div className="py-12 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                                <Loader2 className="h-4 w-4 animate-spin" />Buscando procesos...
+                            </div>
+                        ) : availableProcesses.length === 0 ? (
+                            <div className="py-12 text-center text-sm text-muted-foreground">
+                                {linkSearchText ? <>Sin resultados para &quot;{linkSearchText}&quot;.</> : "No hay procesos disponibles."}
+                            </div>
                         ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {filteredAvailableProcesses.map((p: any) => {
-                                    const checked = selectedProcessIds.includes(p.id);
+                            // Los resultados anteriores quedan a la vista (atenuados) mientras llega la nueva búsqueda.
+                            <div className={cn("grid grid-cols-1 md:grid-cols-2 gap-3 transition-opacity", availableProcessesLoading && "opacity-60")}>
+                                {availableProcesses.map((p: any) => {
+                                    const linked = linkedProcessIds.has(p.id);
+                                    const checked = linked || selectedProcessIds.includes(p.id);
                                     return (
                                         <button
                                             key={p.id}
                                             type="button"
-                                            onClick={() => setSelectedProcessIds((prev) => checked ? prev.filter((x) => x !== p.id) : [...prev, p.id])}
+                                            aria-disabled={linked}
+                                            // Sin `disabled`: el enlace "Ver proceso" debe seguir funcionando.
+                                            onClick={() => { if (!linked) setSelectedProcessIds((prev) => checked ? prev.filter((x) => x !== p.id) : [...prev, p.id]); }}
                                             className={cn(
                                                 "relative flex flex-col rounded-lg border p-4 text-left transition-all duration-150",
-                                                checked ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "border-border hover:border-primary/40 hover:shadow-sm"
+                                                linked ? "border-border bg-muted/40 cursor-default"
+                                                    : checked ? "border-primary bg-primary/5 ring-1 ring-primary/30" : "border-border hover:border-primary/40 hover:shadow-sm"
                                             )}
                                         >
                                             <div className="flex items-start gap-3 mb-3">
-                                                <Checkbox checked={checked} className="mt-0.5 shrink-0" />
+                                                <Checkbox checked={checked} disabled={linked} className="mt-0.5 shrink-0" />
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex items-center gap-2 flex-wrap">
                                                         <p className="font-semibold text-sm leading-tight">{p.nombre}</p>
                                                         {p.codigo && (
                                                             <span className="text-[10px] font-medium bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">
                                                                 {p.codigo}
+                                                            </span>
+                                                        )}
+                                                        {linked && (
+                                                            <span className="text-[10px] font-medium bg-success/10 text-success px-1.5 py-0.5 rounded">
+                                                                Ya vinculado
                                                             </span>
                                                         )}
                                                     </div>

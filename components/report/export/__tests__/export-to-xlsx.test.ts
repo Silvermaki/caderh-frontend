@@ -1,36 +1,75 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type ExcelJS from 'exceljs';
 import { buildWorkbook } from '../export-to-xlsx';
 import type { ColumnDef } from '@/lib/report/types';
 
-type Row = { centro: string; total: number };
+type Row = { centro: string; total: number; monto?: number; inicio?: string; pct?: number; rowKind?: 'subtotal' };
+
+const cols: ColumnDef<Row>[] = [
+  { key: 'centro', label: 'Centro' },
+  { key: 'total', label: 'Total', align: 'right', format: 'count' },
+  { key: 'monto', label: 'Monto', align: 'right', format: 'money' },
+  { key: 'inicio', label: 'Inicio', format: 'date' },
+  { key: 'pct', label: '% Mujeres', align: 'right', format: 'percent' },
+];
+
+// Encabezado en la fila 5 (filas 1–4: banner); datos desde la 6.
+const HEADER = 5;
+
+function columnValues(ws: ExcelJS.Worksheet, col: string): string {
+  const out: string[] = [];
+  ws.eachRow((row) => out.push(String(row.getCell(col).value ?? '')));
+  return out.join(' | ');
+}
 
 describe('buildWorkbook', () => {
-  it('produces a workbook with headers and rows', () => {
-    const cols: ColumnDef<Row>[] = [
-      { key: 'centro', label: 'Centro' },
-      { key: 'total', label: 'Total', align: 'right' },
-    ];
-    const wb = buildWorkbook({
-      title: 'R0 demo',
-      columns: cols,
-      rows: [{ centro: 'A', total: 10 }],
-      filtersApplied: { from: '2026-01-01' },
-      missingColumns: [],
-    });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    expect(sheet['A1'].v).toBe('Centro');
-    expect(sheet['B1'].v).toBe('Total');
-    expect(sheet['A2'].v).toBe('A');
-    expect(sheet['B2'].v).toBe(10);
+  beforeEach(() => {
+    // Sin logo en pruebas: la descarga del PNG falla y se omite.
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false })));
   });
 
-  it('appends a note at the bottom when missingColumns non-empty', () => {
-    const cols: ColumnDef<any>[] = [{ key: 'a', label: 'A' }];
-    const wb = buildWorkbook({
-      title: 'T', columns: cols, rows: [], filtersApplied: {}, missingColumns: ['colX'],
+  it('escribe encabezados, filas con formato, subtotales y la fila de totales', async () => {
+    const wb = await buildWorkbook<Row>({
+      title: 'R0 demo',
+      columns: cols,
+      rows: [
+        { centro: 'A', total: 10, monto: 1500.5, inicio: '2026-03-01', pct: 50 },
+        { centro: 'Subtotal', total: 10, rowKind: 'subtotal' },
+      ],
+      totalsRow: { total: 10, monto: 1500.5, pct: 50 },
+      filtersApplied: { Proyecto: 'Proyecto Alfa' },
+      missingColumns: [],
     });
-    const sheet = wb.Sheets[wb.SheetNames[0]];
-    const values = Object.keys(sheet).filter((k) => k.startsWith('A')).map((k) => sheet[k].v);
-    expect(values.join(' ')).toMatch(/pendientes de captura/i);
+    const ws = wb.worksheets[0];
+
+    expect(ws.getRow(HEADER).getCell(1).value).toBe('Centro');
+    expect(ws.getRow(HEADER).getCell(2).value).toBe('Total');
+
+    const data = ws.getRow(HEADER + 1);
+    expect(data.getCell(1).value).toBe('A');
+    expect(data.getCell(2).value).toBe(10);
+    expect(data.getCell(2).numFmt).toBe('#,##0');
+    expect(data.getCell(3).numFmt).toBe('"L "#,##0.00');
+    // La fecha se guarda como fecha real (sin desfase de zona horaria).
+    expect(data.getCell(4).value).toEqual(new Date(Date.UTC(2026, 2, 1)));
+    expect(data.getCell(4).numFmt).toBe('dd/mm/yyyy');
+    expect(data.getCell(5).numFmt).toBe('0.0"%"');
+
+    expect(ws.getRow(HEADER + 2).getCell(1).font?.bold).toBe(true);
+
+    const totals = ws.getRow(HEADER + 3);
+    expect(totals.getCell(1).value).toBe('Total');
+    expect(totals.getCell(2).value).toBe(10);
+    expect(totals.getCell(1).font?.bold).toBe(true);
+
+    expect(columnValues(ws, 'A')).toMatch(/Proyecto/);
+    expect(columnValues(ws, 'B')).toMatch(/Proyecto Alfa/);
+  });
+
+  it('agrega una nota al final cuando hay columnas pendientes', async () => {
+    const wb = await buildWorkbook({
+      title: 'T', columns: [{ key: 'a', label: 'A' }], rows: [], filtersApplied: {}, missingColumns: ['colX'],
+    });
+    expect(columnValues(wb.worksheets[0], 'A')).toMatch(/pendiente\(s\) de captura/i);
   });
 });

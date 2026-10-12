@@ -27,9 +27,11 @@ export function ReportHeader({ title, subtitle, onClear, exportMenu }: ReportHea
         <Button variant="ghost" size="sm" disabled title="Disponible en fase 2">
           <Save className="h-4 w-4 mr-1" /> Guardar vista
         </Button>
-        <Button variant="outline" size="sm" onClick={onClear}>
-          <RotateCcw className="h-4 w-4 mr-1" /> Limpiar
-        </Button>
+        {onClear && (
+          <Button variant="outline" size="sm" onClick={onClear}>
+            <RotateCcw className="h-4 w-4 mr-1" /> Limpiar
+          </Button>
+        )}
         {exportMenu}
       </div>
     </div>

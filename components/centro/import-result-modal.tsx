@@ -35,18 +35,38 @@ export interface ImportResult {
 // ya traen el dato inválido; aquí se agrega el "cómo arreglarlo" en lenguaje
 // de usuario final (el que llena el Excel no es técnico).
 const SUGGESTIONS: Array<{ re: RegExp; hint: string }> = [
+  // Egresados y seguimiento (primero: los mensajes llevan el nombre del joven,
+  // que podría coincidir con reglas genéricas como /vive/).
+  { re: /registre primero su egreso|registre primero el egreso/i, hint: 'Solo los egresados tienen seguimiento: marque primero su egreso en la pestaña Cierre de cursos.' },
+  { re: /fecha de corte .* anterior a su egreso|anterior al egreso/i, hint: 'La fecha de corte debe ser igual o posterior a la fecha en que egresó.' },
+  { re: /tiene seguimiento o pasant[ií]a registrados/i, hint: 'Ya tiene seguimiento: para cambiar su resultado, borre antes sus registros de seguimiento y su pasantía (desde su panel en la pestaña Seguimiento).' },
+  { re: /el curso termina el/i, hint: 'El curso aún no termina: indique la fecha real de egreso o registre el egreso cuando el curso finalice.' },
+  { re: /anterior al inicio del curso/i, hint: 'La fecha del resultado no puede ser anterior al inicio del curso.' },
+  { re: /fecha de deserci[oó]n es obligatoria|deserci[oó]n no puede ser futura/i, hint: 'Indique la fecha (pasada) en que el joven dejó el curso.' },
+  { re: /motivo de deserci[oó]n/i, hint: 'Elija el motivo de la lista: Falta de interés o decisión personal, Falta de dinero, Migró o viajó, Cambio de domicilio u Otro.' },
+  { re: /resultado inválido/i, hint: 'En la columna Resultado use Egresó, Desertó o Pendiente (Pendiente quita el resultado registrado).' },
+  { re: /estatus .*incompleto|estatus inválido/i, hint: 'Use un estatus de la lista desplegable: Trabajo permanente, Trabajo temporal, Emprendiendo, Estudiando, Búsqueda de empleo, En pasantía, Otro o No aplica.' },
+  { re: /rango de (salario|ingreso) inválido/i, hint: 'Elija el rango de la lista desplegable de la plantilla (hoja "Listas").' },
+  { re: /sin ID de matrícula|no hay matrícula activa|varias matrículas/i, hint: 'Trabaje sobre la lista descargada del sistema (trae el ID de matrícula). Si agrega filas a mano, escriba el DNI y el código del proceso exactamente.' },
+  { re: /avance de la pasant[ií]a/i, hint: 'Escriba el porcentaje de avance como un número de 0 a 100.' },
+  { re: /pasant[ií]a termina antes/i, hint: 'Revise las fechas de la pasantía: el fin no puede ser anterior al inicio.' },
+  { re: /use s[ií] o no/i, hint: 'Escriba Sí o No.' },
   { re: /fecha.*inválida/i, hint: 'Escriba la fecha como DD/MM/AAAA (ej. 21/07/2008) o dé formato de Fecha a la celda en Excel. El año va con 4 dígitos.' },
   { re: /fecha.*fuera de rango/i, hint: 'Revise el año: la fecha debe ser real y el estudiante debe tener al menos 10 años.' },
   { re: /identidad inválida/i, hint: 'El DNI debe tener 13 dígitos (formato 0000-0000-00000). Verifique que no falte ni sobre un dígito.' },
   { re: /duplicada en el excel/i, hint: 'Hay dos filas con el mismo DNI en el archivo: elimine o corrija la fila repetida.' },
   { re: /ya existe para otro/i, hint: 'Ese DNI ya pertenece a una persona registrada en otro centro. Verifique el número.' },
   { re: /sexo inválido/i, hint: 'Use M o F (también se acepta Masculino / Femenino).' },
+  // Antes que la regla de catálogos: "El detalle de la discapacidad admite hasta…".
+  { re: /admite hasta \d+ caracteres/i, hint: 'El texto es demasiado largo: acórtelo hasta el máximo indicado (detalle de la discapacidad: 300 caracteres; observaciones: 1000).' },
+  { re: /tipo de contrato/i, hint: 'Elija una opción de la lista: Permanente, Temporal, Por eventos o Ninguno.' },
+  { re: /[áa]rea t[ée]cnica/i, hint: 'Cada curso necesita su área técnica: elíjala de la lista desplegable de la plantilla (hoja "Areas Tecnicas"), escrita igual que allí.' },
   { re: /vive/i, hint: 'Valores válidos: Padres, Solo(a), Pareja, Familiares u Otros.' },
-  { re: /municipio|departamento/i, hint: 'Verifique que el municipio pertenezca al departamento indicado (use los códigos de la hoja de catálogos).' },
+  { re: /municipio|departamento/i, hint: 'Escriba el departamento y el municipio por nombre, como en las listas desplegables de la plantilla (no el código). El municipio debe pertenecer al departamento indicado.' },
   { re: /duraci[oó]n/i, hint: 'La duración debe ser un número entero de horas mayor que 0 (ej. 120).' },
   { re: /fecha final|final.*inicial/i, hint: 'La fecha final debe ser igual o posterior a la fecha inicial.' },
   { re: /monto/i, hint: 'El monto debe ser un número mayor que 0, sin símbolos (ej. 25000).' },
-  { re: /escolaridad|etnia|discapacidad/i, hint: 'Use el código numérico del catálogo (vea la hoja de catálogos de la plantilla).' },
+  { re: /escolaridad|etnia|discapacidad/i, hint: 'Escriba el nombre tal como aparece en la lista desplegable de la plantilla (no el código), o deje la celda vacía si no aplica.' },
 ];
 
 function suggestionFor(message: string): string {
@@ -59,14 +79,21 @@ export function ImportResultModal({
   onOpenChange,
   entityLabel,
   result,
+  title,
+  errorIntro,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   entityLabel: string;
   result: ImportResult | null;
+  /** Título propio (acciones masivas que no son una importación). */
+  title?: string;
+  /** Texto sobre la tabla de errores (por defecto, el de importación de Excel). */
+  errorIntro?: React.ReactNode;
 }) {
   const errors = result?.errors ?? [];
   const warnings = result?.warnings ?? [];
+  const heading = title || `Resultado de la importación de ${entityLabel}`;
 
   const chips = useMemo(() => {
     if (!result) return [];
@@ -82,7 +109,7 @@ export function ImportResultModal({
 
   const copyDetail = async () => {
     const lines = [
-      `Resultado de importación de ${entityLabel}:`,
+      `${heading}:`,
       ...chips.map((c) => `- ${c.label}`),
       ...(errors.length ? ['', 'Errores:'] : []),
       ...errors.map((e) => `  ${e.row != null ? `Fila ${e.row}: ` : ''}${e.message}`),
@@ -101,7 +128,7 @@ export function ImportResultModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="4xl">
         <DialogHeader>
-          <DialogTitle>Resultado de la importación de {entityLabel}</DialogTitle>
+          <DialogTitle>{heading}</DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -119,9 +146,13 @@ export function ImportResultModal({
         {errors.length > 0 && (
           <div className="mt-2">
             <p className="text-sm text-muted-foreground mb-2">
-              Las siguientes filas <b>no se importaron</b>. Corríjalas en el
-              Excel y vuelva a importar el archivo completo — los registros ya
-              cargados se actualizan, no se duplican.
+              {errorIntro ?? (
+                <>
+                  Las siguientes filas <b>no se importaron</b>. Corríjalas en el
+                  Excel y vuelva a importar el archivo completo — los registros ya
+                  cargados se actualizan, no se duplican.
+                </>
+              )}
             </p>
             <div className="max-h-[55vh] overflow-y-auto rounded-md border border-border">
               <table className="w-full text-sm table-fixed">

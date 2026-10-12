@@ -17,8 +17,9 @@ export function FilterDrawer({
 }: FilterDrawerProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="left" className="w-[320px] p-0 flex flex-col">
-        <SheetHeader className="p-4 border-b">
+      <SheetContent side="left" className="w-[320px] p-0 flex flex-col" aria-describedby={undefined}>
+        {/* pr-12: deja libre la X de cierre del Sheet (tapaba "Limpiar todo"). */}
+        <SheetHeader className="p-4 pr-12 border-b">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-base font-semibold">
               Filtros

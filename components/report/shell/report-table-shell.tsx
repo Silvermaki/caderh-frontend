@@ -1,14 +1,17 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useQueries } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import { ReportBreadcrumbs, type Crumb } from '../table/report-breadcrumbs';
 import { ReportHeader } from '../table/report-header';
 import { ReportEmpty } from '../table/report-empty';
 import { ReportError } from '../table/report-error';
 import { ScopeBar } from '../filters/scope-bar';
 import { FilterDrawer } from '../filters/filter-drawer';
+import type { SetFilter, SetFilters } from '../filters/filter-renderer';
 import { ExportMenu } from '../export/export-menu';
 import { MissingDbBanner, type MissingDbItem } from '../missing-db/missing-db-banner';
 import { SHOW_PENDING_HINTS } from '@/lib/report/pending-hints';
@@ -17,85 +20,135 @@ import { ConditionalRedCell } from '../variants/conditional-red-cell';
 import { ReportChart } from '../variants/report-chart';
 import { ReportKpiStrip } from '../variants/report-kpi-strip';
 import { ReportSkeleton } from './report-skeleton';
-import { useReportQuery } from '@/hooks/use-report-query';
+import { ALL_ROWS, useReportQuery } from '@/hooks/use-report-query';
 import { useReportExport } from '@/hooks/use-report-export';
 import { useUrlFilters } from '@/hooks/use-url-filters';
-import { FILTER_META } from '@/lib/report/filter-keys';
-import type { AnyColumn, ColumnDef, CompoundColumnDef, ReportDefinition, Pagination } from '@/lib/report/types';
+import { catalogOptions, catalogQueryOptions, type CatalogKey } from '@/hooks/use-filter-catalog';
+import { FILTER_META, FILTER_PARAMS, formatIsoDate } from '@/lib/report/filter-keys';
+import { PARAM_CATALOG, STATIC_OPTIONS } from '@/lib/report/filter-options';
+import { columnFormat, formatValue } from '@/lib/report/format';
+import { flatten, visibleOnly } from '@/lib/report/columns';
+import type { ColumnDef, ReportDefinition, Pagination } from '@/lib/report/types';
 
-const EXTRA_LABELS: Record<string, string> = {
-  from:    'Desde',
-  to:      'Hasta',
-  estatus: 'Estado',
-};
+const isSubtotal = (row: unknown) => (row as any)?.rowKind === 'subtotal';
 
-function chipLabel(key: string, value: unknown): string {
-  const meta = (FILTER_META as Record<string, any>)[key];
-  const label = meta?.label ?? EXTRA_LABELS[key] ?? key;
-  const formatted = meta?.formatValue
-    ? meta.formatValue(value)
-    : Array.isArray(value)
-      ? value.join(', ')
-      : String(value ?? '');
-  return `${label}: ${formatted}`;
+const hasValue = (v: unknown) =>
+  v !== undefined && v !== null && v !== '' && !(Array.isArray(v) && v.length === 0);
+
+/** Filtro aplicado, como lo ven el usuario y las exportaciones. */
+export interface AppliedFilter {
+  key: string;
+  /** Parámetros de URL que se limpian al quitar el chip. */
+  params: string[];
+  label: string;
+  value: string;
 }
 
-function flatten<TRow>(cols: AnyColumn<TRow>[]): ColumnDef<TRow>[] {
-  return cols.flatMap((c) => ('group' in c ? (c as CompoundColumnDef<TRow>).children : [c as ColumnDef<TRow>]));
-}
-
-/** Valor de celda considerado "vacío" para efectos de `hideIfEmpty`. */
-function isEmptyCell(v: unknown): boolean {
-  return v == null || v === '' || v === '—';
+function listText(ids: string[], labelOf: (id: string) => string): string {
+  const names = ids.map(labelOf);
+  return names.length <= 3 ? names.join(', ') : `${names.slice(0, 2).join(', ')} y ${names.length - 2} más`;
 }
 
 /**
- * Filtra columnas marcadas con `hideIfEmpty` cuando TODAS las filas de la
- * página actual traen valor vacío para su key. Los grupos compuestos filtran
- * sus hijas y desaparecen si quedan sin ninguna.
+ * Chips legibles de los filtros declarados por el reporte: nombres de
+ * catálogo en vez de IDs, fechas dd/mm/aaaa y rangos en una sola pastilla.
  */
-function visibleOnly<TRow>(cols: AnyColumn<TRow>[], rows: TRow[]): AnyColumn<TRow>[] {
-  const keep = (c: ColumnDef<TRow>) =>
-    !c.hideIfEmpty || rows.length === 0 || rows.some((r) => !isEmptyCell((r as any)[c.key]));
-  return cols
-    .map((c) =>
-      'group' in c
-        ? ({ ...c, children: (c as CompoundColumnDef<TRow>).children.filter(keep) } as AnyColumn<TRow>)
-        : c
-    )
-    .filter((c) => ('group' in c ? (c as CompoundColumnDef<TRow>).children.length > 0 : keep(c as ColumnDef<TRow>)));
+function useAppliedFilters(def: ReportDefinition<any, any>, filters: Record<string, any>): AppliedFilter[] {
+  // Catálogos que hacen falta para nombrar los valores elegidos.
+  const needed: CatalogKey[] = [];
+  for (const k of def.filters) {
+    for (const p of FILTER_PARAMS[k]) {
+      const cat = PARAM_CATALOG[p.name];
+      if (cat && hasValue(filters[p.name]) && !needed.includes(cat)) needed.push(cat);
+    }
+  }
+  const results = useQueries({ queries: needed.map((k) => catalogQueryOptions(k)) });
+  const names = new Map<CatalogKey, Map<string, string>>();
+  needed.forEach((k, i) => {
+    names.set(k, new Map(catalogOptions(k, results[i]?.data as any[] | undefined).map((o) => [o.value, o.label])));
+  });
+
+  const out: AppliedFilter[] = [];
+  for (const k of def.filters) {
+    const label = def.filterLabels?.[k]?.label ?? FILTER_META[k].label;
+    if (k === 'dateRange') {
+      const { from, to } = filters;
+      if (!from && !to) continue;
+      const value = from && to
+        ? `${formatIsoDate(from)} – ${formatIsoDate(to)}`
+        : from ? `desde ${formatIsoDate(from)}` : `hasta ${formatIsoDate(to)}`;
+      out.push({ key: k, params: ['from', 'to'], label, value });
+      continue;
+    }
+    if (k === 'age') {
+      const { age_min: a, age_max: b } = filters;
+      if (a == null && b == null) continue;
+      const value = a != null && b != null ? `${a}–${b} años` : a != null ? `${a} años o más` : `hasta ${b} años`;
+      out.push({ key: k, params: ['age_min', 'age_max'], label, value });
+      continue;
+    }
+    for (const p of FILTER_PARAMS[k]) {
+      const v = filters[p.name];
+      if (!hasValue(v)) continue;
+      const fixed = STATIC_OPTIONS[p.name];
+      const cat = PARAM_CATALOG[p.name];
+      const labelOf = (id: string) =>
+        fixed?.find((o) => o.value === id)?.label ?? (cat ? names.get(cat)?.get(id) : undefined) ?? '…';
+      let value: string;
+      if (Array.isArray(v)) value = listText(v.map(String), labelOf);
+      else if (k === 'cutoffDate') value = formatIsoDate(String(v));
+      else if (fixed) value = labelOf(String(v));
+      else value = String(v);
+      out.push({ key: p.name, params: [p.name], label, value });
+    }
+  }
+  return out;
 }
 
 export interface ReportTableShellProps<TFilters extends Record<string, any>, TRow> {
   definition: ReportDefinition<TFilters, TRow>;
   breadcrumbs: Crumb[];
-  renderFilters: (
-    filters: TFilters,
-    setFilter: <K extends keyof TFilters>(k: K, v: TFilters[K]) => void
-  ) => React.ReactNode;
+  renderFilters: (filters: TFilters, setFilter: SetFilter, setFilters: SetFilters) => React.ReactNode;
   aboveTable?: React.ReactNode;
 }
 
-const PAGE_SIZE = 25;
+const SERVER_PAGE_SIZE = 25;
+const CLIENT_PAGE_SIZE = 50;
 
 export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
   definition, breadcrumbs, renderFilters, aboveTable,
 }: ReportTableShellProps<TFilters, TRow>) {
-  const defaults = (definition.defaultFilters ?? {}) as TFilters;
-  const { filters, setFilter, clearAll } = useUrlFilters<TFilters>(defaults);
-  const [page, setPage] = useState(0);
+  const defaults = useMemo(() => {
+    const d = definition.defaultFilters;
+    return ((typeof d === 'function' ? d() : d) ?? {}) as TFilters;
+  }, [definition]);
+  const { filters, setFilter, setFilters, clearAll } = useUrlFilters<TFilters>(defaults, definition.filters);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const pagination: Pagination = { offset: page * PAGE_SIZE, limit: PAGE_SIZE };
+  // Paginación: en el servidor (R2, miles de filas) o en el cliente sobre
+  // todas las filas, que es lo que trae el backend de los demás reportes.
+  const serverPaged = !!definition.serverPagination;
+  const pageSize = serverPaged ? SERVER_PAGE_SIZE : CLIENT_PAGE_SIZE;
+  const [page, setPage] = useState(0);
+  const filtersKey = JSON.stringify(filters);
+  useEffect(() => { setPage(0); }, [filtersKey]);
+
+  const pagination: Pagination = serverPaged ? { offset: page * pageSize, limit: pageSize } : ALL_ROWS;
   const query = useReportQuery(definition, filters, pagination);
+
+  const allRows = useMemo(() => query.data?.rows ?? [], [query.data?.rows]);
+  const detailRows = useMemo(() => allRows.filter((r) => !isSubtotal(r)), [allRows]);
+  const pageRows = serverPaged ? allRows : allRows.slice(page * pageSize, (page + 1) * pageSize);
+  const totalCount = serverPaged ? (query.data?.total ?? 0) : allRows.length;
+  const recordCount = serverPaged ? (query.data?.total ?? 0) : detailRows.length;
 
   const flatCols = useMemo(() => flatten(definition.columns), [definition.columns]);
 
-  // Columnas realmente visibles: excluye las `hideIfEmpty` cuando toda la
-  // página actual viene vacía para esa key (header, celdas y totales).
+  // Columnas realmente visibles: excluye las `hideIfEmpty` cuando todas las
+  // filas cargadas vienen vacías para esa key (header, celdas y totales).
   const visibleColumns = useMemo(
-    () => visibleOnly(definition.columns, query.data?.rows ?? []),
-    [definition.columns, query.data?.rows]
+    () => visibleOnly(definition.columns, allRows),
+    [definition.columns, allRows]
   );
   const visibleFlatCols = useMemo(() => flatten(visibleColumns), [visibleColumns]);
   const missing: MissingDbItem[] = useMemo(
@@ -111,14 +164,26 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
     [flatCols]
   );
 
-  const hasData = !!query.data && query.data.rows.length > 0;
+  const hasData = allRows.length > 0;
+  const hasFilters = definition.filters.length > 0;
+  const hasDefaults = Object.keys(defaults).length > 0;
 
-  const activeCount = Object.entries(filters).filter(([, v]) => v !== '' && v !== undefined && v !== null).length;
-  const chips = Object.entries(filters)
-    .filter(([, v]) => v !== '' && v !== undefined && v !== null)
-    .map(([k, v]) => ({ key: k, label: chipLabel(k, v) }));
+  const applied = useAppliedFilters(definition, filters);
+  const chips = applied.map((a) => ({ key: a.key, label: `${a.label}: ${a.value}` }));
+  const removeChip = (key: string) => {
+    const a = applied.find((x) => x.key === key);
+    if (a) setFilters(Object.fromEntries(a.params.map((p) => [p, undefined])) as Partial<TFilters>);
+  };
 
-  const { doExport, busy } = useReportExport(definition, filters, query.data?.rows ?? [], flatCols);
+  const { doExport, busy } = useReportExport(definition, filters, applied);
+
+  const renderCell = (c: ColumnDef<TRow>, row: TRow) => {
+    if (c.render) return c.render(row);
+    const v = (row as any)[c.key];
+    // En los subtotales las celdas sin dato quedan en blanco (sin "—").
+    if (isSubtotal(row) && (v == null || v === '')) return '';
+    return formatValue(v, columnFormat(c));
+  };
 
   return (
     <div className="mb-4">
@@ -126,27 +191,32 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
       <ReportHeader
         title={`${definition.code} · ${definition.title}`}
         subtitle={definition.subtitle}
-        onClear={clearAll}
-        exportMenu={<ExportMenu disabled={busy || !query.isSuccess} onExport={doExport} />}
+        onClear={hasFilters ? clearAll : undefined}
+        exportMenu={<ExportMenu disabled={busy || !query.isSuccess || !hasData} onExport={doExport} />}
       />
 
-      <ScopeBar
-        activeCount={activeCount}
-        chips={chips}
-        onOpen={() => setDrawerOpen(true)}
-        onRemove={(k) => setFilter(k as any, '' as any)}
-        onClearAll={clearAll}
-      />
+      {hasFilters && (
+        <>
+          <ScopeBar
+            activeCount={applied.length}
+            chips={chips}
+            onOpen={() => setDrawerOpen(true)}
+            onRemove={removeChip}
+            onClearAll={clearAll}
+            clearLabel={hasDefaults ? 'Restablecer' : 'Limpiar todo'}
+          />
 
-      <FilterDrawer
-        open={drawerOpen}
-        onOpenChange={setDrawerOpen}
-        onApply={() => setDrawerOpen(false)}
-        onClearAll={() => { clearAll(); setDrawerOpen(false); }}
-        activeCount={activeCount}
-      >
-        {renderFilters(filters, setFilter)}
-      </FilterDrawer>
+          <FilterDrawer
+            open={drawerOpen}
+            onOpenChange={setDrawerOpen}
+            onApply={() => setDrawerOpen(false)}
+            onClearAll={() => { clearAll(); setDrawerOpen(false); }}
+            activeCount={applied.length}
+          >
+            {renderFilters(filters, setFilter as unknown as SetFilter, setFilters as unknown as SetFilters)}
+          </FilterDrawer>
+        </>
+      )}
 
       {SHOW_PENDING_HINTS && <MissingDbBanner missing={missing} />}
 
@@ -163,7 +233,8 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
       {definition.variants?.chart && hasData && (
         <ReportChart
           spec={definition.variants.chart as any}
-          rows={query.data!.rows}
+          rows={detailRows}
+          kpis={query.data?.kpis}
           captureId={`chart-${definition.id}`}
         />
       )}
@@ -174,7 +245,7 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
             <h3 className="text-base font-semibold text-foreground">
               Resultados{' '}
               <span className="text-muted-foreground font-normal text-sm">
-                {query.isSuccess ? `· ${query.data!.total} registros` : ''}
+                {query.isSuccess ? `· ${recordCount.toLocaleString('es-HN')} registros` : ''}
               </span>
             </h3>
             <span className="text-xs text-muted-foreground">
@@ -205,42 +276,49 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
                   <table className="w-full text-sm">
                     <CompoundHeader columns={visibleColumns} />
                     <tbody>
-                      {query.data!.rows.map((row, i) => (
-                        <motion.tr
-                          key={i}
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: Math.min(i, 20) * 0.015, duration: 0.18 }}
-                          className="border-b border-border hover:bg-primary/5 transition-colors duration-200"
-                        >
-                          {visibleFlatCols.map((c) => {
-                            const isRed = definition.variants?.conditionalRed?.when(row) === true
-                              && definition.variants.conditionalRed.cells.includes(c.key);
-                            if (c.missingInDb) {
+                      {pageRows.map((row, i) => {
+                        const subtotal = isSubtotal(row);
+                        return (
+                          <motion.tr
+                            key={`${page}-${i}`}
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: Math.min(i, 20) * 0.015, duration: 0.18 }}
+                            className={cn(
+                              'border-b border-border transition-colors duration-200',
+                              subtotal ? 'bg-primary/5 font-semibold text-foreground' : 'hover:bg-primary/5'
+                            )}
+                          >
+                            {visibleFlatCols.map((c) => {
+                              const isRed = !subtotal
+                                && definition.variants?.conditionalRed?.when(row) === true
+                                && definition.variants.conditionalRed.cells.includes(c.key);
+                              if (c.missingInDb) {
+                                return (
+                                  <td
+                                    key={c.key}
+                                    className={`px-3 py-2 text-${c.align ?? 'left'} text-muted-foreground${SHOW_PENDING_HINTS ? ' bg-warning/5' : ''}`}
+                                  >
+                                    —
+                                  </td>
+                                );
+                              }
+                              if (isRed) {
+                                return (
+                                  <ConditionalRedCell key={c.key} isRed>
+                                    {renderCell(c, row)}
+                                  </ConditionalRedCell>
+                                );
+                              }
                               return (
-                                <td
-                                  key={c.key}
-                                  className={`px-3 py-2 text-${c.align ?? 'left'} text-muted-foreground${SHOW_PENDING_HINTS ? ' bg-warning/5' : ''}`}
-                                >
-                                  —
+                                <td key={c.key} className={`px-3 py-2 text-${c.align ?? 'left'} tabular-nums`}>
+                                  {renderCell(c, row)}
                                 </td>
                               );
-                            }
-                            if (isRed) {
-                              return (
-                                <ConditionalRedCell key={c.key} isRed>
-                                  {c.render ? c.render(row) : String((row as any)[c.key] ?? '')}
-                                </ConditionalRedCell>
-                              );
-                            }
-                            return (
-                              <td key={c.key} className={`px-3 py-2 text-${c.align ?? 'left'} tabular-nums`}>
-                                {c.render ? c.render(row) : String((row as any)[c.key] ?? '')}
-                              </td>
-                            );
-                          })}
-                        </motion.tr>
-                      ))}
+                            })}
+                          </motion.tr>
+                        );
+                      })}
                     </tbody>
                     {query.data!.totalsRow && (
                       <tfoot className="sticky bottom-0 bg-card">
@@ -252,12 +330,12 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
                             if (c.missingInDb) {
                               content = '—';
                             } else if (raw != null) {
-                              // Formatea el total con el mismo render de la columna
-                              // (moneda, %, etc.); si truena, cae al valor crudo.
+                              // Formatea el total como la columna (moneda, %, etc.);
+                              // si el render truena con la fila de totales, cae al formato.
                               try {
-                                content = c.render ? c.render(totalsRow as any) : String(raw);
+                                content = renderCell(c, totalsRow as any);
                               } catch {
-                                content = String(raw);
+                                content = formatValue(raw, columnFormat(c));
                               }
                             } else {
                               // La primera columna sin total actúa de etiqueta de la fila.
@@ -278,12 +356,15 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
             )}
           </div>
 
-          {query.isSuccess && query.data!.total > PAGE_SIZE && (
+          {query.isSuccess && totalCount > pageSize && (
             <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
-              <span>Mostrando {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, query.data!.total)} de {query.data!.total}</span>
+              <span>
+                Mostrando {(page * pageSize + 1).toLocaleString('es-HN')}–{Math.min((page + 1) * pageSize, totalCount).toLocaleString('es-HN')} de {totalCount.toLocaleString('es-HN')}
+                {!serverPaged && totalCount !== recordCount ? ' filas (incluye subtotales)' : ''}
+              </span>
               <div className="flex gap-1">
-                <button disabled={page === 0} onClick={() => setPage((p) => p - 1)} className="px-2 py-1 border border-border rounded disabled:opacity-40 hover:bg-primary/5 hover:border-primary/20 transition-colors">‹</button>
-                <button disabled={(page + 1) * PAGE_SIZE >= query.data!.total} onClick={() => setPage((p) => p + 1)} className="px-2 py-1 border border-border rounded disabled:opacity-40 hover:bg-primary/5 hover:border-primary/20 transition-colors">›</button>
+                <button disabled={page === 0} onClick={() => setPage((p) => p - 1)} className="px-2 py-1 border border-border rounded disabled:opacity-40 hover:bg-primary/5 hover:border-primary/20 transition-colors" aria-label="Página anterior">‹</button>
+                <button disabled={(page + 1) * pageSize >= totalCount} onClick={() => setPage((p) => p + 1)} className="px-2 py-1 border border-border rounded disabled:opacity-40 hover:bg-primary/5 hover:border-primary/20 transition-colors" aria-label="Página siguiente">›</button>
               </div>
             </div>
           )}

@@ -21,6 +21,7 @@ const schema = z.object({
     total_horas: z.string().min(1, "Requerido"),
     taller: z.string().optional(),
     objetivo: z.string().min(3, "Mínimo 3 caracteres"),
+    area_id: z.string().min(1, "Selecciona un área técnica"),
     departamento_id: z.string().optional(),
     municipio_id: z.string().optional(),
 });
@@ -44,12 +45,14 @@ const CursoModal = ({
     const isEdit = !!curso;
     const [departamentos, setDepartamentos] = useState<any[]>([]);
     const [municipios, setMunicipios] = useState<any[]>([]);
+    const [areas, setAreas] = useState<any[]>([]);
 
     const {
         register,
         handleSubmit,
         reset,
         setValue,
+        getValues,
         watch,
         formState: { errors, isSubmitting },
     } = useForm<FormData>({
@@ -57,7 +60,7 @@ const CursoModal = ({
         mode: "onSubmit",
         defaultValues: {
             codigo: "", nombre: "", codigo_programa: "", total_horas: "",
-            taller: "1", objetivo: "", departamento_id: "", municipio_id: "",
+            taller: "1", objetivo: "", area_id: "", departamento_id: "", municipio_id: "",
         },
     });
 
@@ -68,7 +71,29 @@ const CursoModal = ({
         fetch(`${process.env.NEXT_PUBLIC_API_PROXY}/centros/departamentos`, {
             headers: { Authorization: `Bearer ${session?.user?.session}` },
         }).then(r => r.json()).then(d => setDepartamentos(d.data ?? []));
+        fetch(`${process.env.NEXT_PUBLIC_API_PROXY}/centros/areas?all=true`, {
+            headers: { Authorization: `Bearer ${session?.user?.session}` },
+        }).then(r => r.json()).then(d => {
+            const list: any[] = d.data ?? [];
+            setAreas(list);
+            // Área del curso ya inactiva: se pide elegir otra
+            const actual = getValues("area_id");
+            if (actual && !list.some((a: any) => a.id.toString() === actual)) setValue("area_id", "");
+        });
     }, [isOpen, session]);
+
+    // Código sugerido al crear: el menor libre del centro (editable)
+    useEffect(() => {
+        if (!isOpen || isEdit || !session || !centroId) return;
+        let cancelado = false;
+        fetch(`${process.env.NEXT_PUBLIC_API_PROXY}/centros/centros/${centroId}/cursos/next-code`, {
+            headers: { Authorization: `Bearer ${session?.user?.session}` },
+        }).then(r => (r.ok ? r.json() : null)).then(d => {
+            // Solo si el código sigue vacío (no se pisa lo que escribió el usuario)
+            if (!cancelado && d?.data?.codigo != null && !getValues("codigo")) setValue("codigo", String(d.data.codigo));
+        }).catch(() => { });
+        return () => { cancelado = true; };
+    }, [isOpen, isEdit, centroId, session?.user?.session]);
 
     useEffect(() => {
         if (!watchDepartamento || !session) { setMunicipios([]); return; }
@@ -86,13 +111,14 @@ const CursoModal = ({
                 total_horas: curso.total_horas ?? "",
                 taller: curso.taller?.toString() ?? "1",
                 objetivo: curso.objetivo ?? "",
+                area_id: curso.area_id?.toString() ?? "",
                 departamento_id: curso.departamento_id?.toString() ?? "",
                 municipio_id: curso.municipio_id?.toString() ?? "",
             });
         } else {
             reset({
                 codigo: "", nombre: "", codigo_programa: "", total_horas: "",
-                taller: "1", objetivo: "", departamento_id: "", municipio_id: "",
+                taller: "1", objetivo: "", area_id: "", departamento_id: "", municipio_id: "",
             });
         }
     }, [curso, reset, isOpen]);
@@ -105,6 +131,7 @@ const CursoModal = ({
                 ...data,
                 codigo: Number(data.codigo),
                 taller: Number(data.taller ?? 1),
+                area_id: Number(data.area_id),
                 departamento_id: data.departamento_id ? Number(data.departamento_id) : null,
                 municipio_id: data.municipio_id ? Number(data.municipio_id) : null,
             };
@@ -156,6 +183,16 @@ const CursoModal = ({
                             {errors.total_horas && <p className="text-destructive text-xs mt-1">{errors.total_horas.message}</p>}
                         </div>
                         <div>
+                            <Label className="mb-1 font-medium text-default-600">Área técnica *</Label>
+                            <Select value={watch("area_id") || undefined} onValueChange={(v) => setValue("area_id", v, { shouldValidate: true })} disabled={isSubmitting}>
+                                <SelectTrigger><SelectValue placeholder="Seleccionar área técnica" /></SelectTrigger>
+                                <SelectContent>
+                                    {areas.map((a: any) => <SelectItem key={a.id} value={a.id.toString()}>{a.nombre}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            {errors.area_id && <p className="text-destructive text-xs mt-1">{errors.area_id.message}</p>}
+                        </div>
+                        <div>
                             <Label className="mb-1 font-medium text-default-600">Taller</Label>
                             <Select value={watch("taller")} onValueChange={(v) => setValue("taller", v)} disabled={isSubmitting}>
                                 <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
@@ -165,7 +202,6 @@ const CursoModal = ({
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="md:col-span-1" />
                         <div>
                             <Label className="mb-1 font-medium text-default-600">Departamento</Label>
                             <Select value={watch("departamento_id") ?? ""} onValueChange={(v) => { setValue("departamento_id", v); setValue("municipio_id", ""); }} disabled={isSubmitting}>

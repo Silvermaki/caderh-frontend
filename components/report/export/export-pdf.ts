@@ -1,5 +1,6 @@
 import { getSession } from 'next-auth/react';
 import type { ColumnDef } from '@/lib/report/types';
+import { columnFormat } from '@/lib/report/format';
 
 // Same-origin proxy path (rewritten by Next.js to the backend, see next.config.js).
 // Avoids mixed-content issues when the frontend is served over HTTPS but the
@@ -14,6 +15,8 @@ async function getToken(): Promise<string | null> {
 
 export interface PdfExportPayload<TRow> {
   filters: Record<string, any>;
+  /** Filtros con nombres legibles para el pie del PDF. */
+  filtersDisplay?: Record<string, string>;
   columns: ColumnDef<TRow>[];
   title: string;
   subtitle?: string;
@@ -31,6 +34,7 @@ export async function requestPdfExport<TRow>(
     label: c.label,
     align: c.align,
     missingInDb: c.missingInDb,
+    format: columnFormat(c),
   }));
 
   const res = await fetch(`${API_PROXY}/reports/${reportId}/export/pdf`, {
@@ -41,6 +45,7 @@ export async function requestPdfExport<TRow>(
     },
     body: JSON.stringify({
       filters: payload.filters,
+      filtersDisplay: payload.filtersDisplay,
       columns,
       title: payload.title,
       subtitle: payload.subtitle,

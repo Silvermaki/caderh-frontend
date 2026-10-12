@@ -27,7 +27,8 @@ const CATALOGS: Record<CatalogKey, CatalogEndpoint> = {
   course: {
     path: '/centros/courses',
     params: { all: 'true' },
-    map: (r) => ({ value: String(r.id), label: r.nombre }),
+    // Hay cursos homónimos en varios centros: la etiqueta lleva el centro.
+    map: (r) => ({ value: String(r.id), label: r.centro_siglas ? `${r.nombre} · ${r.centro_siglas}` : r.nombre }),
   },
   financingSource: {
     path: '/supervisor/financing-sources',
@@ -56,16 +57,26 @@ const CATALOGS: Record<CatalogKey, CatalogEndpoint> = {
   },
 };
 
-export function useFilterCatalog(key: CatalogKey) {
+/** Opciones de consulta de un catálogo (compartidas con useQueries). */
+export function catalogQueryOptions(key: CatalogKey) {
   const cfg = CATALOGS[key];
-  const { data, isLoading, isError } = useQuery({
+  return {
     queryKey: ['filter-catalog', key],
     queryFn: async () => {
       const res = await apiGet<{ data: any[] }>(cfg.path, cfg.params);
       return res.data ?? [];
     },
     staleTime: 5 * 60_000,
-  });
-  const options = (data ?? []).map(cfg.map);
+  };
+}
+
+/** Filas crudas de un catálogo → opciones { value, label }. */
+export function catalogOptions(key: CatalogKey, rows: any[] | undefined) {
+  return (rows ?? []).map(CATALOGS[key].map);
+}
+
+export function useFilterCatalog(key: CatalogKey) {
+  const { data, isLoading, isError } = useQuery(catalogQueryOptions(key));
+  const options = catalogOptions(key, data);
   return { options, isLoading, isError };
 }

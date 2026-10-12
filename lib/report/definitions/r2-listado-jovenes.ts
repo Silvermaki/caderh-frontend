@@ -1,112 +1,113 @@
 import type { ReportDefinition, ColumnDef } from '../types';
 import { registerReport } from '../registry';
 import { apiGet } from '@/lib/api/reports-client';
+import { currentYearRange, queryParams } from '../filter-keys';
 
 export interface R2Filters {
+  from?: string;
+  to?: string;
   project?: string[];
-  cftp?: string[];
   financingSource?: string[];
+  cftp?: string[];
+  course?: string[];
   technicalArea?: string[];
-  city?: string[];
-  year?: number;
-  quarter?: string;
+  gender?: string[];
   age_min?: number;
   age_max?: number;
-  gender?: string[];
+  resultado?: string[];
 }
 
+/** Una fila por matrícula (estudiante × curso). */
 export interface R2Row {
   num: number;
   centro: string;
-  ciudad: string | null;
   curso: string;
-  areaTecnica?: string | null;
-  area_tecnica?: string | null;
-  fuentes_financiamiento: string | null;
-  anio: number | null;
-  trimestre: number | null;
+  codigo_proceso: string;
+  inicio: string;
+  area_tecnica: string | null;
+  proyectos: string | null;
   nombre_completo: string;
   dni: string;
   fecha_nacimiento: string | null;
   edad: number | null;
   sexo: string | null;
   estado_civil: string | null;
-  telefono_celular: string | null;
+  celular: string | null;
+  telefono_alternativo: string | null;
   correo: string | null;
+  redes: string | null;
   departamento: string | null;
+  municipio: string | null;
   direccion: string | null;
   con_quien_vive: string | null;
-  tiene_hijos: number | null;
+  dependientes: string | null;
+  tiene_hijos: string;
   discapacidad: string | null;
-  trabajo_actual: number | null;
-  donde_trabaja: string | null;
-  estudia: number | null;
-  autoempleo: number | null;
+  interno: string;
+  nivel_educativo: string | null;
+  estudia: string;
+  trabaja: string;
+  empresa: string | null;
+  puesto: string | null;
+  tipo_contrato: string | null;
+  beneficios: string | null;
+  emprendimiento: string | null;
+  antiguedad_emprendimiento: string | null;
+  ingreso_hogar: number | null;
+  observaciones: string | null;
+  resultado: string;
+  estatus_seguimiento: string | null;
+  fecha_seguimiento: string | null;
 }
 
-const QUARTER_LABEL: Record<number, string> = { 1: 'Q1', 2: 'Q2', 3: 'Q3', 4: 'Q4' };
-const str = (v: unknown) => (v == null || v === '' ? '—' : String(v));
-
+// Columnas = lo que captura el formulario del estudiante (el UI dicta qué
+// campos están vigentes), más el resultado del curso y el último seguimiento.
+// Los datos laborales son los declarados al INSCRIBIRSE.
 const columns: ColumnDef<R2Row>[] = [
-  { key: 'num',              label: '#',              align: 'right', render: (r) => String(r.num) },
-  { key: 'centro',           label: 'Centro',         align: 'left',  render: (r) => str(r.centro) },
-  { key: 'ciudad',           label: 'Ciudad/Zona',    align: 'left',  render: (r) => str(r.ciudad) },
-  { key: 'curso',            label: 'Curso',          align: 'left',  render: (r) => str(r.curso) },
-  { key: 'area_tecnica',     label: 'Área técnica',   align: 'left',  render: (r) => str(r.area_tecnica) },
-  { key: 'fuentes_financiamiento', label: 'Fuente(s) financiamiento', align: 'left', render: (r) => str(r.fuentes_financiamiento) },
-  { key: 'anio',             label: 'Año',            align: 'right', render: (r) => r.anio != null ? String(r.anio) : '—' },
-  { key: 'trimestre',        label: 'Trimestre',      align: 'right', render: (r) => r.trimestre != null ? (QUARTER_LABEL[r.trimestre] ?? String(r.trimestre)) : '—' },
-  { key: 'nombre_completo',  label: 'Nombre',         align: 'left',  render: (r) => str(r.nombre_completo) },
-  { key: 'dni',              label: 'DNI',            align: 'left',  render: (r) => str(r.dni) },
-  { key: 'edad',             label: 'Edad',           align: 'right', render: (r) => str(r.edad) },
-  { key: 'sexo',             label: 'Sexo',           align: 'left',  render: (r) => str(r.sexo) },
-  { key: 'estado_civil',     label: 'Est. civil',     align: 'left',  render: (r) => str(r.estado_civil) },
-  { key: 'telefono_celular', label: 'Teléfono',       align: 'left',  render: (r) => str(r.telefono_celular) },
-  { key: 'correo',           label: 'Correo',         align: 'left',  render: (r) => str(r.correo) },
-  { key: 'departamento',     label: 'Depto.',         align: 'left',  render: (r) => str(r.departamento) },
-  { key: 'direccion',        label: 'Dirección',      align: 'left',  render: (r) => str(r.direccion) },
-  { key: 'con_quien_vive',   label: 'Con quién vive', align: 'left',  render: (r) => str(r.con_quien_vive) },
-  { key: 'tiene_hijos',      label: 'Tiene hijos',    align: 'left',  render: (r) => (r.tiene_hijos ? 'Sí' : 'No') },
-  { key: 'discapacidad',     label: 'Discap.',        align: 'left',  render: (r) => str(r.discapacidad) },
-  { key: 'trabajo_actual',   label: 'Trabaja',        align: 'left',  render: (r) => (r.trabajo_actual ? 'Sí' : 'No') },
-  { key: 'donde_trabaja',    label: 'Empresa',        align: 'left',  render: (r) => str(r.donde_trabaja) },
-  { key: 'estudia',          label: 'Estudia',        align: 'left',  render: (r) => (r.estudia ? 'Sí' : 'No') },
-  { key: 'autoempleo',       label: 'Autoempleo',     align: 'left',  render: (r) => (r.autoempleo ? 'Sí' : 'No') },
+  { key: 'num',                       label: '#',                    align: 'right', format: 'count' },
+  { key: 'centro',                    label: 'Centro',               align: 'left',  format: 'text' },
+  { key: 'curso',                     label: 'Curso',                align: 'left',  format: 'text' },
+  { key: 'codigo_proceso',            label: 'Código',               align: 'left',  format: 'text', pdf: false },
+  { key: 'inicio',                    label: 'Inicio del curso',     align: 'left',  format: 'date' },
+  { key: 'area_tecnica',              label: 'Área técnica',         align: 'left',  format: 'text', pdf: false },
+  { key: 'proyectos',                 label: 'Proyecto(s)',          align: 'left',  format: 'text', pdf: false },
+  { key: 'nombre_completo',           label: 'Nombre',               align: 'left',  format: 'text' },
+  { key: 'dni',                       label: 'DNI',                  align: 'left',  format: 'text' },
+  { key: 'fecha_nacimiento',          label: 'Fecha de nacimiento',  align: 'left',  format: 'date', pdf: false },
+  { key: 'edad',                      label: 'Edad',                 align: 'right', format: 'count' },
+  { key: 'sexo',                      label: 'Sexo',                 align: 'left',  format: 'text' },
+  { key: 'estado_civil',              label: 'Estado civil',         align: 'left',  format: 'text', pdf: false },
+  { key: 'celular',                   label: 'Celular',              align: 'left',  format: 'text' },
+  { key: 'telefono_alternativo',      label: 'Contacto de referencia', align: 'left', format: 'text', pdf: false },
+  { key: 'correo',                    label: 'Correo',               align: 'left',  format: 'text', pdf: false },
+  { key: 'redes',                     label: 'Redes sociales',       align: 'left',  format: 'text', pdf: false },
+  { key: 'departamento',              label: 'Departamento',         align: 'left',  format: 'text', pdf: false },
+  { key: 'municipio',                 label: 'Municipio',            align: 'left',  format: 'text' },
+  { key: 'direccion',                 label: 'Dirección',            align: 'left',  format: 'text', pdf: false },
+  { key: 'con_quien_vive',            label: 'Con quién vive',       align: 'left',  format: 'text', pdf: false },
+  { key: 'dependientes',              label: 'Dependientes',         align: 'left',  format: 'text', pdf: false },
+  { key: 'tiene_hijos',               label: 'Tiene hijos',          align: 'left',  format: 'text', pdf: false },
+  { key: 'discapacidad',              label: 'Discapacidad',         align: 'left',  format: 'text', pdf: false },
+  { key: 'interno',                   label: 'Interno',              align: 'left',  format: 'text', pdf: false },
+  { key: 'nivel_educativo',           label: 'Nivel educativo',      align: 'left',  format: 'text', pdf: false },
+  { key: 'estudia',                   label: 'Estudia',              align: 'left',  format: 'text', pdf: false },
+  { key: 'trabaja',                   label: 'Trabaja',              align: 'left',  format: 'text', pdf: false },
+  { key: 'empresa',                   label: 'Empresa',              align: 'left',  format: 'text', pdf: false },
+  { key: 'puesto',                    label: 'Puesto',               align: 'left',  format: 'text', pdf: false },
+  { key: 'tipo_contrato',             label: 'Tipo de contrato',     align: 'left',  format: 'text', pdf: false },
+  { key: 'beneficios',                label: 'Beneficios',           align: 'left',  format: 'text', pdf: false },
+  { key: 'emprendimiento',            label: 'Emprendimiento',       align: 'left',  format: 'text', pdf: false },
+  { key: 'antiguedad_emprendimiento', label: 'Antigüedad del emprendimiento', align: 'left', format: 'text', pdf: false },
+  { key: 'ingreso_hogar',             label: 'Ingreso del hogar',    align: 'right', format: 'money', pdf: false },
+  { key: 'observaciones',             label: 'Observaciones',        align: 'left',  format: 'text', pdf: false },
+  { key: 'resultado',                 label: 'Resultado del curso',  align: 'left',  format: 'text' },
+  { key: 'estatus_seguimiento',       label: 'Último seguimiento',   align: 'left',  format: 'text' },
+  { key: 'fecha_seguimiento',         label: 'Fecha de seguimiento', align: 'left',  format: 'date', pdf: false },
   {
     key: 'migranteRetornado', label: 'Migrante retornado', align: 'left',
-    missingInDb: true, missingNote: 'Campo no existe en tabla estudiantes',
-    render: () => '—',
-  } as any,
-  {
-    key: 'tipoContratacion', label: 'Tipo contratación', align: 'left',
-    missingInDb: true, missingNote: 'Módulo seguimiento pendiente',
-    render: () => '—',
-  } as any,
-  {
-    key: 'puestoActual', label: 'Puesto', align: 'left',
-    missingInDb: true, missingNote: 'Módulo seguimiento pendiente',
-    render: () => '—',
-  } as any,
-  {
-    key: 'rangoSalario', label: 'Rango salario', align: 'left',
-    missingInDb: true, missingNote: 'Módulo seguimiento pendiente',
-    render: () => '—',
-  } as any,
-  {
-    key: 'nombreEmprendimiento', label: 'Emprendimiento', align: 'left',
-    missingInDb: true, missingNote: 'Módulo seguimiento pendiente',
-    render: () => '—',
-  } as any,
-  {
-    key: 'rubroEmprendimiento', label: 'Rubro emprendimiento', align: 'left',
-    missingInDb: true, missingNote: 'Módulo seguimiento pendiente',
-    render: () => '—',
-  } as any,
-  {
-    key: 'ingresoMensualFamiliar', label: 'Ingreso familiar', align: 'left',
-    missingInDb: true, missingNote: 'Campo no existe en tabla estudiantes',
-    render: () => '—',
-  } as any,
+    missingInDb: true, missingNote: 'El formulario del estudiante no lo captura (pedido del listado 2023)',
+    pdf: false,
+  },
 ];
 
 export const r2Definition: ReportDefinition<R2Filters, R2Row> = {
@@ -114,44 +115,32 @@ export const r2Definition: ReportDefinition<R2Filters, R2Row> = {
   code: 'R2',
   category: 'estudiantes',
   title: 'Listado detallado de estudiantes',
-  subtitle: 'Tabla plana con filtros por año, trimestre, edad y contexto',
-  filters: [
-    'year', 'quarter',
-    'project', 'cftp', 'financingSource',
-    'gender', 'age',
-    'city',
-    'technicalArea',
-  ],
-  defaultFilters: { year: new Date().getFullYear() },
+  subtitle: 'Una fila por estudiante y curso: ficha del estudiante, resultado del curso y último seguimiento.',
+  filters: ['dateRange', 'project', 'financingSource', 'cftp', 'course', 'technicalArea', 'gender', 'age', 'courseResult'],
+  filterLabels: {
+    dateRange: { label: 'Inicio del curso', description: 'Cursos que iniciaron en este rango.' },
+    age: { description: 'Edad actual del estudiante.' },
+    courseResult: { description: '"Sin cierre": el curso ya terminó y falta registrar si egresó o desertó.' },
+  },
+  defaultFilters: currentYearRange,
+  serverPagination: true,
   columns,
   variants: {
     kpiStrip: {
       // totalRegistros lo calcula el backend sobre el total filtrado (no la página).
       cards: [
-        { key: 'totalRegistros', label: 'Total registros', color: 'info' },
+        { key: 'totalRegistros', label: 'Matrículas en el filtro', color: 'info' },
       ],
     },
   },
-  export: { excel: 'server', pdf: 'server', csv: 'client' },
+  export: { excel: 'client', pdf: 'server', csv: 'client' },
   fetcher: async (filters, pagination) => {
-    const page = Math.floor((pagination?.offset ?? 0) / (pagination?.limit ?? 25)) + 1;
-    const page_size = pagination?.limit ?? 25;
-    const res = await apiGet<{ rows: R2Row[]; total: number; kpis?: Record<string, number>; meta?: unknown }>(
+    const paging = pagination.all
+      ? { page: 1, page_size: 'all' }
+      : { page: Math.floor(pagination.offset / pagination.limit) + 1, page_size: pagination.limit };
+    const res = await apiGet<{ rows: R2Row[]; total: number; kpis?: Record<string, number> }>(
       '/reports/r2-listado-jovenes',
-      {
-        project: filters.project?.join(','),
-        cftp: filters.cftp?.join(','),
-        financingSource: filters.financingSource?.join(','),
-        technicalArea: filters.technicalArea?.join(','),
-        city: filters.city?.join(','),
-        year: filters.year,
-        quarter: filters.quarter,
-        age_min: filters.age_min,
-        age_max: filters.age_max,
-        gender: filters.gender?.join(','),
-        page,
-        page_size,
-      },
+      { ...queryParams(r2Definition.filters, filters as Record<string, unknown>), ...paging },
     );
     return { rows: res.rows, total: res.total, kpis: res.kpis };
   },

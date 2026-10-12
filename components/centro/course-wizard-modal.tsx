@@ -76,14 +76,37 @@ const emptyModule = (): ModuleItem => ({
     tipo_evaluacion: "1", observaciones: "",
 });
 
+// Módulo de un curso existente → fila editable del paso 2
+const toModuleItem = (m: any): ModuleItem => ({
+    codigo: m.codigo != null ? String(m.codigo) : "",
+    nombre: m.nombre ?? "",
+    horas_teoricas: m.horas_teoricas != null ? String(m.horas_teoricas) : "",
+    horas_practicas: m.horas_practicas != null ? String(m.horas_practicas) : "",
+    tipo_evaluacion: ["1", "2", "3"].includes(String(m.tipo_evaluacion)) ? String(m.tipo_evaluacion) : "1",
+    observaciones: m.observaciones ?? "",
+});
+
+// "Duplicar curso": datos del curso origen (el código no se copia)
+export interface CourseWizardInitialData {
+    centro_id?: number | string | null;
+    nombre?: string | null;
+    codigo_programa?: string | null;
+    taller?: number | string | null;
+    objetivo?: string | null;
+    area_id?: number | string | null;
+    modules?: any[];
+}
+
 interface CourseWizardModalProps {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
     reloadList: () => void;
     centros: { id: number; nombre: string }[];
+    initialData?: CourseWizardInitialData | null;
+    onCreated?: (courseId: number) => void;
 }
 
-export default function CourseWizardModal({ isOpen, setIsOpen, reloadList, centros }: CourseWizardModalProps) {
+export default function CourseWizardModal({ isOpen, setIsOpen, reloadList, centros, initialData, onCreated }: CourseWizardModalProps) {
     const { data: session } = useSession() as any;
     const authHeaders: any = { Authorization: `Bearer ${session?.user?.session}` };
 
@@ -99,7 +122,11 @@ export default function CourseWizardModal({ isOpen, setIsOpen, reloadList, centr
     const [codigoPrograma, setCodigoPrograma] = useState("");
     const [taller, setTaller] = useState("1");
     const [objetivo, setObjetivo] = useState("");
+    const [areaId, setAreaId] = useState("");
+    const [areas, setAreas] = useState<{ id: number; nombre: string }[]>([]);
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+    // true cuando el usuario escribió el código: ya no se reemplaza por el sugerido
+    const codigoManualRef = useRef(false);
 
     // Step 2 - Modules (stored locally, no API call until final submit)
     const [moduleItems, setModuleItems] = useState<ModuleItem[]>([emptyModule()]);
@@ -111,20 +138,52 @@ export default function CourseWizardModal({ isOpen, setIsOpen, reloadList, centr
         ? centros.filter((c) => c.nombre.toLowerCase().includes(centroSearch.toLowerCase()))
         : centros;
 
-    // Reset on close/open
+    const fetchAreas = async () => {
+        try {
+            const res = await fetch(`${apiBase}/centros/areas?all=true`, { headers: authHeaders });
+            if (res.ok) {
+                const d = await res.json();
+                const list: { id: number; nombre: string }[] = d.data ?? [];
+                setAreas(list);
+                // Área del curso origen ya inactiva: se pide elegir otra
+                setAreaId((prev) => (prev && !list.some((a) => a.id.toString() === prev) ? "" : prev));
+            }
+        } catch { /* silent */ }
+    };
+
+    // Reset on close/open (con initialData = duplicar: todo editable, sin código)
     useEffect(() => {
         if (isOpen) {
             setStep(1);
-            setCentroId("");
+            setCentroId(initialData?.centro_id != null ? String(initialData.centro_id) : "");
             setCodigo("");
-            setNombre("");
-            setCodigoPrograma("");
-            setTaller("1");
-            setObjetivo("");
+            codigoManualRef.current = false;
+            setNombre(initialData?.nombre ? `${initialData.nombre} (copia)` : "");
+            setCodigoPrograma(initialData?.codigo_programa ?? "");
+            setTaller(initialData?.taller != null ? String(initialData.taller) : "1");
+            setObjetivo(initialData?.objetivo ?? "");
+            setAreaId(initialData?.area_id != null ? String(initialData.area_id) : "");
             setFormErrors({});
-            setModuleItems([emptyModule()]);
+            setModuleItems(initialData?.modules?.length ? initialData.modules.map(toModuleItem) : [emptyModule()]);
+            fetchAreas();
         }
     }, [isOpen]);
+
+    // Código sugerido (menor libre del centro): se vuelve a pedir al cambiar
+    // de centro y solo se aplica mientras el usuario no haya escrito uno.
+    useEffect(() => {
+        if (!isOpen || !centroId || !session) return;
+        let cancelado = false;
+        (async () => {
+            try {
+                const res = await fetch(`${apiBase}/centros/centros/${centroId}/cursos/next-code`, { headers: authHeaders });
+                if (!res.ok) return;
+                const d = await res.json();
+                if (!cancelado && !codigoManualRef.current && d.data?.codigo != null) setCodigo(String(d.data.codigo));
+            } catch { /* silent */ }
+        })();
+        return () => { cancelado = true; };
+    }, [isOpen, centroId, session?.user?.session]);
 
     // ─── Step 1: local validation only, advance to step 2 ───
     const onStep1Next = () => {
@@ -132,6 +191,7 @@ export default function CourseWizardModal({ isOpen, setIsOpen, reloadList, centr
         if (!centroId) errs.centro_id = "Selecciona un centro";
         if (!nombre.trim()) errs.nombre = "El nombre es requerido";
         if (!codigoPrograma.trim()) errs.codigo_programa = "El código de programa es requerido";
+        if (!areaId) errs.area_id = "Selecciona un área técnica";
         if (!objetivo.trim()) errs.objetivo = "El objetivo es requerido";
         setFormErrors(errs);
         if (Object.keys(errs).length > 0) return;
@@ -232,6 +292,7 @@ export default function CourseWizardModal({ isOpen, setIsOpen, reloadList, centr
                 codigo_programa: codigoPrograma.trim(),
                 taller: Number(taller),
                 objetivo: objetivo.trim(),
+                area_id: Number(areaId),
                 modules: validModules.map((m) => ({
                     codigo: m.codigo.trim(),
                     nombre: m.nombre.trim(),
@@ -254,6 +315,7 @@ export default function CourseWizardModal({ isOpen, setIsOpen, reloadList, centr
                 toast.success(`Curso creado con ${data.modulesCreated ?? 0} módulo(s)`);
                 setIsOpen(false);
                 reloadList();
+                if (data.id) onCreated?.(data.id);
             } else {
                 const data = await res.json();
                 toast.error(data.message ?? "Error al crear curso");
@@ -267,7 +329,7 @@ export default function CourseWizardModal({ isOpen, setIsOpen, reloadList, centr
     return (
         <Dialog open={isOpen} onOpenChange={(v) => { if (!isSubmitting) setIsOpen(v); }}>
             <DialogContent size="5xl" className="max-h-[90vh] flex flex-col">
-                <DialogTitle>Crear Curso</DialogTitle>
+                <DialogTitle>{initialData ? "Duplicar Curso" : "Crear Curso"}</DialogTitle>
                 <Stepper direction="horizontal" current={step - 1} gap alternativeLabel>
                     <Step><StepLabel>Información General</StepLabel></Step>
                     <Step><StepLabel>Módulos</StepLabel></Step>
@@ -316,7 +378,7 @@ export default function CourseWizardModal({ isOpen, setIsOpen, reloadList, centr
 
                                     <div>
                                         <Label className="mb-1 font-medium text-default-600">Código</Label>
-                                        <Input type="number" disabled={isSubmitting} value={codigo} onChange={(e) => setCodigo(e.target.value)} placeholder="Código numérico" />
+                                        <Input type="number" disabled={isSubmitting} value={codigo} onChange={(e) => { setCodigo(e.target.value); codigoManualRef.current = e.target.value.trim() !== ""; }} placeholder="Código numérico" />
                                     </div>
                                     <div>
                                         <Label className="mb-1 font-medium text-default-600">Nombre *</Label>
@@ -327,6 +389,17 @@ export default function CourseWizardModal({ isOpen, setIsOpen, reloadList, centr
                                         <Label className="mb-1 font-medium text-default-600">Código de programa *</Label>
                                         <Input disabled={isSubmitting} value={codigoPrograma} onChange={(e) => { setCodigoPrograma(e.target.value); setFormErrors((p) => { const n = { ...p }; delete n.codigo_programa; return n; }); }} placeholder="Código del programa" />
                                         {formErrors.codigo_programa && <p className="text-destructive text-xs mt-1">{formErrors.codigo_programa}</p>}
+                                    </div>
+                                    <div>
+                                        <Label className="mb-1 font-medium text-default-600">Área técnica *</Label>
+                                        <Select value={areaId || undefined} disabled={isSubmitting}
+                                            onValueChange={(v) => { setAreaId(v); setFormErrors((p) => { const n = { ...p }; delete n.area_id; return n; }); }}>
+                                            <SelectTrigger className="h-9"><SelectValue placeholder="Seleccionar área técnica" /></SelectTrigger>
+                                            <SelectContent>
+                                                {areas.map((a) => <SelectItem key={a.id} value={a.id.toString()}>{a.nombre}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                        {formErrors.area_id && <p className="text-destructive text-xs mt-1">{formErrors.area_id}</p>}
                                     </div>
                                     <div>
                                         <Label className="mb-1 font-medium text-default-600">Taller</Label>

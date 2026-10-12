@@ -7,13 +7,20 @@ export type ReportCategory =
   | 'directorios';
 
 export type FilterKey =
-  | 'dateRange' | 'year' | 'quarter'
+  | 'dateRange' | 'year' | 'quarter' | 'cutoffDate'
   | 'project' | 'cftp' | 'course' | 'financingSource'
-  | 'gender' | 'age' | 'youthStatus'
+  | 'gender' | 'age' | 'youthStatus' | 'courseResult'
   | 'department' | 'municipality' | 'city'
   | 'technicalArea' | 'trainingType' | 'modality';
 
-export type FilterGroup = 'periodo' | 'contexto' | 'demografia' | 'ubicacion' | 'programatico';
+/**
+ * Formato explícito de una columna para tabla y exportaciones. Sin él, las
+ * exportaciones lo infieren por el nombre de la key (con falsos positivos:
+ * "total" de un conteo salía como moneda).
+ */
+export type ColumnFormat = 'money' | 'percent' | 'count' | 'year' | 'text' | 'date';
+
+export type FilterGroup = 'periodo' | 'contexto' | 'demografia' | 'resultados' | 'ubicacion' | 'programatico';
 
 export interface ColumnDef<TRow> {
   key: string;
@@ -21,6 +28,12 @@ export interface ColumnDef<TRow> {
   align?: 'left' | 'right' | 'center';
   rowspan?: 1 | 2;
   render?: (row: TRow) => ReactNode;
+  format?: ColumnFormat;
+  /**
+   * false = la columna no va en el PDF. En reportes anchos el PDF (A4
+   * apaisado) lleva las columnas principales; Excel y CSV llevan todas.
+   */
+  pdf?: boolean;
   missingInDb?: boolean;
   missingNote?: string;
   plannedSource?: string;
@@ -83,8 +96,12 @@ export interface ChartSpec<TRow = any> {
   title: string;
   subtitle?: string;
   height?: number;
-  /** Function to derive chart data from current rows. */
-  data: (rows: TRow[]) => Array<Record<string, any>>;
+  /**
+   * Deriva los datos del gráfico de las filas cargadas. `ctx.kpis` trae los
+   * KPIs del backend (útil cuando el gráfico debe ignorar un filtro de filas,
+   * p. ej. la distribución por estatus de R4).
+   */
+  data: (rows: TRow[], ctx?: { kpis?: Record<string, number> }) => Array<Record<string, any>>;
   /** Field name in the derived data used as X axis (or label for donut). */
   xKey: string;
   /** Título del eje X (qué se mide horizontalmente). No aplica a donut. */
@@ -100,6 +117,8 @@ export interface ChartSpec<TRow = any> {
 export interface Pagination {
   offset: number;
   limit: number;
+  /** Exportación: pedir TODAS las filas del filtro (page_size=all). */
+  all?: boolean;
   sort?: Array<{ key: string; dir: 'asc' | 'desc' }>;
 }
 
@@ -110,6 +129,12 @@ export interface Page<TRow> {
   /** KPIs agregados que calcula el backend (claves según `variants.kpiStrip.cards`). */
   kpis?: Record<string, number>;
 }
+
+/**
+ * Las filas con `rowKind: 'subtotal'` se pintan en negrita (tabla, Excel y
+ * PDF); no cuentan para gráficos.
+ */
+export type RowKind = 'subtotal';
 
 export interface ReportDefinition<TFilters, TRow> {
   id: string;
@@ -125,7 +150,18 @@ export interface ReportDefinition<TFilters, TRow> {
   pendingModule?: string;
 
   filters: FilterKey[];
-  defaultFilters?: Partial<TFilters>;
+  /**
+   * Etiqueta/ayuda propia de un filtro en este reporte (p. ej. el rango de
+   * fechas de R1 filtra por inicio del curso y el de R4 define la cohorte).
+   */
+  filterLabels?: Partial<Record<FilterKey, { label?: string; description?: string }>>;
+  /** Valores iniciales; una función se evalúa al montar (p. ej. el año en curso). */
+  defaultFilters?: Partial<TFilters> | (() => Partial<TFilters>);
+  /**
+   * true = el backend pagina (page/page_size). Si no, el backend devuelve
+   * todas las filas y la tabla pagina en el cliente.
+   */
+  serverPagination?: boolean;
 
   columns: AnyColumn<TRow>[];
   totals?: TotalSpec[];

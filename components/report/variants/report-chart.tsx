@@ -57,12 +57,14 @@ function CustomTooltip({ active, payload, label, valueFormat }: any) {
 export interface ReportChartProps<TRow> {
   spec: ChartSpec<TRow>;
   rows: TRow[];
+  /** KPIs del backend (algunos gráficos se derivan de ellos, no de las filas). */
+  kpis?: Record<string, number>;
   /** Used by Onda 3 export to capture the chart as PNG. */
   captureId?: string;
 }
 
-export function ReportChart<TRow>({ spec, rows, captureId }: ReportChartProps<TRow>) {
-  const data = useMemo(() => spec.data(rows), [spec, rows]);
+export function ReportChart<TRow>({ spec, rows, kpis, captureId }: ReportChartProps<TRow>) {
+  const data = useMemo(() => spec.data(rows, { kpis }), [spec, rows, kpis]);
   const height = spec.height ?? 280;
 
   if (!data || data.length === 0) return null;

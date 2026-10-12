@@ -90,6 +90,10 @@ let navs = [
         title: 'Procesos Educativos',
         href: "/dashboard/centros/processes",
       },
+      {
+        title: 'Egresados',
+        href: "/dashboard/centros/egresados",
+      },
     ]
   },
   {

@@ -1,5 +1,6 @@
 import ExcelJS from 'exceljs';
-import type { ColumnDef } from '@/lib/report/types';
+import type { ColumnDef, ColumnFormat } from '@/lib/report/types';
+import { columnFormat, isoToUtcDate } from '@/lib/report/format';
 
 // CADERH brand colors — darker teal palette for professional look + contrast
 const CADERH_TEAL_DARK = '0F7A7A';   // primary brand: deep teal (banner + headers, white text reads well)
@@ -18,24 +19,42 @@ export interface BuildWorkbookArgs<TRow> {
   subtitle?: string;
   columns: ColumnDef<TRow>[];
   rows: TRow[];
+  /** Fila de totales del backend (se agrega al final, en negrita). */
+  totalsRow?: Record<string, any> | null;
   filtersApplied: Record<string, any>;
   missingColumns: string[];
   /** Optional PNG dataURL of the chart to embed above the table. */
   chartImage?: string;
 }
 
-function isCurrencyColumn(c: ColumnDef<any>): boolean {
-  const k = c.key.toLowerCase();
-  return /(presupuesto|monto|desembols|donac|overhead|saldo|ejecutado|ingreso|gasto|kit|estipendio|total)/.test(k)
-    && !/(pct|porcent|%|count|cantidad|hombres|mujeres|formacion)/.test(k);
-}
-
-function isPercentColumn(c: ColumnDef<any>): boolean {
-  return /(pct|porcent|%)/i.test(c.key);
-}
-
 function isNumericValue(v: any): boolean {
   return typeof v === 'number' && Number.isFinite(v);
+}
+
+const NUM_FMT: Partial<Record<ColumnFormat, string>> = {
+  money: '"L "#,##0.00',
+  // El valor ya viene en porcentaje (75.5), no como fracción.
+  percent: '0.0"%"',
+  count: '#,##0',
+  year: '0',
+};
+
+/** Escribe el valor con el tipo y formato de la columna (número, fecha o texto). */
+function setCellValue(cell: ExcelJS.Cell, raw: any, format: ColumnFormat | undefined) {
+  if (format === 'date') {
+    const d = isoToUtcDate(raw);
+    if (d) {
+      cell.value = d;
+      cell.numFmt = 'dd/mm/yyyy';
+      return;
+    }
+  }
+  if (isNumericValue(raw) && format !== 'text') {
+    cell.value = raw;
+    cell.numFmt = (format && NUM_FMT[format]) ?? (Number.isInteger(raw) ? '#,##0' : '#,##0.00');
+    return;
+  }
+  cell.value = String(raw);
 }
 
 async function fetchLogoBuffer(): Promise<ArrayBuffer | null> {
@@ -49,13 +68,14 @@ async function fetchLogoBuffer(): Promise<ArrayBuffer | null> {
 }
 
 export async function buildWorkbook<TRow>({
-  title, code, subtitle, columns, rows, filtersApplied, missingColumns, chartImage,
+  title, code, subtitle, columns, rows, totalsRow, filtersApplied, missingColumns, chartImage,
 }: BuildWorkbookArgs<TRow>): Promise<ExcelJS.Workbook> {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'CADERH ERP';
   wb.created = new Date();
 
-  const ws = wb.addWorksheet(title.slice(0, 31), {
+  // Excel no admite \ / ? * [ ] : en el nombre de la hoja.
+  const ws = wb.addWorksheet(title.replace(/[\\/?*[\]:]/g, ' ').slice(0, 31), {
     views: [{ state: 'frozen', ySplit: 6, xSplit: 0 }],
     properties: { defaultRowHeight: 18 },
   });
@@ -143,31 +163,24 @@ export async function buildWorkbook<TRow>({
   });
 
   // ----- Data rows -----
+  const formats = columns.map((c) => columnFormat(c));
   let cursor = headerRowIdx + 1;
   rows.forEach((row, rIdx) => {
     const dataRow = ws.getRow(cursor + rIdx);
     dataRow.height = 18;
+    // Subtotales (p. ej. por área en R1): negrita sobre fondo teal suave.
+    const subtotal = (row as any)?.rowKind === 'subtotal';
     columns.forEach((c, cIdx) => {
       const cell = dataRow.getCell(cIdx + 1);
       const raw = c.missingInDb ? null : (row as any)[c.key];
 
       if (raw === null || raw === undefined || raw === '') {
         cell.value = c.missingInDb ? '—' : '';
-      } else if (isNumericValue(raw)) {
-        cell.value = raw;
-        if (isCurrencyColumn(c)) {
-          cell.numFmt = '"L "#,##0.00';
-        } else if (isPercentColumn(c)) {
-          // raw is already a percent value (e.g. 75.5), use a number format with %
-          cell.numFmt = '0.0"%"';
-        } else {
-          cell.numFmt = '#,##0';
-        }
       } else {
-        cell.value = String(raw);
+        setCellValue(cell, raw, formats[cIdx]);
       }
 
-      cell.font = { name: 'Calibri', size: 10, color: { argb: `FF${TEXT_DARK}` } };
+      cell.font = { name: 'Calibri', size: 10, bold: subtotal, color: { argb: `FF${TEXT_DARK}` } };
       cell.alignment = {
         vertical: 'middle',
         horizontal: c.align === 'right' ? 'right' : c.align === 'center' ? 'center' : 'left',
@@ -175,16 +188,39 @@ export async function buildWorkbook<TRow>({
       cell.border = {
         bottom: { style: 'hair', color: { argb: 'FFE5E7EB' } },
       };
-      // zebra
-      if (rIdx % 2 === 1) {
+      if (subtotal || rIdx % 2 === 1) {
         cell.fill = {
           type: 'pattern', pattern: 'solid',
-          fgColor: { argb: `FF${ZEBRA_GREY}` },
+          fgColor: { argb: `FF${subtotal ? CADERH_TEAL_SOFT : ZEBRA_GREY}` },
         };
       }
     });
   });
   cursor += rows.length;
+
+  // ----- Totals row -----
+  if (totalsRow && rows.length > 0) {
+    const tr = ws.getRow(cursor);
+    tr.height = 20;
+    columns.forEach((c, cIdx) => {
+      const cell = tr.getCell(cIdx + 1);
+      const raw = c.missingInDb ? null : totalsRow[c.key];
+      if (raw === null || raw === undefined || raw === '') {
+        cell.value = cIdx === 0 ? 'Total' : '';
+      } else {
+        setCellValue(cell, raw, formats[cIdx]);
+      }
+      cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: `FF${TEXT_DARK}` } };
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: c.align === 'right' ? 'right' : c.align === 'center' ? 'center' : 'left',
+      };
+      cell.border = {
+        top: { style: 'medium', color: { argb: `FF${CADERH_TEAL_DARK}` } },
+      };
+    });
+    cursor += 1;
+  }
 
   // Auto-ish column widths (cap at 40)
   columns.forEach((c, i) => {

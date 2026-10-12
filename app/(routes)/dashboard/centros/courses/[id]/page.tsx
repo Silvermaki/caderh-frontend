@@ -20,13 +20,15 @@ import {
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Stepper, Step, StepLabel } from "@/components/ui/steps";
+import { DatePicker } from "@/components/ui/date-picker";
 import SkeletonTable from "@/components/skeleton-table";
 import KPIBlock from "@/components/project/KPIBlock";
+import CourseWizardModal from "@/components/centro/course-wizard-modal";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import {
     Building2, BookOpen, Clock, Hash, Pencil, Trash2, Loader2, PlusCircle,
-    Layers, Wrench, Download, Upload, ChevronLeft, ChevronRight, ChevronsUpDown, Check,
+    Layers, Wrench, Download, Upload, ChevronLeft, ChevronRight, ChevronsUpDown, Check, Copy, Tag,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +60,12 @@ export default function CourseDetailPage() {
     const [saving, setSaving] = useState(false);
     const [deleteOpen, setDeleteOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [areas, setAreas] = useState<{ id: number; nombre: string }[]>([]);
+
+    // Duplicar curso: el asistente necesita el catálogo de centros (puede copiarse a otro)
+    const [duplicateOpen, setDuplicateOpen] = useState(false);
+    const [duplicateLoading, setDuplicateLoading] = useState(false);
+    const [centros, setCentros] = useState<{ id: number; nombre: string }[]>([]);
 
     const [modules, setModules] = useState<any[]>([]);
     const [modulesLoading, setModulesLoading] = useState(true);
@@ -144,6 +152,19 @@ export default function CourseDetailPage() {
         } catch { /* silent */ }
     };
 
+    // Código sugerido del proceso (correlativo del centro); editable
+    const fetchNextProcessCode = async (centroId: string) => {
+        try {
+            const res = await fetch(`${apiBase}/centros/centros/${centroId}/procesos/next-code`, { headers: authHeaders });
+            if (res.ok) {
+                const d = await res.json();
+                const sugerido = d.data?.codigo ? String(d.data.codigo) : "";
+                // Solo si el usuario no escribió un código mientras tanto
+                if (sugerido) setProcessForm((prev) => (prev.codigo ? prev : { ...prev, codigo: sugerido }));
+            }
+        } catch { /* silent */ }
+    };
+
     const setProcessField = (key: string, value: string) => setProcessForm((prev) => ({ ...prev, [key]: value }));
 
     const parseDias = (raw: string): string[] => {
@@ -183,6 +204,7 @@ export default function CourseDetailPage() {
         fetchTipoJornadas();
         fetchDiasCatalogo();
         fetchInstructorsForCentro(String(course.centro_id));
+        fetchNextProcessCode(String(course.centro_id));
         setProcessDialogOpen(true);
     };
 
@@ -247,6 +269,19 @@ export default function CourseDetailPage() {
         setErrors(prev => { const n = { ...prev }; delete n[key]; return n; });
     };
 
+    const fetchAreas = async () => {
+        try {
+            const res = await fetch(`${apiBase}/centros/areas?all=true`, { headers: authHeaders });
+            if (res.ok) {
+                const d = await res.json();
+                const list: { id: number; nombre: string }[] = d.data ?? [];
+                setAreas(list);
+                // Área del curso ya inactiva: se pide elegir otra
+                setForm((prev) => (prev.area_id && !list.some((a) => a.id.toString() === prev.area_id) ? { ...prev, area_id: "" } : prev));
+            }
+        } catch { /* silent */ }
+    };
+
     const startEditing = () => {
         if (!course) return;
         setForm({
@@ -255,9 +290,11 @@ export default function CourseDetailPage() {
             codigo_programa: course.codigo_programa ?? "",
             taller: course.taller != null ? String(course.taller) : "0",
             objetivo: course.objetivo ?? "",
+            area_id: course.area_id != null ? String(course.area_id) : "",
         });
         setErrors({});
         setEditingTab("general");
+        fetchAreas();
     };
 
     const cancelEditing = () => { setEditingTab(null); setErrors({}); };
@@ -267,6 +304,7 @@ export default function CourseDetailPage() {
         if (!form.codigo?.toString().trim()) e.codigo = "Requerido";
         if (!form.nombre?.trim()) e.nombre = "Requerido";
         if (!form.codigo_programa?.toString().trim()) e.codigo_programa = "Requerido";
+        if (!form.area_id) e.area_id = "Requerido";
         if (!form.objetivo?.trim()) e.objetivo = "Requerido";
         setErrors(e);
         if (Object.keys(e).length > 0) return;
@@ -280,6 +318,7 @@ export default function CourseDetailPage() {
                 codigo_programa: form.codigo_programa,
                 taller: Number(form.taller) || 0,
                 objetivo: form.objetivo,
+                area_id: Number(form.area_id),
             };
             const res = await fetch(`${apiBase}/centros/courses`, {
                 method: "PUT",
@@ -296,6 +335,19 @@ export default function CourseDetailPage() {
             }
         } catch { toast.error("Error al guardar"); }
         setSaving(false);
+    };
+
+    // Duplicar: abre el asistente con el curso y sus módulos (todo editable, sin código)
+    const openDuplicate = async () => {
+        if (centros.length === 0) {
+            setDuplicateLoading(true);
+            try {
+                const res = await fetch(`${apiBase}/centros/centros?all=true`, { headers: authHeaders });
+                if (res.ok) { const d = await res.json(); setCentros(d.data ?? []); }
+            } catch { /* silent */ }
+            setDuplicateLoading(false);
+        }
+        setDuplicateOpen(true);
     };
 
     const deleteCourse = async () => {
@@ -560,12 +612,23 @@ export default function CourseDetailPage() {
                                         <Hash className="h-4 w-4 shrink-0" />Programa: {course.codigo_programa}
                                     </span>
                                 )}
+                                {course.area_nombre && (
+                                    <span className="flex items-center gap-2">
+                                        <Tag className="h-4 w-4 shrink-0" />{course.area_nombre}
+                                    </span>
+                                )}
                             </div>
                         </div>
                         {isSupervisor && (
-                            <Button color="destructive" size="sm" className="shrink-0" onClick={() => setDeleteOpen(true)}>
-                                <Trash2 className="h-4 w-4 mr-1.5" />Eliminar
-                            </Button>
+                            <div className="flex gap-2 shrink-0">
+                                <Button variant="outline" size="sm" onClick={openDuplicate} disabled={duplicateLoading || modulesLoading}>
+                                    {duplicateLoading ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Copy className="h-4 w-4 mr-1.5" />}
+                                    Duplicar curso
+                                </Button>
+                                <Button color="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+                                    <Trash2 className="h-4 w-4 mr-1.5" />Eliminar
+                                </Button>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -601,6 +664,7 @@ export default function CourseDetailPage() {
                                 {fieldInput("codigo", "Código", { type: "number" })}
                                 {fieldInput("nombre", "Nombre", { required: true })}
                                 {fieldInput("codigo_programa", "Código de programa", { required: true })}
+                                {fieldSelect("area_id", "Área técnica", areas.map((a) => ({ value: a.id.toString(), label: a.nombre })), { required: true })}
                                 {fieldSelect("taller", "Taller", [{ value: "1", label: "Sí" }, { value: "0", label: "No" }])}
                                 <div className="md:col-span-2">
                                     <Label className="mb-1 font-medium text-default-600">Objetivo *</Label>
@@ -614,6 +678,7 @@ export default function CourseDetailPage() {
                                     {fieldView("Código", course.codigo, <Hash className="h-4 w-4" />)}
                                     {fieldView("Nombre", course.nombre, <BookOpen className="h-4 w-4" />)}
                                     {fieldView("Código de Programa", course.codigo_programa, <Layers className="h-4 w-4" />)}
+                                    {fieldView("Área técnica", course.area_nombre, <Tag className="h-4 w-4" />)}
                                     {fieldView("Total Horas", course.total_horas, <Clock className="h-4 w-4" />)}
                                     {fieldView("Taller", course.taller === 1 ? "Sí" : "No", <Wrench className="h-4 w-4" />)}
                                     {fieldView("Centro", course.centro_nombre, <Building2 className="h-4 w-4" />)}
@@ -911,11 +976,13 @@ export default function CourseDetailPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <Label className="mb-1 text-xs">Fecha Inicio *</Label>
-                                <Input type="date" value={processForm.fecha_inicial} onChange={(e) => setProcessField("fecha_inicial", e.target.value)} disabled={processSubmitting} />
+                                <DatePicker value={processForm.fecha_inicial} maxDate={processForm.fecha_final || undefined}
+                                    onChange={(v) => setProcessField("fecha_inicial", v ?? "")} disabled={processSubmitting} />
                             </div>
                             <div>
                                 <Label className="mb-1 text-xs">Fecha Fin *</Label>
-                                <Input type="date" value={processForm.fecha_final} onChange={(e) => setProcessField("fecha_final", e.target.value)} disabled={processSubmitting} />
+                                <DatePicker value={processForm.fecha_final} minDate={processForm.fecha_inicial || undefined}
+                                    onChange={(v) => setProcessField("fecha_final", v ?? "")} disabled={processSubmitting} />
                             </div>
 
                             <div>
@@ -1006,6 +1073,24 @@ export default function CourseDetailPage() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Duplicar curso: al crear la copia se abre su detalle */}
+            <CourseWizardModal
+                isOpen={duplicateOpen}
+                setIsOpen={setDuplicateOpen}
+                reloadList={() => { }}
+                onCreated={(id) => router.push(`/dashboard/centros/courses/${id}`)}
+                centros={centros}
+                initialData={{
+                    centro_id: course.centro_id,
+                    nombre: course.nombre,
+                    codigo_programa: course.codigo_programa,
+                    taller: course.taller,
+                    objetivo: course.objetivo,
+                    area_id: course.area_id,
+                    modules,
+                }}
+            />
         </div>
     );
 }

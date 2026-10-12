@@ -31,7 +31,7 @@ describe('ReportHub', () => {
 
   it('shows total report count', () => {
     render(<ReportHub />);
-    expect(screen.getByText(/reporte disponible/i)).toBeInTheDocument();
+    expect(screen.getByText(/reportes? disponibles?/i)).toBeInTheDocument();
   });
 
   it('hides empty categories', () => {

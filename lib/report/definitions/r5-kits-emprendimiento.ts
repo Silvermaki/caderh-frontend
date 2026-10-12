@@ -29,7 +29,8 @@ export const r5Definition: ReportDefinition<R5Filters, R5Row> = {
   subtitle: 'Pendiente: módulo de kits en desarrollo',
   pendingModule:
     'Este reporte se alimentará del módulo de kits de emprendimiento, que aún no se ha desarrollado. Cuando el sistema capture las entregas (joven, emprendimiento, rubro, monto y seguimiento), el reporte se llenará automáticamente.',
-  filters: ['project'],
+  // Sin filtros mientras no exista el módulo: no habría nada que filtrar.
+  filters: [],
   defaultFilters: {},
   columns,
   export: { excel: 'client', pdf: 'server', csv: 'client' },
