@@ -10,9 +10,6 @@ import './r4-seguimiento-post-formacion';
 import './r5-kits-emprendimiento';
 import './r6-ingreso-proyecto';
 import './r7-ingreso-consolidado';
-import './r8-overhead';
-import './r9-presupuesto-vs-ejecutado';
-import './r10-empresas-donantes';
-import './r11-informe-ac-r-022';
+import './r8-presupuesto-vs-ejecutado';
 
 export {};

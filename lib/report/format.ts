@@ -4,7 +4,7 @@ import { formatIsoDate } from './filter-keys';
 
 /**
  * Formato efectivo de una columna: el explícito (`format`) o, para las
- * definiciones que aún no lo declaran (R6–R9), el inferido por el nombre de
+ * definiciones que aún no lo declaran (R6 y R7), el inferido por el nombre de
  * la key como hacían las exportaciones.
  */
 export function columnFormat(c: ColumnDef<any>): ColumnFormat | undefined {

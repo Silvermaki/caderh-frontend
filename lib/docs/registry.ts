@@ -95,7 +95,7 @@ export const docsModules: DocModule[] = [
               "ESTADÍSTICAS — el dashboard que acabas de ver.",
               "ADMINISTRACIÓN — Usuarios y Bitácoras (solo visible para Administradores).",
               "PROYECTOS — Fuentes y Proyectos.",
-              "REPORTES — los reportes oficiales R1-R11.",
+              "REPORTES — los reportes oficiales R1-R8.",
               "CENTROS — todo lo del SGC: áreas, gestionar centros, instructores, estudiantes, cursos, procesos educativos.",
               "AYUDA — el Centro de Ayuda donde estás ahora, con guías paso a paso.",
             ],
@@ -1076,7 +1076,7 @@ export const docsModules: DocModule[] = [
     slug: "reportes",
     title: "Reportes",
     summary:
-      "Corre los reportes R1–R11 con los filtros propios de cada uno y exporta a Excel, CSV o PDF.",
+      "Corre los reportes R1–R8 con los filtros propios de cada uno y exporta a Excel, CSV o PDF.",
     icon: BarChart3,
     visibleTo: ["ADMIN", "MANAGER", "USER"],
     actions: [],

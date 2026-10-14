@@ -9,9 +9,10 @@ export interface ReportCategoryMeta {
   accentDestructive?: boolean;
 }
 
-// Categories are ordered so that listing reports per-category yields R1→R11
-// in sequence: Estudiantes (R1-R5) → Ingresos (R6, R7) → Egresos (R8, R9) →
-// Directorios (R10, R11). Don't reorder without checking the numbering.
+// Categories are ordered so that listing reports per-category yields R1→R8
+// in sequence: Estudiantes (R1-R5) → Ingresos (R6, R7) → Egresos (R8).
+// Directorios quedó sin reportes el 14/10/2026 (las categorías vacías no se
+// muestran). Don't reorder without checking the numbering.
 export const REPORT_CATEGORIES: ReportCategoryMeta[] = [
   {
     key: 'estudiantes',
@@ -28,7 +29,7 @@ export const REPORT_CATEGORIES: ReportCategoryMeta[] = [
   {
     key: 'egresos',
     label: 'Egresos',
-    description: 'Gastos operativos, overhead y presupuesto',
+    description: 'Ejecución del presupuesto por proyecto',
     icon: TrendingDown,
   },
   {

@@ -58,7 +58,7 @@ export const r1Definition: ReportDefinition<R1Filters, R1Row> = {
   subtitle: 'Matrícula por área técnica, centro y curso, con hombres y mujeres y subtotal por área.',
   filters: ['dateRange', 'project', 'financingSource', 'cftp', 'technicalArea', 'city', 'age'],
   filterLabels: {
-    dateRange: { label: 'Inicio del curso', description: 'Cursos que iniciaron en este rango.' },
+    dateRange: { label: 'Período', description: 'Cursos en marcha o terminados en este período.' },
     age: { description: 'Edad del estudiante al iniciar el curso.' },
   },
   defaultFilters: currentYearRange,

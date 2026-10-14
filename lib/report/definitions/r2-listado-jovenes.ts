@@ -118,7 +118,7 @@ export const r2Definition: ReportDefinition<R2Filters, R2Row> = {
   subtitle: 'Una fila por estudiante y curso: ficha del estudiante, resultado del curso y último seguimiento.',
   filters: ['dateRange', 'project', 'financingSource', 'cftp', 'course', 'technicalArea', 'gender', 'age', 'courseResult'],
   filterLabels: {
-    dateRange: { label: 'Inicio del curso', description: 'Cursos que iniciaron en este rango.' },
+    dateRange: { label: 'Período', description: 'Cursos en marcha o terminados en este período.' },
     age: { description: 'Edad actual del estudiante.' },
     courseResult: { description: '"Sin cierre": el curso ya terminó y falta registrar si egresó o desertó.' },
   },
