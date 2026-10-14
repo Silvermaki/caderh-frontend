@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 
 // The "missing-in-DB" banner is a development aid for the team — it lists
 // columns the client still has to wire up. End users in production should
-// not see it (the cells already render `—` and the export footer notes them).
+// not see it (the cells already render `—`).
 function isLocalhost(): boolean {
   if (typeof window === 'undefined') return false;
   const host = window.location.hostname;

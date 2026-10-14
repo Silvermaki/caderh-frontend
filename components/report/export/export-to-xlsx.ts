@@ -22,7 +22,6 @@ export interface BuildWorkbookArgs<TRow> {
   /** Fila de totales del backend (se agrega al final, en negrita). */
   totalsRow?: Record<string, any> | null;
   filtersApplied: Record<string, any>;
-  missingColumns: string[];
   /** Optional PNG dataURL of the chart to embed above the table. */
   chartImage?: string;
 }
@@ -68,7 +67,7 @@ async function fetchLogoBuffer(): Promise<ArrayBuffer | null> {
 }
 
 export async function buildWorkbook<TRow>({
-  title, code, subtitle, columns, rows, totalsRow, filtersApplied, missingColumns, chartImage,
+  title, code, subtitle, columns, rows, totalsRow, filtersApplied, chartImage,
 }: BuildWorkbookArgs<TRow>): Promise<ExcelJS.Workbook> {
   const wb = new ExcelJS.Workbook();
   wb.creator = 'CADERH ERP';
@@ -258,26 +257,6 @@ export async function buildWorkbook<TRow>({
       r.getCell(2).value = formatFilterValue(v);
       r.getCell(1).font = { name: 'Calibri', size: 10, bold: true, color: { argb: `FF${MUTED}` } };
       r.getCell(2).font = { name: 'Calibri', size: 10, color: { argb: `FF${TEXT_DARK}` } };
-      cursor += 1;
-    }
-    cursor += 1;
-  }
-
-  if (missingColumns.length > 0) {
-    const r = ws.getRow(cursor);
-    const cell = r.getCell(1);
-    cell.value = `Nota: ${missingColumns.length} columna(s) pendiente(s) de captura en el sistema`;
-    cell.font = { name: 'Calibri', size: 10, bold: true, italic: true, color: { argb: 'FF92400E' } };
-    cell.fill = {
-      type: 'pattern', pattern: 'solid',
-      fgColor: { argb: 'FFFEF3C7' },
-    };
-    ws.mergeCells(`A${cursor}:${lastColLetter}${cursor}`);
-    cursor += 1;
-    for (const k of missingColumns) {
-      const dr = ws.getRow(cursor);
-      dr.getCell(1).value = `· ${k}`;
-      dr.getCell(1).font = { name: 'Calibri', size: 9, italic: true, color: { argb: `FF${MUTED}` } };
       cursor += 1;
     }
     cursor += 1;

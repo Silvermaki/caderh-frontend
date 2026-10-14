@@ -38,7 +38,6 @@ describe('buildWorkbook', () => {
       ],
       totalsRow: { total: 10, monto: 1500.5, pct: 50 },
       filtersApplied: { Proyecto: 'Proyecto Alfa' },
-      missingColumns: [],
     });
     const ws = wb.worksheets[0];
 
@@ -66,10 +65,10 @@ describe('buildWorkbook', () => {
     expect(columnValues(ws, 'B')).toMatch(/Proyecto Alfa/);
   });
 
-  it('agrega una nota al final cuando hay columnas pendientes', async () => {
+  it('no agrega notas internas aunque haya columnas sin dato', async () => {
     const wb = await buildWorkbook({
-      title: 'T', columns: [{ key: 'a', label: 'A' }], rows: [], filtersApplied: {}, missingColumns: ['colX'],
+      title: 'T', columns: [{ key: 'a', label: 'A', missingInDb: true }], rows: [{ a: null }], filtersApplied: {},
     });
-    expect(columnValues(wb.worksheets[0], 'A')).toMatch(/pendiente\(s\) de captura/i);
+    expect(columnValues(wb.worksheets[0], 'A')).not.toMatch(/pendiente/i);
   });
 });

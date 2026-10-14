@@ -5,6 +5,7 @@ import { notFound, useParams } from 'next/navigation';
 import { getReport, REPORT_CATEGORIES } from '@/lib/report/registry';
 import { ReportTableShell } from '@/components/report/shell/report-table-shell';
 import { ReportTemplateShell } from '@/components/report/shell/report-template-shell';
+import { ReportEmpty } from '@/components/report/table/report-empty';
 import { buildReportFilters } from '@/components/report/filters/filter-renderer';
 
 export default function ReportSlugPage() {
@@ -28,19 +29,11 @@ export default function ReportSlugPage() {
         title={def.title}
         subtitle={def.subtitle}
         breadcrumbs={crumbs}
-        renderForm={() => (
-          <div className="rounded-md border border-border/60 p-6 text-sm text-muted-foreground">
-            <p className="mb-1 font-medium text-foreground">
-              Plantilla pendiente de desarrollo
-            </p>
-            {(def as any).pendingModule ??
-              'Formulario pendiente — plantilla AC-R-022 en desarrollo.'}
-          </div>
-        )}
+        renderForm={() => <ReportEmpty comingSoon={def.comingSoon} />}
         onGenerate={async () => {
-          throw new Error('Generación pixel-perfect pendiente de implementación');
+          throw new Error('Informe no disponible');
         }}
-        disabled={Boolean((def as any).pendingModule)}
+        disabled={Boolean(def.comingSoon)}
       />
     );
   }

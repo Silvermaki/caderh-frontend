@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker, localDateToIso } from "@/components/ui/date-picker";
+import { IdentidadInput, IDENTIDAD_ERROR, IDENTIDAD_RE } from "@/components/centro/identidad-input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -253,6 +254,7 @@ export default function StudentDetailPage() {
         const e: Record<string, string> = {};
         if (editingTab === "personal") {
             if (!form.identidad?.trim()) e.identidad = "Requerido";
+            else if (!IDENTIDAD_RE.test(form.identidad)) e.identidad = IDENTIDAD_ERROR;
             if (!form.nombres?.trim()) e.nombres = "Requerido";
             if (!form.apellidos?.trim()) e.apellidos = "Requerido";
             if (!form.sexo) e.sexo = "Requerido";
@@ -517,7 +519,11 @@ export default function StudentDetailPage() {
                         </div>
                         {editingTab === "personal" ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {fieldInput("identidad", "Identidad", { required: true, placeholder: "####-####-#####", sanitize: (v) => v.replace(/[^\d-]/g, "") })}
+                                <div>
+                                    <Label className="mb-1 font-medium text-default-600">Identidad *</Label>
+                                    <IdentidadInput disabled={saving} value={form.identidad ?? ""} onChange={(v) => set("identidad", v)} />
+                                    {errors.identidad && <p className="text-destructive text-xs mt-1">{errors.identidad}</p>}
+                                </div>
                                 <div>
                                     <Label className="mb-1 font-medium text-default-600">Fecha de nacimiento</Label>
                                     <DatePicker

@@ -113,7 +113,15 @@ const selectVariants = cva(
   }
 );
 
-const Select = SelectPrimitive.Root;
+// Radix Select v2: `value={undefined}` deja el Select sin controlar (y avisa
+// al pasar a controlado); para mostrar el placeholder espera "". En el
+// proyecto todos los Select son controlados y usan `x || undefined` para
+// "sin valor": si el prop `value` viene, aunque sea undefined, se pasa "".
+// Así un formulario que se reinicia no se queda mostrando el valor anterior.
+const Select = (props: React.ComponentProps<typeof SelectPrimitive.Root>) =>
+  "value" in props
+    ? <SelectPrimitive.Root {...props} value={props.value ?? ""} />
+    : <SelectPrimitive.Root {...props} />;
 
 const SelectGroup = SelectPrimitive.Group;
 
@@ -177,9 +185,10 @@ const SelectContent = React.forwardRef<
         position={position}
         {...props}
       >
+        {/* select-viewport: barra de desplazamiento visible (globals.scss). */}
         <SelectPrimitive.Viewport
           className={cn(
-            "p-1",
+            "select-viewport p-1",
             position === "popper" &&
             "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
           )}

@@ -90,7 +90,6 @@ export function useReportExport<TFilters, TRow>(
             rows,
             totalsRow: data.totalsRow,
             filtersApplied: display,
-            missingColumns: columns.filter((c) => c.missingInDb).map((c) => c.label),
             chartImage,
           });
           await downloadWorkbook(wb, `${def.code}_${def.id}.xlsx`);

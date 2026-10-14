@@ -128,6 +128,16 @@ export interface Page<TRow> {
   totalsRow?: Record<string, number | string | null>;
   /** KPIs agregados que calcula el backend (claves según `variants.kpiStrip.cards`). */
   kpis?: Record<string, number>;
+  /** Datos adicionales del backend (p. ej. R4: si hay egresados en el sistema). */
+  meta?: Record<string, unknown>;
+}
+
+/** Aviso para el usuario final sobre el origen o el estado de los datos. */
+export interface DataNotice {
+  title?: string;
+  text: string;
+  /** Enlace al módulo donde se registran esos datos. */
+  action?: { label: string; href: string };
 }
 
 /**
@@ -143,11 +153,19 @@ export interface ReportDefinition<TFilters, TRow> {
   title: string;
   subtitle: string;
   /**
-   * Reporte stub: el módulo del que depende aún no existe. Cuando está
-   * definido, el estado vacío explica la dependencia en lugar de sugerir
-   * "limpiar filtros" (que aquí no ayudaría).
+   * Reporte que todavía no tiene de dónde alimentarse: la página y el listado
+   * lo marcan "Próximamente" y este texto dice qué mostrará. Lo lee el usuario
+   * final: describir el reporte, no el estado del desarrollo.
    */
-  pendingModule?: string;
+  comingSoon?: string;
+  /**
+   * Estado vacío propio cuando la causa no son los filtros (p. ej. R4 sin
+   * egresados en el sistema). Con null se usa el genérico "No hay resultados
+   * con estos filtros", que ofrece limpiarlos.
+   */
+  emptyState?: (page: Page<TRow>) => DataNotice | null;
+  /** Aviso sobre los resultados cuando faltan datos por registrar (p. ej. cierres en R3). */
+  notice?: (page: Page<TRow>) => DataNotice | null;
 
   filters: FilterKey[];
   /**

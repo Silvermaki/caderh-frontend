@@ -16,7 +16,7 @@ export interface ReportTemplateShellProps {
   renderForm: () => React.ReactNode;
   onGenerate: () => Promise<{ url: string; name: string }>;
   recent?: Array<{ name: string; whenLabel: string; url: string }>;
-  /** Deshabilita la generación (plantilla aún no implementada). */
+  /** Sin generación disponible: se muestra solo el formulario, sin el botón. */
   disabled?: boolean;
 }
 
@@ -50,11 +50,13 @@ export function ReportTemplateShell({
         <CardContent className="p-0">
           <div className="flex flex-col gap-3">
             {renderForm()}
-            <div className="pt-2 flex justify-end">
-              <Button onClick={handleGenerate} disabled={busy || disabled}>
-                {busy ? 'Generando…' : 'Generar reporte'}
-              </Button>
-            </div>
+            {!disabled && (
+              <div className="pt-2 flex justify-end">
+                <Button onClick={handleGenerate} disabled={busy}>
+                  {busy ? 'Generando…' : 'Generar reporte'}
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

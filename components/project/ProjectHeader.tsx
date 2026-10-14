@@ -167,7 +167,7 @@ const ProjectHeader = ({
                         </Badge>
                     )}
                 </div>
-                <p className="text-sm text-muted-foreground mt-2 break-words max-w-3xl leading-relaxed">
+                <p className="text-sm text-muted-foreground mt-2 break-words leading-relaxed">
                     {description}
                 </p>
                 <div className="flex flex-wrap gap-x-6 gap-y-1 mt-4 text-sm text-muted-foreground">

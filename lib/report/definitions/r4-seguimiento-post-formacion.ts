@@ -83,6 +83,25 @@ export const r4Definition: ReportDefinition<R4Filters, R4Row> = {
   },
   defaultFilters: () => ({ corte: todayIso() }),
   columns,
+  // Sin egresados en todo el sistema la causa no son los filtros: aún no se
+  // registra el cierre de los cursos.
+  emptyState: (page) => page.meta?.hayEgresados === false
+    ? {
+        title: 'Aún no hay egresados registrados',
+        text: 'Este reporte se llena con el cierre de cada curso (quiénes egresaron) y con los seguimientos posteriores, que se registran en Centros → Egresados.',
+        action: { label: 'Ir a Egresados', href: '/dashboard/centros/egresados' },
+      }
+    : null,
+  notice: (page) => {
+    const egresados = Number(page.kpis?.egresados ?? 0);
+    if (egresados === 0 || Number(page.kpis?.sinSeguimiento ?? 0) < egresados) return null;
+    return {
+      text: egresados === 1
+        ? 'Este egresado aún no tiene seguimiento registrado a la fecha de corte.'
+        : 'Ninguno de estos egresados tiene seguimiento registrado a la fecha de corte; por eso todos aparecen como "Sin seguimiento".',
+      action: { label: 'Ir a Seguimiento de egresados', href: '/dashboard/centros/egresados?tab=seguimiento' },
+    };
+  },
   variants: {
     kpiStrip: {
       cards: [
@@ -113,11 +132,11 @@ export const r4Definition: ReportDefinition<R4Filters, R4Row> = {
   },
   export: { excel: 'client', pdf: 'server', csv: 'client' },
   fetcher: async (filters) => {
-    const res = await apiGet<{ rows: R4Row[]; total: number; kpis?: Record<string, number> }>(
+    const res = await apiGet<{ rows: R4Row[]; total: number; kpis?: Record<string, number>; meta?: Record<string, unknown> }>(
       '/reports/r4-seguimiento-post-formacion',
       queryParams(r4Definition.filters, filters as Record<string, unknown>),
     );
-    return { rows: res.rows, total: res.total, kpis: res.kpis };
+    return { rows: res.rows, total: res.total, kpis: res.kpis, meta: res.meta };
   },
 };
 

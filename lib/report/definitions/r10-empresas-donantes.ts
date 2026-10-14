@@ -28,9 +28,9 @@ export const r10Definition: ReportDefinition<R10Filters, R10Row> = {
   code: 'R10',
   category: 'directorios',
   title: 'Empresas, organizaciones y donantes',
-  subtitle: 'Pendiente: módulo Empresas/Donantes no implementado',
-  pendingModule:
-    'Este directorio se alimentará del módulo de Empresas/Donantes, que aún no se ha desarrollado. Cuando el sistema capture las organizaciones aliadas (contactos, convenios y aportes), el directorio se llenará automáticamente.',
+  subtitle: 'Directorio de empresas, organizaciones aliadas y donantes, con sus contactos y aportes.',
+  comingSoon:
+    'Aquí se listarán las empresas, organizaciones aliadas y donantes, con sus contactos, los estudiantes colocados y los aportes recibidos.',
   filters: [],
   defaultFilters: {},
   columns,

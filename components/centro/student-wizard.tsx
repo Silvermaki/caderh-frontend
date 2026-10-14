@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { DatePicker, localDateToIso } from "@/components/ui/date-picker";
+import { IdentidadInput, IDENTIDAD_ERROR, IDENTIDAD_RE } from "@/components/centro/identidad-input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Stepper, Step, StepLabel } from "@/components/ui/steps";
 import toast from "react-hot-toast";
@@ -230,6 +231,7 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
         if (step === 0) {
             if (showCentroSelect && !form.centro_id) e.centro_id = "Requerido";
             if (!form.identidad.trim()) e.identidad = "Requerido";
+            else if (!IDENTIDAD_RE.test(form.identidad)) e.identidad = IDENTIDAD_ERROR;
             if (!form.nombres.trim()) e.nombres = "Requerido";
             if (!form.apellidos.trim()) e.apellidos = "Requerido";
             if (!form.sexo) e.sexo = "Requerido";
@@ -400,7 +402,11 @@ export default function StudentWizard({ student, centroId, centros, isOpen, setI
                             {errors.centro_id && <p className="text-destructive text-xs mt-1">{errors.centro_id}</p>}
                         </div>
                     )}
-                    {fieldInput("identidad", "Identidad", { required: true, placeholder: "####-####-#####", sanitize: (v) => v.replace(/[^\d-]/g, "") })}
+                    <div>
+                        <Label className="mb-1 font-medium text-default-600">Identidad *</Label>
+                        <IdentidadInput disabled={submitting} value={form.identidad ?? ""} onChange={(v) => set("identidad", v)} />
+                        {errors.identidad && <p className="text-destructive text-xs mt-1">{errors.identidad}</p>}
+                    </div>
                     <div>
                         <Label className="mb-1 font-medium text-default-600">Fecha de nacimiento</Label>
                         <DatePicker

@@ -18,7 +18,7 @@ export function ReportHub() {
           Centro de Reportes
         </h1>
         <p className="text-sm text-muted-foreground mt-2 leading-relaxed max-w-2xl">
-          {total} {total === 1 ? 'reporte disponible' : 'reportes disponibles'} agrupados por categoría. Hacé click en cualquiera para abrir y aplicar filtros.
+          {total} {total === 1 ? 'reporte' : 'reportes'} agrupados por categoría. Haga clic en cualquiera para abrirlo y aplicar filtros.
         </p>
       </div>
 

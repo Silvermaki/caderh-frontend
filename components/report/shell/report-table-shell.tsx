@@ -9,6 +9,7 @@ import { ReportBreadcrumbs, type Crumb } from '../table/report-breadcrumbs';
 import { ReportHeader } from '../table/report-header';
 import { ReportEmpty } from '../table/report-empty';
 import { ReportError } from '../table/report-error';
+import { ReportNotice } from '../table/report-notice';
 import { ScopeBar } from '../filters/scope-bar';
 import { FilterDrawer } from '../filters/filter-drawer';
 import type { SetFilter, SetFilters } from '../filters/filter-renderer';
@@ -168,6 +169,11 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
   const hasFilters = definition.filters.length > 0;
   const hasDefaults = Object.keys(defaults).length > 0;
 
+  // Avisos sobre el origen de los datos (p. ej. cierres o seguimientos sin
+  // registrar): sin ellos, una tabla vacía parecería un problema de filtros.
+  const emptyNotice = query.data && !hasData ? definition.emptyState?.(query.data) ?? null : null;
+  const notice = query.data && hasData ? definition.notice?.(query.data) ?? null : null;
+
   const applied = useAppliedFilters(definition, filters);
   const chips = applied.map((a) => ({ key: a.key, label: `${a.label}: ${a.value}` }));
   const removeChip = (key: string) => {
@@ -222,6 +228,8 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
 
       {aboveTable}
 
+      {notice && <ReportNotice notice={notice} />}
+
       {/* Tira de KPIs: solo si la definición la declara y el backend devolvió kpis. */}
       {definition.variants?.kpiStrip && query.data?.kpis && (
         <ReportKpiStrip
@@ -262,8 +270,9 @@ export function ReportTableShell<TFilters extends Record<string, any>, TRow>({
 
             {!query.isLoading && !query.isError && !hasData && (
               <ReportEmpty
-                onClear={clearAll}
-                pendingNote={definition.pendingModule}
+                onClear={hasFilters ? clearAll : undefined}
+                notice={emptyNotice}
+                comingSoon={definition.comingSoon}
               />
             )}
 

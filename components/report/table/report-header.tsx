@@ -1,6 +1,6 @@
 'use client';
 
-import { Save, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export interface ReportHeaderProps {
@@ -24,9 +24,6 @@ export function ReportHeader({ title, subtitle, onClear, exportMenu }: ReportHea
         )}
       </div>
       <div className="flex gap-2 shrink-0">
-        <Button variant="ghost" size="sm" disabled title="Disponible en fase 2">
-          <Save className="h-4 w-4 mr-1" /> Guardar vista
-        </Button>
         {onClear && (
           <Button variant="outline" size="sm" onClick={onClear}>
             <RotateCcw className="h-4 w-4 mr-1" /> Limpiar

@@ -66,12 +66,15 @@ const Switch = React.forwardRef<
           {startContent}
         </span>
       )}
+      {/* Margen lógico (ms-*): sigue la dirección del documento sin depender de
+          un ancestro con `dir`. Con `ltr:` la bolita no se movía dentro de los
+          diálogos, que se montan fuera del contenedor que define la dirección. */}
       <SwitchPrimitives.Thumb
         className={cn(
-          "pointer-events-none z-10 origin-right  h-4 w-4 rounded-full bg-background  shadow-lg ring-0 transition-all duration-200  flex items-center justify-center   ltr:data-[state=unchecked]:ml-0.5 ltr:data-[state=checked]:ml-5 rtl:data-[state=checked]:mr-5 rtl:data-[state=unchecked]:mr-0.5 ",
+          "pointer-events-none z-10 origin-right  h-4 w-4 rounded-full bg-background  shadow-lg ring-0 transition-all duration-200 ease-in-out  flex items-center justify-center   data-[state=unchecked]:ms-0.5 data-[state=checked]:ms-5 ",
           thumbClass,
           {
-            "h-3 w-3 data-[state=checked]:ml-4 ": size === "sm",
+            "h-3 w-3 data-[state=checked]:ms-4 ": size === "sm",
             "h-4 w-4 ": size === "md",
             "h-5 w-5 ": size === "lg",
           }

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ChevronRight, Flame, Gauge, Layers, Columns, AlertTriangle, FileText } from 'lucide-react';
 import type { ReportDefinition } from '@/lib/report/types';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 export interface ReportRowProps {
@@ -61,6 +62,11 @@ export function ReportRow({ report }: ReportRowProps) {
           </div>
         )}
       </div>
+      {report.comingSoon && (
+        <Badge variant="outline" color="secondary" className="shrink-0 font-medium">
+          Próximamente
+        </Badge>
+      )}
       {/* Variant chips ocultos temporalmente — re-habilitar descomentando `chips`
           arriba y este bloque cuando se quiera volver a mostrar los iconos.
       {chips.length > 0 && (

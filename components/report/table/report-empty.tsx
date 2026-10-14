@@ -1,27 +1,49 @@
 'use client';
 
-import { FileSearch, Hammer } from 'lucide-react';
+import Link from 'next/link';
+import { CalendarClock, FileSearch, Inbox } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import type { DataNotice } from '@/lib/report/types';
+
+const ICON_RING = 'mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-border/60';
 
 export function ReportEmpty({
   onClear,
-  pendingNote,
+  notice,
+  comingSoon,
 }: {
   onClear?: () => void;
-  pendingNote?: string;
+  /** Por qué no hay datos cuando la causa no son los filtros (limpiarlos no ayudaría). */
+  notice?: DataNotice | null;
+  /** Reporte aún sin datos de origen: qué mostrará. */
+  comingSoon?: string;
 }) {
-  // Stub: el reporte depende de un módulo que aún no existe — sugerir
-  // "limpiar filtros" aquí confunde (no hay datos que filtrar).
-  if (pendingNote) {
+  if (comingSoon) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-border/60">
-          <Hammer className="h-5 w-5 text-muted-foreground" />
+        <div className={ICON_RING}>
+          <CalendarClock className="h-5 w-5 text-muted-foreground" />
         </div>
-        <p className="text-sm font-medium text-foreground mb-1">
-          Reporte pendiente de desarrollo
-        </p>
-        <p className="text-sm text-muted-foreground max-w-md">{pendingNote}</p>
+        <p className="text-sm font-medium text-foreground mb-1">Próximamente</p>
+        <p className="text-sm text-muted-foreground max-w-md">{comingSoon}</p>
+      </div>
+    );
+  }
+  if (notice) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className={ICON_RING}>
+          <Inbox className="h-5 w-5 text-muted-foreground" />
+        </div>
+        {notice.title && (
+          <p className="text-sm font-medium text-foreground mb-1">{notice.title}</p>
+        )}
+        <p className="text-sm text-muted-foreground max-w-md mb-4">{notice.text}</p>
+        {notice.action && (
+          <Button asChild>
+            <Link href={notice.action.href}>{notice.action.label}</Link>
+          </Button>
+        )}
       </div>
     );
   }

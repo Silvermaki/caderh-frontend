@@ -74,6 +74,20 @@ export const r3Definition: ReportDefinition<R3Filters, R3Row> = {
   },
   defaultFilters: currentYearRange,
   columns,
+  // Cursos ya terminados con matrículas sin cierre: no entran en el % de
+  // retención hasta que se registre si egresaron o desertaron.
+  notice: (page) => {
+    const n = page.rows
+      .filter((r) => r.estado === 'Terminado')
+      .reduce((s, r) => s + (r.sinCierre ?? 0), 0);
+    if (n === 0) return null;
+    return {
+      text: n === 1
+        ? '1 matrícula de un curso ya terminado no tiene registrado si el estudiante egresó o desertó; por eso no cuenta en el % de retención.'
+        : `${n.toLocaleString('es-HN')} matrículas de cursos ya terminados no tienen registrado si el estudiante egresó o desertó; por eso no cuentan en el % de retención.`,
+      action: { label: 'Ir a Cierre de cursos', href: '/dashboard/centros/egresados' },
+    };
+  },
   variants: {
     compoundHeaders: true,
     kpiStrip: {
