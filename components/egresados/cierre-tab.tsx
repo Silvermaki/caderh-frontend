@@ -81,16 +81,22 @@ export function BarraSeleccion({ cantidad, onLimpiar, children }: { cantidad: nu
 }
 
 export function CierreTab({
-    api, filtros, puedeEditar, recargarResumen,
+    api, filtros, puedeEditar, recargarResumen, proceso,
 }: {
     api: Api;
     filtros: FiltrosEgresados;
     puedeEditar: boolean;
     /** Avisa a la página que cambió el cierre (la pestaña de seguimiento depende de él). */
     recargarResumen: () => void;
+    /**
+     * Cierre de un solo proceso educativo (pestaña del proceso): todas sus
+     * matrículas, sin las columnas de curso y período ni el filtro de cursos
+     * terminados, que ahí no aplican.
+     */
+    proceso?: { codigo: string; terminado: boolean };
 }) {
-    const [estado, setEstado] = useState<Estado>("SIN_CIERRE");
-    const [terminados, setTerminados] = useState(true);
+    const [estado, setEstado] = useState<Estado>(proceso ? "TODOS" : "SIN_CIERRE");
+    const [terminados, setTerminados] = useState(!proceso);
     const [rows, setRows] = useState<FilaCierre[]>([]);
     const [resumen, setResumen] = useState<Resumen | null>(null);
     const [truncado, setTruncado] = useState(false);
@@ -162,7 +168,7 @@ export function CierreTab({
 
     const descargar = async () => {
         setDescargando(true);
-        try { await api.download("/egresados/cierre/excel", params, "cierre-cursos.xlsx"); }
+        try { await api.download("/egresados/cierre/excel", params, proceso ? `cierre-${proceso.codigo}.xlsx` : "cierre-cursos.xlsx"); }
         catch (e) { toast.error(e instanceof ApiError ? e.message : "Error al descargar la lista"); }
         setDescargando(false);
     };
@@ -179,7 +185,7 @@ export function CierreTab({
         }
     };
 
-    const columnas: Columna<FilaCierre>[] = [
+    const todasLasColumnas: Columna<FilaCierre>[] = [
         {
             key: "nombre", header: "Estudiante",
             cell: (r) => (
@@ -221,12 +227,15 @@ export function CierreTab({
             ) : <span className="text-xs text-muted-foreground">—</span>,
         },
     ];
+    const columnas = proceso
+        ? todasLasColumnas.filter((c) => c.key !== "curso" && c.key !== "periodo")
+        : todasLasColumnas;
 
     const tarjetas: Array<{ estado: Estado; label: string; value: number; sub?: string; color: "info" | "warning" | "success" | "destructive" }> = resumen ? [
         { estado: "TODOS", label: "Matrículas", value: resumen.total, color: "info" },
         {
-            estado: "SIN_CIERRE", label: "Sin cierre", value: resumen.sin_cierre, color: "warning",
-            sub: terminados ? "de cursos terminados" : `${resumen.sin_cierre_terminados.toLocaleString("es-HN")} de cursos terminados`,
+            estado: "SIN_CIERRE", label: proceso && !proceso.terminado ? "En curso" : "Sin cierre", value: resumen.sin_cierre, color: "warning",
+            sub: proceso ? undefined : terminados ? "de cursos terminados" : `${resumen.sin_cierre_terminados.toLocaleString("es-HN")} de cursos terminados`,
         },
         { estado: "EGRESADO", label: "Egresados", value: resumen.egresados, color: "success" },
         { estado: "DESERTOR", label: "Desertores", value: resumen.desertores, color: "destructive" },
@@ -257,10 +266,12 @@ export function CierreTab({
                                 </SelectContent>
                             </Select>
                         </div>
-                        <label className="flex items-center gap-2 pb-2 text-sm cursor-pointer select-none">
-                            <Switch checked={terminados} onCheckedChange={setTerminados} />
-                            Solo cursos terminados
-                        </label>
+                        {!proceso && (
+                            <label className="flex items-center gap-2 pb-2 text-sm cursor-pointer select-none">
+                                <Switch checked={terminados} onCheckedChange={setTerminados} />
+                                Solo cursos terminados
+                            </label>
+                        )}
                         <div className="flex-1" />
                         <Button variant="outline" size="sm" onClick={descargar} disabled={descargando || rows.length === 0}>
                             {descargando ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}

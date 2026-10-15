@@ -20,6 +20,9 @@ import {
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import SkeletonTable from "@/components/skeleton-table";
+import { CierreTab } from "@/components/egresados/cierre-tab";
+import { FILTROS_INICIALES, type FiltrosEgresados } from "@/components/egresados/filtros";
+import { hoyIso, useApi } from "@/components/egresados/api";
 import toast from "react-hot-toast";
 import { useSession } from "next-auth/react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -50,6 +53,13 @@ export default function ProcessDetailPage() {
     const authHeaders: any = { Authorization: `Bearer ${session?.user?.session}` };
 
     const [process_, setProcess] = useState<any>(null);
+    // Cierre del proceso (egresó / desertó): mismo componente y API que Centros → Egresados.
+    const egresadosApi = useApi();
+    const filtrosCierre = useMemo<FiltrosEgresados>(() => ({
+        ...FILTROS_INICIALES,
+        anio: null,
+        proceso: { value: String(processId), label: process_?.codigo ?? "" },
+    }), [processId, process_?.codigo]);
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState(false);
     const [form, setForm] = useState<Record<string, any>>({});
@@ -722,6 +732,7 @@ export default function ProcessDetailPage() {
                         <TabsTrigger value="general" className={TAB_CLASS}>General</TabsTrigger>
                         <TabsTrigger value="course" className={TAB_CLASS}>Detalle del curso</TabsTrigger>
                         <TabsTrigger value="enrollment" className={TAB_CLASS}>Matrícula{enrollments.length > 0 ? ` (${enrollments.length})` : ""}</TabsTrigger>
+                        <TabsTrigger value="cierre" className={TAB_CLASS}>Cierre</TabsTrigger>
                         <TabsTrigger value="projects" className={TAB_CLASS}>Proyectos{linkedProjects.length > 0 ? ` (${linkedProjects.length})` : ""}</TabsTrigger>
                     </TabsList>
 
@@ -983,6 +994,20 @@ export default function ProcessDetailPage() {
                                 )}
                             </div>
                         )}
+                    </TabsContent>
+
+                    {/* Tab: Cierre (egresó / desertó) */}
+                    <TabsContent value="cierre" className="mt-0 px-6 pt-6 pb-6">
+                        <CierreTab
+                            api={egresadosApi}
+                            filtros={filtrosCierre}
+                            puedeEditar={isSupervisor}
+                            recargarResumen={() => {}}
+                            proceso={{
+                                codigo: process_?.codigo ?? String(processId),
+                                terminado: !!process_?.fecha_final && String(process_.fecha_final).slice(0, 10) < hoyIso(),
+                            }}
+                        />
                     </TabsContent>
 
                     {/* Tab: Proyectos Relacionados */}

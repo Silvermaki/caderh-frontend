@@ -1750,6 +1750,12 @@ export const docsModules: DocModule[] = [
             title: "Elige el proceso educativo",
             body:
               'Lo más práctico es cerrar un curso a la vez: en el filtro "Proceso educativo" busca por código, curso o centro. También puedes filtrar por centro, año de inicio, proyecto o buscar a un estudiante por nombre o DNI.',
+            callout: {
+              variant: "tip",
+              title: "También desde el proceso educativo",
+              text:
+                'En Centros → Procesos Educativos, abre el proceso y entra a la pestaña "Cierre": funciona igual y muestra solo las matrículas de ese proceso.',
+            },
           },
           {
             id: "marcar-egresados",
